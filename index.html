@@ -1256,6 +1256,7 @@ async function doLogin(){
   btn.textContent='Sign In →'; btn.disabled=false;
 }
 function doSignOut(){
+  clearTimeout(inactivityTimer);
   if(!confirm('Sign out of OmniFlow?'))return;
   authToken=null;
   currentUser=null;
@@ -1273,6 +1274,7 @@ function showApp(){
   document.getElementById('appLayout').style.display='flex';
   initApp();
   applyAccessLevel();
+  resetInactivityTimer(); // Start inactivity timer
 }
 function applyAccessLevel(){
   const allNavItems=document.querySelectorAll('.nav-item');
@@ -2517,6 +2519,30 @@ async function runDiagnostics(){
 // BOOT
 // ══════════════════════════════════════
 console.log("OmniFlow v7 - Direct Supabase - loaded at", new Date().toISOString());
+
+// ── AUTO SIGN-OUT after 5 minutes of inactivity ──
+let inactivityTimer = null;
+const INACTIVITY_MINUTES = 5;
+
+function resetInactivityTimer(){
+  clearTimeout(inactivityTimer);
+  if(!currentUser) return;
+  inactivityTimer = setTimeout(()=>{
+    if(!currentUser) return;
+    // Show warning 30 seconds before sign out
+    showSync('error','Auto sign-out in 30 seconds due to inactivity...');
+    setTimeout(()=>{
+      if(!currentUser) return;
+      doSignOut();
+    }, 30000);
+  }, (INACTIVITY_MINUTES * 60 * 1000) - 30000);
+}
+
+// Track user activity
+['mousemove','mousedown','keypress','touchstart','scroll','click'].forEach(evt=>{
+  document.addEventListener(evt, resetInactivityTimer, {passive:true});
+});
+
 initLogin();
 </script>
 </body>
