@@ -826,13 +826,11 @@ const USD_DIVS = ['ME2','ME3'];
 const USD_RATE_DEFAULT = 157;
 
 // ══════════════════════════════════════
-// CLOUD API CONFIGURATION
+// SUPABASE DIRECT — No Worker, No CORS
 // ══════════════════════════════════════
-// After deploying your Cloudflare Worker, paste your Worker URL here:
-const API_BASE = 'https://omniflow-api.matisaneng.workers.dev';
-//
-// Example: 'https://omniflow-api.matisaneng.workers.dev'
-// Leave as-is until you have deployed the Worker.
+const SUPA_URL = 'https://carcospsxvrmvkxhdyym.supabase.co/rest/v1';
+const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE';
+const API_BASE = ''; // unused — kept for compatibility
 
 // ── OFFLINE QUEUE ─────────────────────
 // Operations that fail while offline are queued and replayed on reconnect
@@ -841,6 +839,13 @@ let isOnline = navigator.onLine;
 
 window.addEventListener('online',  () => { isOnline=true;  flushOfflineQueue(); updateOnlineBadge(); });
 window.addEventListener('offline', () => { isOnline=false; updateOnlineBadge(); });
+// Periodically check real connectivity
+setInterval(async()=>{
+  try{
+    await fetch(API_BASE+'/health',{method:'HEAD'}).catch(()=>fetch(API_BASE+'/health'));
+    if(!isOnline){ isOnline=true; flushOfflineQueue(); updateOnlineBadge(); }
+  }catch(e){ isOnline=false; updateOnlineBadge(); }
+}, 10000);
 
 function updateOnlineBadge(){
   const badge = document.getElementById('offlineBadge');
@@ -879,48 +884,79 @@ function showSync(type, msg){
 let authToken = localStorage.getItem('omni-token');
 
 async function apiCall(method, path, body=null, skipQueue=false){
-  const opts = {
-    method,
-    headers: { 'Content-Type':'application/json' }
-  };
-  if(authToken) opts.headers['Authorization'] = 'Bearer ' + authToken;
-  if(body) opts.body = JSON.stringify(body);
+  // Direct Supabase REST — no Worker, no CORS issues
+  const supaPath = pathToSupabase(method, path, body);
+  if(!supaPath) return body||{};
 
-  // Offline check
-  if(!isOnline && !skipQueue){
-    if(['POST','PATCH','PUT','DELETE'].includes(method)){
-      queueOffline(method, path, body);
-      return {queued: true};
-    }
-    const cached = localStorage.getItem('omni-cache-'+path.replace(/[^a-z]/gi,'_'));
-    return cached ? JSON.parse(cached) : [];
-  }
+  const headers = {
+    'apikey': SUPA_ANON,
+    'Authorization': 'Bearer ' + (authToken||SUPA_ANON),
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation'
+  };
 
   try {
-    const res = await fetch(API_BASE + path, opts);
-    if(method==='GET'){
-      if(!res.ok) throw new Error('API '+res.status);
-      const data = await res.json();
-      localStorage.setItem('omni-cache-'+path.replace(/[^a-z]/gi,'_'), JSON.stringify(data));
-      return data;
-    }
-    if(!res.ok){
-      const errText = await res.text();
-      throw new Error('API '+res.status+': '+errText.slice(0,100));
-    }
-    // For 204 No Content (DELETE)
+    const res = await fetch(supaPath.url, {method: supaPath.method, headers, body: supaPath.body ? JSON.stringify(supaPath.body) : undefined});
     if(res.status===204) return {ok:true};
-    const ct = res.headers.get('content-type')||'';
-    if(ct.includes('application/json')) return await res.json();
-    return {ok:true};
+    const text = await res.text();
+    const data = text ? JSON.parse(text) : [];
+    // Cache GETs for offline
+    if(method==='GET') localStorage.setItem('omni-cache-'+path.replace(/[^a-z]/gi,'_'), JSON.stringify(data));
+    return data;
   } catch(e) {
-    const msg = e.name==='AbortError' ? 'Request timed out (15s)' : e.message;
-    if(!skipQueue && ['POST','PATCH','PUT','DELETE'].includes(method)){
+    console.warn('Supabase call failed:', method, path, e.message);
+    if(['POST','PATCH','PUT','DELETE'].includes(method) && !skipQueue){
       queueOffline(method, path, body);
-      return {queued: true, error: msg};
+      return {queued:true};
     }
-    throw new Error(msg);
+    const cached = localStorage.getItem('omni-cache-'+path.replace(/[^a-z]/gi,'_'));
+    if(cached){ try{ return JSON.parse(cached); }catch(ex){} }
+    return [];
   }
+}
+
+function pathToSupabase(method, path, body){
+  const base = SUPA_URL;
+
+  // LOGIN
+  if(path==='/login'){
+    // Handle login directly — query users table
+    return null; // handled separately
+  }
+  // TRANSACTIONS
+  if(path==='/transactions' && method==='GET') return {url:base+'/transactions?select=*&order=date.desc,created_at.desc',method:'GET'};
+  if(path==='/transactions' && method==='POST') return {url:base+'/transactions',method:'POST',body};
+  const txm = path.match(/^\/transactions\/(.+)$/);
+  if(txm){
+    if(method==='PATCH'||method==='PUT') return {url:base+'/transactions?id=eq.'+txm[1],method:'PATCH',body};
+    if(method==='DELETE') return {url:base+'/transactions?id=eq.'+txm[1],method:'DELETE'};
+  }
+  // BALANCES
+  if(path==='/balances' && method==='GET') return {url:base+'/balances?select=*&order=div_code',method:'GET'};
+  if(path==='/balances' && (method==='PUT'||method==='POST')){
+    // Array of rows — handle in caller
+    return null;
+  }
+  // OUTSTANDING
+  if(path==='/outstanding' && method==='GET') return {url:base+'/outstanding?select=*&order=amt.desc',method:'GET'};
+  if(path==='/outstanding' && method==='POST') return {url:base+'/outstanding',method:'POST',body};
+  const outm = path.match(/^\/outstanding\/(.+)$/);
+  if(outm){
+    if(method==='PATCH') return {url:base+'/outstanding?id=eq.'+outm[1],method:'PATCH',body};
+    if(method==='DELETE') return {url:base+'/outstanding?id=eq.'+outm[1],method:'DELETE'};
+  }
+  // COMPANIES
+  if(path==='/companies' && method==='GET') return {url:base+'/companies?select=*,divisions(*)',method:'GET'};
+  // USERS password
+  const pwm = path.match(/^\/users\/(.+)\/password$/);
+  if(pwm && method==='PATCH') return {url:base+'/users?username=eq.'+pwm[1],method:'PATCH',body:{password:body.password}};
+  // HEALTH
+  if(path==='/health') return {url:SUPA_URL.replace('/rest/v1','')+'/rest/v1/?apikey='+SUPA_ANON,method:'GET'};
+
+  console.warn('No Supabase mapping for:', method, path);
+  return null;
+}
+
 }
 
 // ── REALTIME SUBSCRIPTIONS ────────────
@@ -1169,41 +1205,46 @@ async function doLogin(){
   btn.textContent='Signing in...'; btn.disabled=true;
 
   try {
-    // Try cloud login first
-    const data = await apiCall('POST', '/login', {username, password});
-    if(data && data.token){
-      authToken = data.token;
+    // Query Supabase users table directly — no Worker needed
+    const res = await fetch(
+      SUPA_URL+'/users?username=eq.'+encodeURIComponent(username)+'&select=*',
+      {headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}}
+    );
+    const users = await res.json();
+    if(users && users.length && users[0].password===password){
+      const u = users[0];
+      // Create local token
+      authToken = btoa(JSON.stringify({username:u.username,role:u.role,exp:Date.now()+86400000*30}));
       localStorage.setItem('omni-token', authToken);
       currentUser = {
-        username: data.username,
-        role: data.role,
-        initials: data.initials,
-        accessLevel: data.role === 'limited' ? 'limited' : 'full'
+        username: u.username, role: u.role, initials: u.initials,
+        accessLevel: u.role==='limited'?'limited':'full'
       };
       localStorage.setItem('omni-session-user', JSON.stringify(currentUser));
       errEl.style.display='none';
+      btn.textContent='Sign In →'; btn.disabled=false;
       showApp();
+      return;
+    } else {
+      errEl.style.display='block';
+      errEl.textContent='Incorrect username or password.';
+      btn.textContent='Sign In →'; btn.disabled=false;
       return;
     }
   } catch(e) {
-    // Offline fallback — use local password store
-    const workerDown = e.message.includes('fetch')||e.message.includes('timeout')||e.message.includes('AbortError');
-    if(workerDown){
-      showSync('error','Worker offline — using local login. Check Worker secrets in Cloudflare.');
-    }
-    console.warn('Cloud login failed, trying offline fallback:', e.message);
+    console.warn('Supabase login failed, using local fallback:', e.message);
   }
 
-  // Offline/fallback: check local passwords
-  const users = getUsers();
-  const user = users.find(x=>x.username===username&&x.password===password);
+  // Offline fallback
+  const localUsers = getUsers();
+  const user = localUsers.find(x=>x.username===username&&x.password===password);
   if(!user){ errEl.style.display='block'; errEl.textContent='Incorrect username or password.'; btn.textContent='Sign In →'; btn.disabled=false; return; }
-  errEl.style.display='none';
-  authToken = null;
-  currentUser = {...user, accessLevel: user.accessLevel};
+  authToken = btoa(JSON.stringify({username:user.username,role:user.role,exp:Date.now()+86400000*30}));
+  localStorage.setItem('omni-token', authToken);
+  currentUser = {...user};
   localStorage.setItem('omni-session-user', JSON.stringify(currentUser));
-  showApp();
   btn.textContent='Sign In →'; btn.disabled=false;
+  showApp();
 }
 
 function doSignOut(){
@@ -2013,7 +2054,13 @@ async function saveBalances(){
   });
   ls('omni-bal',balances);
   try{
-    await apiCall('PUT','/balances',payload);
+    for(const row of payload){
+      await fetch(SUPA_URL+'/balances?div_code=eq.'+row.div_code,{
+        method:'PATCH',
+        headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
+        body:JSON.stringify({opening_etb:row.opening_etb,opening_usd:row.opening_usd})
+      });
+    }
     showSync('ok','Balances saved to cloud ✓');
   }catch(e){ showSync('error','Saved locally — sync pending'); }
   showFlash('✓ Opening balances saved.');renderBalances();renderDashboard();
@@ -2273,7 +2320,7 @@ async function saveAllPasswords(){
     const el=document.getElementById('pw_'+u.username);
     if(el&&el.value.trim()&&el.value.trim().length>=6){
       pw[u.username]=el.value.trim();
-      saves.push(apiCall('PATCH','/users/'+u.username+'/password',{password:el.value.trim()}).catch(e=>{}));
+      saves.push(fetch(SUPA_URL+'/users?username=eq.'+u.username,{method:'PATCH',headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({password:el.value.trim()})}).catch(e=>{}));
     }
   });
   await Promise.all(saves);
@@ -2436,17 +2483,17 @@ function copyCSV(){
 async function runDiagnostics(){
   const el=document.getElementById('diagResult');
   el.style.display='block';
-  el.innerHTML='<div style="padding:10px 14px;background:var(--amber-light);border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e">Testing connection to Worker...</div>';
+  el.innerHTML='<div style="padding:10px 14px;background:var(--amber-light);border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e">Testing direct Supabase connection...</div>';
   const start=Date.now();
-  fetch(API_BASE+'/health')
-    .then(function(res){ return res.json().then(function(data){ return {res:res,data:data}; }); })
+  fetch(SUPA_URL+'/users?select=count',{headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}})
+    .then(function(res){ return res.json().then(function(d){ return {res,d}; }); })
     .then(function(obj){
       const ms=Date.now()-start;
-      el.innerHTML='<div style="padding:10px 14px;background:var(--teal-light);border:1px solid #6ee7b7;border-radius:8px;font-size:12px;color:var(--teal-dark)">✓ Worker online ('+ms+'ms) · env_ok: '+obj.data.env_ok+'</div>';
-      showSync('ok','Worker online ✓');
+      el.innerHTML='<div style="padding:10px 14px;background:var(--teal-light);border:1px solid #6ee7b7;border-radius:8px;font-size:12px;color:var(--teal-dark)">✓ Supabase connected ('+ms+'ms) · Direct connection active · No CORS issues</div>';
+      showSync('ok','Connected ✓');
     })
     .catch(function(e){
-      el.innerHTML='<div style="padding:10px 14px;background:var(--red-light);border:1px solid #fecaca;border-radius:8px;font-size:12px;color:#991b1b">✗ Worker not responding: '+e.message+'<br><br>Set secrets in Cloudflare: SUPABASE_URL, SUPABASE_KEY, JWT_SECRET</div>';
+      el.innerHTML='<div style="padding:10px 14px;background:var(--red-light);border:1px solid #fecaca;border-radius:8px;font-size:12px;color:#991b1b">✗ Connection failed: '+e.message+'</div>';
     });
 }
 
