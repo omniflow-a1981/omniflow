@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OmniFlow — Cash Management</title>
+<title>OmniFlow v7 — Cash Management</title>
 <meta name="theme-color" content="#1e293b">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -961,7 +961,7 @@ function pathToSupabase(method, path, body){
 
 // ── REALTIME SUBSCRIPTIONS ────────────
 let realtimeWs = null;
-function startRealtime(){
+async function startRealtime(){
   if(!authToken) return;
   // Supabase realtime via REST polling (simple, no extra deps needed)
   // Poll every 8 seconds to keep data fresh across devices
@@ -2502,6 +2502,7 @@ async function runDiagnostics(){
 // ══════════════════════════════════════
 // BOOT
 // ══════════════════════════════════════
+console.log("OmniFlow v7 - Direct Supabase - loaded at", new Date().toISOString());
 initLogin();
 </script>
 </body>
