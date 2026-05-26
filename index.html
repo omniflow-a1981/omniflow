@@ -1204,49 +1204,51 @@ async function doLogin(){
   const btn=document.querySelector('.login-btn');
   btn.textContent='Signing in...'; btn.disabled=true;
 
-  try {
-    // Query Supabase users table directly — no Worker needed
-    const res = await fetch(
-      SUPA_URL+'/users?username=eq.'+encodeURIComponent(username)+'&select=*',
-      {headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}}
-    );
-    const users = await res.json();
-    if(users && users.length && users[0].password===password){
-      const u = users[0];
-      // Create local token
-      authToken = btoa(JSON.stringify({username:u.username,role:u.role,exp:Date.now()+86400000*30}));
-      localStorage.setItem('omni-token', authToken);
-      currentUser = {
-        username: u.username, role: u.role, initials: u.initials,
-        accessLevel: u.role==='limited'?'limited':'full'
-      };
-      localStorage.setItem('omni-session-user', JSON.stringify(currentUser));
-      errEl.style.display='none';
-      btn.textContent='Sign In →'; btn.disabled=false;
-      showApp();
-      return;
-    } else {
-      errEl.style.display='block';
-      errEl.textContent='Incorrect username or password.';
-      btn.textContent='Sign In →'; btn.disabled=false;
-      return;
-    }
-  } catch(e) {
-    console.warn('Supabase login failed, using local fallback:', e.message);
+  // Step 1: Check local passwords first (always works)
+  const localUsers = getUsers();
+  const localUser = localUsers.find(x=>x.username===username&&x.password===password);
+  
+  if(localUser){
+    // Local auth succeeded — now try to connect to Supabase in background
+    authToken = btoa(JSON.stringify({username:localUser.username,role:localUser.role,exp:Date.now()+86400000*30}));
+    localStorage.setItem('omni-token', authToken);
+    currentUser = {...localUser};
+    localStorage.setItem('omni-session-user', JSON.stringify(currentUser));
+    errEl.style.display='none';
+    btn.textContent='Sign In →'; btn.disabled=false;
+    showApp();
+    return;
   }
 
-  // Offline fallback
-  const localUsers = getUsers();
-  const user = localUsers.find(x=>x.username===username&&x.password===password);
-  if(!user){ errEl.style.display='block'; errEl.textContent='Incorrect username or password.'; btn.textContent='Sign In →'; btn.disabled=false; return; }
-  authToken = btoa(JSON.stringify({username:user.username,role:user.role,exp:Date.now()+86400000*30}));
-  localStorage.setItem('omni-token', authToken);
-  currentUser = {...user};
-  localStorage.setItem('omni-session-user', JSON.stringify(currentUser));
-  btn.textContent='Sign In →'; btn.disabled=false;
-  showApp();
-}
+  // Step 2: Try Supabase directly (in case password was changed via admin)
+  try {
+    const res = await fetch(
+      'https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/users?username=eq.'+encodeURIComponent(username)+'&select=username,password,role,initials',
+      {headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE'}}
+    );
+    if(res.ok){
+      const users = await res.json();
+      if(users && users.length && users[0].password===password){
+        const u = users[0];
+        // Update local cache with new password
+        const pw=getPasswords(); pw[u.username]=password; ls('omni-passwords',pw);
+        authToken = btoa(JSON.stringify({username:u.username,role:u.role,exp:Date.now()+86400000*30}));
+        localStorage.setItem('omni-token', authToken);
+        currentUser = {username:u.username,role:u.role,initials:u.initials,accessLevel:u.role==='limited'?'limited':'full'};
+        localStorage.setItem('omni-session-user', JSON.stringify(currentUser));
+        errEl.style.display='none';
+        btn.textContent='Sign In →'; btn.disabled=false;
+        showApp();
+        return;
+      }
+    }
+  } catch(e){ console.warn('Supabase login check failed:', e.message); }
 
+  // Both failed
+  errEl.style.display='block';
+  errEl.textContent='Incorrect username or password.';
+  btn.textContent='Sign In →'; btn.disabled=false;
+}
 function doSignOut(){
   if(!confirm('Sign out of OmniFlow?'))return;
   authToken=null;
