@@ -964,10 +964,15 @@ async function startRealtime(){
   if(!authToken) return;
   // Supabase realtime via REST polling (simple, no extra deps needed)
   // Poll every 8 seconds to keep data fresh across devices
+  // Poll Supabase directly every 5 seconds
   setInterval(async ()=>{
-    if(!isOnline || !authToken) return;
     try {
-      const fresh = await apiCall('GET', '/transactions');
+      const res = await fetch(
+        'https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?select=*&order=date.desc,created_at.desc',
+        {headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}}
+      );
+      if(!res.ok) return;
+      const fresh = await res.json();
       if(!Array.isArray(fresh)) return;
       const mapped = fresh.map(t=>({
         id:t.id, date:t.date, co:t.company_id,
@@ -976,13 +981,15 @@ async function startRealtime(){
         amtUsd:t.amt_usd?parseFloat(t.amt_usd):null,
         ref:t.ref, note:t.note||''
       }));
-      if(JSON.stringify(mapped) !== JSON.stringify(transactions)){
+      // Check if data changed
+      if(mapped.length !== transactions.length ||
+         JSON.stringify(mapped.map(t=>t.id)) !== JSON.stringify(transactions.map(t=>t.id))){
         transactions = mapped;
         ls('omni-tx', transactions);
         renderAll();
-        showSync('ok','Data updated ✓');
+        if(mapped.length > 0) showSync('ok','Synced ✓ — '+mapped.length+' transactions');
       }
-    } catch(e){}
+    } catch(e){ console.warn('Poll error:', e.message); }
   }, 5000);
 }
 
@@ -1326,10 +1333,14 @@ async function initApp(){
   try {
     // Load all data from cloud in parallel
     const [txData, balData, outData, coData] = await Promise.all([
-      apiCall('GET', '/transactions'),
-      apiCall('GET', '/balances'),
-      apiCall('GET', '/outstanding'),
-      apiCall('GET', '/companies'),
+      fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?select=*&order=date.desc,created_at.desc',
+        {headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}}).then(r=>r.json()),
+      fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/balances?select=*&order=div_code',
+        {headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}}).then(r=>r.json()),
+      fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/outstanding?select=*&order=amt.desc',
+        {headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}}).then(r=>r.json()),
+      fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/companies?select=*,divisions(*)',
+        {headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}}).then(r=>r.json()),
     ]);
     
     // Map cloud data to app state
@@ -1339,7 +1350,8 @@ async function initApp(){
       type: t.type, amt: parseFloat(t.amt)||0,
       amtUsd: t.amt_usd ? parseFloat(t.amt_usd) : null,
       ref: t.ref, note: t.note||''
-    })) : ls('omni-tx')||[];
+    })) : [];
+    ls('omni-tx', transactions);
 
     balances = {};
     if(Array.isArray(balData)){
@@ -1610,8 +1622,11 @@ async function addTx(){
 
   try {
     showSync('syncing','Saving...');
-    const saved = await apiCall('POST', '/transactions', payload);
-    if(!saved.queued){
+    const txRes = await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions',
+      {method:'POST', headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
+       body:JSON.stringify(payload)});
+    const saved = txRes.ok ? (await txRes.json())[0] : null;
+    if(saved && saved.id){
       // Map cloud response back to local format
       const tx = {id:saved.id||Date.now(), date, co, divCode, divName:divInfo?divInfo.name:'',
         type:txType, amt:finalAmt, amtUsd:amtUsd||null, ref, note:note||''};
