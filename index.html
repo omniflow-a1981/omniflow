@@ -1292,7 +1292,7 @@ function initLogin(){
   }
 }
 
-async async function doLogin(){
+async function doLogin(){
   const username=document.getElementById('loginUser').value.trim();
   const password=document.getElementById('loginPass').value;
   const errEl=document.getElementById('loginErr');
@@ -2716,6 +2716,10 @@ function calcPRRow(el){
   calcPRTotals();
 }
 
+function removePRRow(btn){
+  btn.closest('tr').remove();
+  calcPRTotals();
+}
 function addPRItem(it){
   it=it||{};
   const type=document.getElementById('prType').value||'Material';
@@ -2725,7 +2729,7 @@ function addPRItem(it){
   const s='padding:3px 4px';
   const inp=(cls,v,p,w)=>`<input class="${cls}" type="number" value="${v||''}" placeholder="${p}" oninput="calcPRRow(this)" style="width:${w||'80px'};font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;outline:none;text-align:right">`;
   const txt=(cls,v,p)=>`<input class="${cls}" type="text" value="${v||''}" placeholder="${p}" style="width:100%;font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;outline:none">`;
-  const del='<button onclick="this.closest('tr').remove();calcPRTotals()" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:15px">×</button>';
+    const del='<button onclick="removePRRow(this)" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:15px">×</button>';
   if(type==='Manpower'){
     row.innerHTML=`<td style="${s};text-align:center;color:var(--muted)">${n}</td><td style="${s}">${txt('pr-ii',it.item_name,'Name')}</td><td style="${s}">${txt('pr-id',it.description,'Position')}</td><td style="${s}">${inp('pr-qty',it.qty,'0','55px')}</td><td style="${s}">${inp('pr-rate',it.unit_rate,'0','80px')}</td><td style="${s}">${inp('pr-amt',it.amount,'0','85px')}</td><td style="${s}">${inp('pr-item-paid',it.to_be_paid,'0','85px')}</td><td style="${s}">${txt('pr-tr',it.transfer_to,'Bank')}</td><td style="${s}">${del}</td>`;
   }else{
@@ -2949,7 +2953,7 @@ function viewPR(id){
             <option>Bank Transfer</option><option>Cheque</option><option>Cash</option><option>CBE Birr</option>
           </select></div>
       </div>
-    </div>`:''))}
+    </div>`:''}  
     ${pr.transfer_id?`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px"><strong style="color:#166534">Transfer ID:</strong> ${pr.transfer_id} | <strong style="color:#166534">Method:</strong> ${pr.pay_method||'—'}</div>`:''}
     <div class="pr-sign-row">
       ${signers.map(s=>`<div class="pr-sign-box">
