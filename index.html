@@ -2643,6 +2643,7 @@ function prCanAct(pr,step){
 }
 function prNextStep(pr){for(const s of PR_STEPS){if(!pr[s+'_by'])return s;}return 'complete';}
 function prStatusInfo(pr){
+  if(pr.rejected) return {label:'Rejected ✗',css:'pr-rejected'};
   return {prepared:{label:'Draft',css:'pr-draft'},checked:{label:'Pending Review',css:'pr-pending'},approved:{label:'Checked ✓',css:'pr-checked'},verified:{label:'Approved ✓',css:'pr-approved'},paid:{label:'Verified ✓',css:'pr-verified'},complete:{label:'Paid ✓',css:'pr-paid'}}[prNextStep(pr)]||{label:'Unknown',css:'pr-draft'};
 }
 function prVisible(pr){
@@ -2807,7 +2808,7 @@ async function savePR(){
     items:JSON.stringify(items),
     sub_total:sub,vat,grand_total:grand,withholding:wh,net_payable:net,
     vat_mode:vatMode,request_type:prType,sub_project:subCode,manpower_category:mpCat,
-    prepared_by:currentUser.username,prepared_at:new Date().toISOString(),status:'pending'
+    prepared_by:currentUser.username,prepared_at:new Date().toISOString(),status:'pending',rejected:false,reject_comment:null
   };
   try{
     const eid=document.getElementById('prEditId').value;
@@ -2894,26 +2895,39 @@ function renderPRList(){
 function viewPR(id){
   const pr=payRequests.find(x=>x.id===id); if(!pr) return;
   const items=JSON.parse(pr.items||'[]');
-  const st=prStatusInfo(pr), next=prNextStep(pr), canAct=next!=='complete'&&prCanAct(pr,next);
+  const st=prStatusInfo(pr), next=prNextStep(pr);
   const prType=pr.request_type||'Material';
-  const aLabels={checked:'Confirm Check',approved:'Approve',verified:'Verify',paid:'Mark as Paid'};
-  const signers=[
-    {key:'prepared',label:'Prepared by',role:''},
-    {key:'checked',label:'Checked by',role:'Finance/Mgmt'},
-    {key:'approved',label:'Approved by',role:'Director'},
-    {key:'verified',label:'Verified by',role:'GM/Admin'},
-    {key:'paid',label:'Paid by',role:'Finance'}
-  ];
+  const vatMode=pr.vat_mode||'exclusive';
+  const canAct=next!=='complete'&&prCanAct(pr,next);
+  const canEdit=next==='checked'&&pr.prepared_by===currentUser.username;
+  const isAdmin=currentUser&&currentUser.role==='admin';
+  const isFinance=currentUser&&currentUser.username==='finance';
+
+  // Table headers/body by type
   let thead='',tbody='';
   if(prType==='Manpower'){
     thead='<tr><th>#</th><th>Name</th><th>Position</th><th style="text-align:right">Days</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th><th style="text-align:right">To Be Paid</th><th>Bank</th></tr>';
-    tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}""><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td></tr>`).join('');
-  }else{
+    tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}"><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td></tr>`).join('');
+  } else {
     thead=`<tr><th>#</th><th>${prType==='Machinery'?'Equipment':'Item'}</th><th>Description</th><th>Unit</th><th style="text-align:right">Qty</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th><th style="text-align:right">To Be Paid</th><th>${prType==='Machinery'?'Supplier':'Transfer To'}</th></tr>`;
-    tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}""><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td>${it.unit||''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td></tr>`).join('');
+    tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}"><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td>${it.unit||''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td></tr>`).join('');
   }
-  const vatMode=pr.vat_mode||'exclusive';
+
+  const withholdRow=vatMode==='exclusive'?`<div class="pr-total-row"><span>3% Withholding Tax</span><span style="color:var(--red)">${fmt(pr.withholding)}</span></div>`:'';
+  const partialPaid=parseFloat(pr.partial_amount||0);
+  const pendingAmt=pr.net_payable-partialPaid;
+
+  // Build signature + action boxes for each step
+  const signers=[
+    {key:'prepared', label:'Prepared by',  canComment:true, canEdit:canEdit, canReverse:false},
+    {key:'checked',  label:'Checked by',   canComment:true, canEdit:false,   canReverse:prCanAct(pr,'checked')&&pr.checked_by},
+    {key:'approved', label:'Approved by',  canComment:true, canEdit:false,   canReverse:prCanAct(pr,'approved')&&pr.approved_by},
+    {key:'verified', label:'Verified by',  canComment:true, canEdit:false,   canReverse:false, canPartial:isAdmin&&next==='paid', canReject:isAdmin&&(next==='verified'||next==='paid')},
+    {key:'paid',     label:'Paid by',      canComment:true, canEdit:false,   canReverse:false},
+  ];
+
   document.getElementById('prDetailContent').innerHTML=`
+    <!-- Header -->
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:8px">
       <div>
         <div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--ink)">Payment Request</div>
@@ -2922,10 +2936,13 @@ function viewPR(id){
           ${pr.request_type?`<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--border2);color:var(--muted);font-weight:600">${pr.request_type}</span>`:''}
           ${pr.manpower_category?`<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:#ede9fe;color:#5b21b6;font-weight:600">${pr.manpower_category}</span>`:''}
           <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${vatMode==='exclusive'?'#dbeafe':'#fef3c7'};color:${vatMode==='exclusive'?'#1e40af':'#92400e'};font-weight:600">VAT ${vatMode}</span>
+          ${pr.rejected?'<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:#fee2e2;color:#991b1b;font-weight:700">⚠ REJECTED</span>':''}
         </div>
       </div>
       <span class="pr-status-badge ${st.css}" style="font-size:12px;padding:5px 14px">${st.label}</span>
     </div>
+
+    <!-- Info grid -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;background:var(--bg);padding:10px 12px;border-radius:10px;font-size:12px">
       <div><span style="color:var(--muted)">Project:</span> <strong>${pr.project}</strong></div>
       <div><span style="color:var(--muted)">Date:</span> <strong>${pr.request_date}</strong></div>
@@ -2933,72 +2950,206 @@ function viewPR(id){
       <div><span style="color:var(--muted)">Location:</span> <strong>${pr.location||'—'}</strong></div>
       ${pr.consultant?`<div><span style="color:var(--muted)">Consultant:</span> <strong>${pr.consultant}</strong></div>`:''}
     </div>
+
+    <!-- Items table -->
     <table class="pr-table" style="margin-bottom:10px"><thead>${thead}</thead><tbody>${tbody}</tbody></table>
+
+    <!-- Totals -->
     <div class="pr-totals">
       <div class="pr-total-row"><span>Sub Total</span><span style="font-weight:700">${fmt(pr.sub_total)}</span></div>
       <div class="pr-total-row"><span>VAT (${vatMode})</span><span style="color:var(--amber)">${fmt(pr.vat)}</span></div>
       <div class="pr-total-row"><span style="font-weight:700">Grand Total</span><span style="font-weight:800;color:var(--teal-dark)">${fmt(pr.grand_total)}</span></div>
-      ${vatMode==='exclusive'?`<div class="pr-total-row"><span>3% Withholding</span><span style="color:var(--red)">${fmt(pr.withholding)}</span></div>`:''}
+      ${withholdRow}
       <div class="pr-total-row" style="border-top:1px solid var(--border);margin-top:4px;padding-top:6px"><span style="font-weight:800">Net Payable</span><span style="font-weight:800;font-size:16px;color:var(--teal-dark)">${fmt(pr.net_payable)}</span></div>
+      ${partialPaid>0?`<div class="pr-total-row" style="background:#fef3c7;padding:4px 8px;border-radius:6px;margin-top:4px"><span style="color:#92400e;font-weight:700">Partial Paid</span><span style="color:#92400e;font-weight:800">${fmt(partialPaid)}</span></div>`:''}
+      ${partialPaid>0?`<div class="pr-total-row" style="background:#fee2e2;padding:4px 8px;border-radius:6px"><span style="color:#991b1b;font-weight:700">Still Pending</span><span style="color:#991b1b;font-weight:800">${fmt(pendingAmt)}</span></div>`:''}
     </div>
+
     ${pr.note?`<div style="background:var(--bg);border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:10px"><strong>Note:</strong> ${pr.note}</div>`:''}
+    ${pr.rejected&&pr.reject_comment?`<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:10px;color:#991b1b"><strong>⚠ Rejection Reason:</strong> ${pr.reject_comment}</div>`:''}
+    ${pr.transfer_id?`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px"><strong style="color:#166534">Transfer ID:</strong> ${pr.transfer_id} | <strong style="color:#166534">Method:</strong> ${pr.pay_method||'—'}</div>`:''}
+
+    <!-- Action area for current step -->
     ${next==='paid'&&canAct?`
     <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:12px">
       <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:8px">💳 Payment Details — Finance</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
         <div><label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Cheque / Transfer Number *</label>
-          <input type="text" id="prTransferId" placeholder="e.g. CHQ-001234 or TRF-567890" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;font-weight:700;outline:none"></div>
+          <input type="text" id="prTransferId" placeholder="e.g. CHQ-001234" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;font-weight:700;outline:none"></div>
         <div><label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Payment Method</label>
           <select id="prPayMethod" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;outline:none">
             <option>Bank Transfer</option><option>Cheque</option><option>Cash</option><option>CBE Birr</option>
           </select></div>
       </div>
-    </div>`:''}  
-    ${pr.transfer_id?`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px"><strong style="color:#166534">Transfer ID:</strong> ${pr.transfer_id} | <strong style="color:#166534">Method:</strong> ${pr.pay_method||'—'}</div>`:''}
+      <div><label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Payment Comment (optional)</label>
+        <textarea id="prPaidComment" rows="2" placeholder="Any payment notes..." style="width:100%;padding:7px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:12px;outline:none;resize:vertical"></textarea>
+      </div>
+    </div>`:''}
+
+    <!-- Verified step: partial payment + reject -->
+    ${next==='verified'&&canAct?`
+    <div style="background:#ede9fe;border:1.5px solid #a78bfa;border-radius:10px;padding:12px 16px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:#5b21b6;margin-bottom:8px">🔍 Verification — Admin</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+        <div><label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Partial Payment Amount (ETB) — leave 0 for full</label>
+          <input type="number" id="prPartialAmt" value="0" min="0" max="${pr.net_payable}" style="width:100%;padding:8px 10px;border:1.5px solid #a78bfa;border-radius:7px;font-size:13px;outline:none"></div>
+        <div><label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Verification Comment</label>
+          <textarea id="prVerifiedComment" rows="2" placeholder="Verification notes..." style="width:100%;padding:7px 10px;border:1.5px solid #a78bfa;border-radius:7px;font-size:12px;outline:none;resize:vertical"></textarea>
+        </div>
+      </div>
+    </div>`:''}
+
+    <!-- Comment for current step (non-paid, non-verified) -->
+    ${canAct&&next!=='paid'&&next!=='verified'&&next!=='prepared'?`
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px">
+      <label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Your Comment (${next})</label>
+      <textarea id="prStepComment" rows="2" placeholder="Add a comment for this step..." style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;outline:none;resize:vertical"></textarea>
+    </div>`:''}
+
+    <!-- Signature boxes -->
     <div class="pr-sign-row">
-      ${signers.map(s=>`<div class="pr-sign-box">
+      ${signers.map(s=>`<div class="pr-sign-box" style="position:relative">
         <div class="pr-sign-title">${s.label}</div>
         ${pr[s.key+'_by']
-          ?`<div style="font-size:12px;font-weight:700;color:var(--ink2)">${prDispName(pr[s.key+'_by'])}</div><div style="font-size:11px;color:var(--muted)">${pr[s.key+'_at']?new Date(pr[s.key+'_at']).toLocaleDateString('en-GB'):''}</div><div style="font-size:11px;color:var(--teal-dark);margin-top:2px">✓ Signed</div>`
-          :`<div style="font-size:11px;color:var(--muted2);font-style:italic">${s.role||'Pending'}</div><div style="margin-top:5px;border-top:1px solid var(--border);padding-top:5px;font-size:10px;color:var(--muted2)">Sign: ___________</div><div style="font-size:10px;color:var(--muted2)">Date: ___________</div>`
+          ?`<div style="font-size:12px;font-weight:700;color:var(--ink2)">${prDispName(pr[s.key+'_by'])}</div>
+             <div style="font-size:11px;color:var(--muted)">${pr[s.key+'_at']?new Date(pr[s.key+'_at']).toLocaleDateString('en-GB'):''}</div>
+             ${pr[s.key+'_comment']?`<div style="font-size:10px;color:var(--muted2);margin-top:3px;font-style:italic">"${pr[s.key+'_comment']}"</div>`:''}
+             <div style="font-size:11px;color:var(--teal-dark);margin-top:2px">✓ Signed</div>
+             ${s.canReverse?`<button onclick="reversePRStep('${pr.id}','${s.key}')" style="margin-top:4px;font-size:10px;padding:2px 8px;border:1px solid var(--amber);border-radius:5px;background:var(--amber-light);color:#92400e;cursor:pointer">↩ Reverse</button>`:''}
+             ${s.canPartial&&parseFloat(pr.partial_amount||0)>0?`<div style="margin-top:4px;font-size:10px;background:#fef3c7;padding:2px 6px;border-radius:4px;color:#92400e">Partial: ${fmt(pr.partial_amount)}</div>`:''}
+             ${s.canEdit?`<button onclick="editPR('${pr.id}')" style="margin-top:4px;font-size:10px;padding:2px 8px;border:1px solid var(--teal);border-radius:5px;background:var(--teal-light);color:var(--teal-dark);cursor:pointer">✏ Edit</button>`:''}
+             `
+          :`<div style="font-size:11px;color:var(--muted2);font-style:italic">${s.key==='checked'?'Finance/Mgmt':s.key==='approved'?'Director':s.key==='verified'?'GM/Admin':s.key==='paid'?'Finance':''}</div>
+             <div style="margin-top:5px;border-top:1px solid var(--border);padding-top:4px;font-size:10px;color:var(--muted2)">Sign: ___________</div>
+             <div style="font-size:10px;color:var(--muted2)">Date: ___________</div>`
         }
       </div>`).join('')}
     </div>
-    <div class="btn-row" style="margin-top:14px">
-      ${canAct&&next!=='prepared'?`<button onclick="actOnPR('${id}')" class="btn-primary" style="background:linear-gradient(135deg,#f59e0b,#d97706)">${aLabels[next]||'Proceed'} ✓</button>`:''}
+
+    <!-- Buttons -->
+    <div class="btn-row" style="margin-top:14px;flex-wrap:wrap">
+      ${canAct&&next!=='prepared'?`<button onclick="actOnPR('${id}')" class="btn-primary" style="background:linear-gradient(135deg,#f59e0b,#d97706)">${{checked:'✓ Confirm Check',approved:'✓ Approve',verified:'✓ Verify',paid:'✓ Mark as Paid'}[next]||'Proceed'}</button>`:''}
+      ${next==='verified'&&canAct?`<button onclick="rejectPR('${id}')" class="btn-secondary" style="border-color:var(--red);color:var(--red)">✗ Reject</button>`:''}
+      ${canEdit?`<button onclick="editPR('${id}')" class="btn-primary">✏ Edit Request</button>`:''}
       <button onclick="window.print()" class="btn-secondary">Print</button>
       <button onclick="closePRDetail()" class="btn-secondary">Close</button>
     </div>`;
   document.getElementById('prDetailModal').classList.add('open');
 }
 
+async function reversePRStep(id, step){
+  if(!confirm('Reverse the '+step+' step? This will require it to be done again.')) return;
+  const upd={}; upd[step+'_by']=null; upd[step+'_at']=null; upd[step+'_comment']=null; upd.status='pending';
+  try{
+    await fetch(PR_SB+'/payment_requests?id=eq.'+id,{method:'PATCH',headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(upd)});
+    closePRDetail(); await loadPayRequests(); renderPRList();
+    showFlash('↩ '+step+' step reversed.','prFlash','prFlashMsg');
+  }catch(e){alert('Failed: '+e.message);}
+}
+
+async function rejectPR(id){
+  const reason=prompt('Enter rejection reason (required):');
+  if(!reason||!reason.trim()){alert('Rejection reason is required.');return;}
+  try{
+    await fetch(PR_SB+'/payment_requests?id=eq.'+id,{method:'PATCH',headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({rejected:true,reject_comment:reason.trim(),status:'rejected',verified_by:null,verified_at:null,approved_by:null,approved_at:null,checked_by:null,checked_at:null})});
+    closePRDetail(); await loadPayRequests(); renderPRList();
+    showFlash('⚠ Payment request rejected and sent back for revision.','prFlash','prFlashMsg');
+  }catch(e){alert('Failed: '+e.message);}
+}
+
+function editPR(id){
+  const pr=payRequests.find(x=>x.id===id); if(!pr) return;
+  closePRDetail();
+  // Populate form with existing data
+  document.getElementById('prEditId').value=id;
+  // Set company
+  const coSel=document.getElementById('prCo'); coSel.innerHTML='';
+  const userCo=currentUser&&currentUser.company?currentUser.company:null;
+  const visCos=companies.filter(co=>!userCo||co.id.toUpperCase().startsWith(userCo));
+  if(visCos.length){visCos.forEach(co=>{const o=document.createElement('option');o.value=co.id;o.textContent=co.name;if(co.id===pr.company_id)o.selected=true;coSel.appendChild(o);});}
+  updatePRDiv();
+  // Set division
+  const divSel=document.getElementById('prDiv');
+  for(let o of divSel.options){if(o.value===pr.division||pr.division.startsWith(o.value.split('.')[0])){o.selected=true;break;}}
+  updatePRSub();
+  // Set fields
+  document.getElementById('prDate').value=pr.request_date||'';
+  document.getElementById('prProject').value=pr.project||'';
+  document.getElementById('prLocation').value=pr.location||'';
+  document.getElementById('prClient').value=pr.client||'';
+  document.getElementById('prClientAlt').value=pr.client||'';
+  document.getElementById('prConsultant').value=pr.consultant||'';
+  document.getElementById('prNote').value=pr.note||'';
+  // Set type
+  const prType=pr.request_type||'Material';
+  currentPRType=prType; document.getElementById('prType').value=prType;
+  document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active'));
+  const tb=document.getElementById('prTypeBtn-'+prType); if(tb) tb.classList.add('active');
+  document.getElementById('prManpowerRow').style.display=prType==='Manpower'?'block':'none';
+  // Set VAT mode
+  const vatEl=document.querySelector('input[name="vatMode"][value="'+(pr.vat_mode||'exclusive')+'"]');
+  if(vatEl) vatEl.checked=true;
+  // Populate items
+  buildPRHead(prType);
+  document.getElementById('prItemsBody').innerHTML='';
+  const items=JSON.parse(pr.items||'[]');
+  items.forEach(it=>addPRItem(it));
+  calcPRTotals();
+  // Clear rejected flag when editing
+  document.getElementById('prModal').classList.add('open');
+}
+
 async function actOnPR(id){
   const pr=payRequests.find(x=>x.id===id); if(!pr) return;
   const next=prNextStep(pr);
   if(next==='complete'||!prCanAct(pr,next)) return;
-  const msgs={checked:'Confirm you have CHECKED this payment request?',approved:'Confirm you APPROVE payment of '+fmt(pr.net_payable)+'?',verified:'Confirm you have VERIFIED this payment request?',paid:'Confirm payment of '+fmt(pr.net_payable)+' has been PAID?'};
+
   if(next==='paid'){
     const tel=document.getElementById('prTransferId');
     const mel=document.getElementById('prPayMethod');
+    const cel=document.getElementById('prPaidComment');
     if(!tel||!tel.value.trim()){alert('Please enter the Cheque/Transfer Number before marking as paid.');return;}
-    if(!confirm(msgs.paid)) return;
-    const tid=tel.value.trim(), pm=mel?mel.value:'Bank Transfer';
+    if(!confirm('Confirm payment of '+fmt(pr.net_payable)+' has been PAID?')) return;
+    const tid=tel.value.trim(), pm=mel?mel.value:'Bank Transfer', cmt=cel?cel.value.trim():'';
     try{
-      await fetch(PR_SB+'/payment_requests?id=eq.'+id,{method:'PATCH',headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({paid_by:currentUser.username,paid_at:new Date().toISOString(),status:'paid',transfer_id:tid,pay_method:pm})});
+      await fetch(PR_SB+'/payment_requests?id=eq.'+id,{method:'PATCH',headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({paid_by:currentUser.username,paid_at:new Date().toISOString(),status:'paid',transfer_id:tid,pay_method:pm,paid_comment:cmt})});
       await createPRLedgerEntry(pr,tid,pm);
       closePRDetail(); await loadPayRequests(); renderPRList();
       showFlash('✓ Paid — transaction added to ledger.','prFlash','prFlashMsg');
     }catch(e){alert('Failed: '+e.message);}
     return;
   }
+
+  if(next==='verified'){
+    const partialEl=document.getElementById('prPartialAmt');
+    const commentEl=document.getElementById('prVerifiedComment');
+    const partialAmt=partialEl?parseFloat(partialEl.value)||0:0;
+    const comment=commentEl?commentEl.value.trim():'';
+    if(!confirm('Confirm you have VERIFIED this payment request?')) return;
+    const upd={verified_by:currentUser.username,verified_at:new Date().toISOString(),status:'verified',verified_comment:comment};
+    if(partialAmt>0&&partialAmt<pr.net_payable){upd.partial_amount=partialAmt;}
+    try{
+      await fetch(PR_SB+'/payment_requests?id=eq.'+id,{method:'PATCH',headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(upd)});
+      closePRDetail(); await loadPayRequests(); renderPRList();
+      showFlash('✓ Verified'+(partialAmt>0?' — partial amount: '+fmt(partialAmt):''),'prFlash','prFlashMsg');
+    }catch(e){alert('Failed: '+e.message);}
+    return;
+  }
+
+  // checked / approved
+  const msgs={checked:'Confirm you have CHECKED this payment request?',approved:'Confirm you APPROVE payment of '+fmt(pr.net_payable)+'?'};
+  const commentEl=document.getElementById('prStepComment');
+  const comment=commentEl?commentEl.value.trim():'';
   if(!confirm(msgs[next]||'Proceed?')) return;
   const upd={}; upd[next+'_by']=currentUser.username; upd[next+'_at']=new Date().toISOString(); upd.status=next;
+  if(comment) upd[next+'_comment']=comment;
   try{
     await fetch(PR_SB+'/payment_requests?id=eq.'+id,{method:'PATCH',headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(upd)});
     closePRDetail(); await loadPayRequests(); renderPRList();
     showFlash('✓ '+next.charAt(0).toUpperCase()+next.slice(1)+' by '+currentUser.username,'prFlash','prFlashMsg');
   }catch(e){alert('Failed: '+e.message);}
 }
+
 
 async function createPRLedgerEntry(pr,transferId,payMethod){
   const divCode=(pr.division||'').split('.')[0].trim();
