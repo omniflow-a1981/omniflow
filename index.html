@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OmniFlow v7 — Cash Management</title>
+<title>OmniFlow — Cash Management</title>
 <meta name="theme-color" content="#1e293b">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -282,40 +282,29 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 /* ── USD BADGE ── */
 .usd-badge{display:inline-flex;align-items:center;gap:3px;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:1px 6px;font-size:10px;font-weight:700;color:#92400e;margin-left:4px}
 
-.pr-type-btn{padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;transition:all .15s;color:var(--ink2)}
+.pr-type-btn{padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;color:var(--ink2)}
 .pr-type-btn.active{background:var(--teal-dark);color:#fff;border-color:var(--teal-dark)}
-.pr-type-btn:hover{border-color:var(--teal)}
 .pr-status-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
 .pr-draft{background:#f1f5f9;color:#64748b}.pr-pending{background:#fef3c7;color:#92400e}
 .pr-checked{background:#dbeafe;color:#1e40af}.pr-approved{background:#ede9fe;color:#5b21b6}
 .pr-verified{background:#d1fae5;color:#065f46}.pr-paid{background:#dcfce7;color:#14532d}
-.pr-rejected{background:#fee2e2;color:#991b1b}
 .pr-card{background:var(--surface);border-radius:14px;border:1px solid var(--border);padding:18px 20px;margin-bottom:14px;box-shadow:var(--shadow)}
-.pr-table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:12px}
-.pr-table th{background:var(--bg);padding:8px 10px;text-align:left;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1.5px solid var(--border)}
-.pr-table td{padding:8px 10px;border-bottom:1px solid var(--border2)}
+.pr-table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:12px}
+.pr-table th{background:var(--bg);padding:7px 9px;text-align:left;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;border-bottom:1.5px solid var(--border)}
+.pr-table td{padding:7px 9px;border-bottom:1px solid var(--border2)}
 .pr-totals{background:var(--bg);border-radius:10px;padding:12px 16px;margin-bottom:14px}
 .pr-total-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0}
-.pr-sign-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
-.pr-sign-box{background:var(--bg);border-radius:9px;padding:12px;border:1px solid var(--border)}
-.pr-sign-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
-.workflow-steps{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:12px}
-.ws-step{font-size:11px;padding:4px 10px;border-radius:20px;font-weight:600}
+.pr-sign-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.pr-sign-box{background:var(--bg);border-radius:9px;padding:11px;border:1px solid var(--border)}
+.pr-sign-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.workflow-steps{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.ws-step{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600}
 .ws-step.done{background:var(--teal-light);color:var(--teal-dark)}
 .ws-step.active{background:#fef3c7;color:#92400e;border:1.5px solid #fde68a}
 .ws-step.pending{background:var(--border2);color:var(--muted2)}
-.ws-arrow{font-size:12px;color:var(--muted2)}
+.ws-arrow{font-size:11px;color:var(--muted2)}
 .alert-dot{width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block;margin-left:4px}
-@media print {
-  .sidebar,.mob-header,.bottom-tabs,.pwa-banner,.date-filter-bar .dfb-toggle,
-  .btn-row,.page-header button,.sync-bar,.flash-bar { display:none !important; }
-  .main { margin-left:0 !important; padding:10px !important; }
-  .report-company { page-break-inside:avoid; }
-  body { background:white !important; }
-  .report-table { border-collapse:collapse; width:100%; }
-  .report-table th, .report-table td { border:1px solid #ccc; padding:6px 10px; font-size:11px; }
-  .report-table th { background:#f0f0f0; }
-}
+@media print{.sidebar,.mob-header,.bottom-tabs,.btn-row,.date-filter-bar .dfb-toggle,.sync-bar,.flash-bar{display:none!important}.main{margin-left:0!important}}
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 
 /* ── MOBILE HAMBURGER & OVERLAY ── */
@@ -483,9 +472,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     <div class="login-logo">Omni<em>Flow</em></div>
     <div class="login-tagline">Integrated Cash Management</div>
     <div class="login-label">Username</div>
-    <input class="login-input" type="text" id="loginUser" placeholder="Enter your username" autocomplete="off">
+    <input class="login-input" type="text" id="loginUser" placeholder="Enter your username" autocomplete="username">
     <div class="login-label">Password</div>
-    <input class="login-input" type="password" id="loginPass" placeholder="Enter your password" autocomplete="new-password">
+    <input class="login-input" type="password" id="loginPass" placeholder="Enter your password" autocomplete="current-password">
     <div class="login-error" id="loginErr">Incorrect username or password.</div>
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-users">
@@ -527,14 +516,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>Outstanding Payables
   </a>
   <div class="sb-sec">Settings</div>
-  <a class="nav-item" href="#" onclick="nav('Companies',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>Companies & Divisions
-  </a>
   <a class="nav-item" href="#" onclick="nav('PayReq',this)" id="payreqNav">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Payment Requests
   </a>
-  <a class="nav-item" href="#" onclick="nav('Reports',this)" id="reportsNav">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Transaction Report
+  <a class="nav-item" href="#" onclick="nav('Companies',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>Companies & Divisions
   </a>
   <a class="nav-item" id="adminNav" href="#" onclick="nav('AdminSettings',this)" style="display:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Admin Settings
@@ -793,76 +779,38 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   <div id="payGrid"></div>
 </div>
 
-<!-- ════ TRANSACTION REPORT ════ -->
-<div id="pgReports" class="page">
-  <div class="page-header">
-    <div><div class="page-title">Transaction <em>Report</em></div><div class="page-subtitle">Print-ready report by company and division</div></div>
-    <div class="btn-row">
-      <button class="btn-secondary" onclick="window.print()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-        Print Report
-      </button>
-      <button class="btn-secondary" onclick="copyCSV()">Export CSV</button>
-    </div>
-  </div>
-  <!-- Date filter for report -->
-  <div class="date-filter-bar" style="margin-bottom:16px">
-    <span class="dfb-label">Period</span>
-    <div class="dfb-toggle">
-      <button class="dfb-mode on" id="rdfbAll" onclick="setReportPeriod('all',this)">All time</button>
-      <button class="dfb-mode" id="rdfbSingle" onclick="setReportPeriod('single',this)">Single day</button>
-      <button class="dfb-mode" id="rdfbRange" onclick="setReportPeriod('range',this)">Date range</button>
-    </div>
-    <div class="dfb-inputs" id="rdfbInputs" style="display:none">
-      <input type="date" id="rdfbFrom" onchange="renderReport()">
-      <span class="dfb-sep" id="rdfbToSep" style="display:none">→</span>
-      <input type="date" id="rdfbTo" onchange="renderReport()" style="display:none">
-    </div>
-    <button class="dfb-clear" onclick="clearReportFilter()">Clear</button>
-  </div>
-  <div id="reportContent"></div>
-</div>
-
 <!-- ════ PAYMENT REQUESTS ════ -->
 <div id="pgPayReq" class="page">
   <div class="page-header">
     <div><div class="page-title">Payment <em>Requests</em></div><div class="page-subtitle">Create, track and approve payment requests</div></div>
-    <button class="btn-primary" onclick="openNewPR()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>New Request
-    </button>
+    <button class="btn-primary" onclick="openNewPR()">+ New Request</button>
   </div>
   <div class="flash-bar" id="prFlash"><span id="prFlashMsg"></span></div>
-  <div id="prAlertBanner" style="display:none;align-items:center;gap:8px;background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:600;color:#92400e">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+  <div id="prAlertBanner" style="display:none;align-items:center;gap:8px;background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;font-weight:600;color:#92400e">
     <span id="prAlertMsg"></span>
   </div>
-  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-    <button class="dfb-mode on" id="prf-all" onclick="filterPR('all',this)">All Requests</button>
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <button class="dfb-mode on" id="prf-all" onclick="filterPR('all',this)">All</button>
     <button class="dfb-mode" id="prf-mine" onclick="filterPR('mine',this)">Mine</button>
     <button class="dfb-mode" id="prf-action" onclick="filterPR('action',this)">Needs My Action <span class="alert-dot" id="prActionDot" style="display:none"></span></button>
-    <button class="dfb-mode" id="prf-paid" onclick="filterPR('paid',this)">Completed</button>
+    <button class="dfb-mode" id="prf-done" onclick="filterPR('done',this)">Completed</button>
   </div>
   <div id="prList"></div>
 </div>
 
-<!-- New PR Modal -->
+<!-- PR New/Edit Modal -->
 <div class="modal-overlay" id="prModal">
-  <div class="modal-box" style="max-width:820px">
-    <div class="modal-title" id="prModalTitle">New <em>Payment Request</em></div>
+  <div class="modal-box" style="max-width:800px">
+    <div class="modal-title">New <em>Payment Request</em></div>
     <input type="hidden" id="prEditId">
-
-    <!-- Company / Division / Sub / Date -->
     <div class="fr fr3" style="margin-bottom:10px">
       <div class="ff"><label>Company</label><select id="prCo" onchange="updatePRDiv()"></select></div>
       <div class="ff"><label>Division</label><select id="prDiv" onchange="updatePRSub()"></select></div>
       <div class="ff"><label>Date</label><input type="date" id="prDate"></div>
     </div>
-
-    <!-- ME1 Subdivision (shown only for ME1) -->
     <div id="prSubRow" style="display:none;margin-bottom:10px">
       <div class="fr">
-        <div class="ff">
-          <label>Sub-Project / Site</label>
+        <div class="ff"><label>Sub-Project / Site</label>
           <select id="prSub" onchange="updatePRSubClient()">
             <option value="">— Select site —</option>
           </select>
@@ -870,9 +818,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
         <div class="ff"><label>Client (auto-filled)</label><input type="text" id="prClient" placeholder="Auto-filled from site"></div>
       </div>
     </div>
-
-    <!-- Request Type tabs (shown only for ME1) -->
-    <div id="prTypeRow" style="display:none;margin-bottom:12px">
+    <div id="prTypeRow" style="display:none;margin-bottom:10px">
       <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px">Request Type</label>
       <div style="display:flex;gap:8px">
         <button class="pr-type-btn active" id="prTypeBtn-Material" onclick="setPRType('Material',this)">📦 Material</button>
@@ -881,74 +827,49 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       </div>
     </div>
     <input type="hidden" id="prType" value="Material">
-
-    <!-- Manpower category (shown for Manpower type) -->
     <div id="prManpowerRow" style="display:none;margin-bottom:10px">
-      <div class="ff">
-        <label>Labour Category</label>
+      <div class="ff"><label>Labour Category</label>
         <select id="prManpowerCat">
-          <option value="Skilled">Skilled</option>
-          <option value="Non-Skilled">Non-Skilled</option>
-          <option value="Subcontract (International)">Subcontract (International)</option>
+          <option>Skilled</option><option>Non-Skilled</option><option>Subcontract (International)</option>
         </select>
       </div>
     </div>
-
-    <!-- Header info row -->
     <div class="fr" style="margin-bottom:10px">
-      <div class="ff" id="prProjectRow"><label>Project / Description</label><input type="text" id="prProject" placeholder="Project name or description"></div>
+      <div class="ff"><label>Project / Description</label><input type="text" id="prProject" placeholder="Project name"></div>
       <div class="ff"><label>Location</label><input type="text" id="prLocation" placeholder="Site location"></div>
     </div>
     <div class="fr" style="margin-bottom:10px" id="prClientRow2">
-      <div class="ff" id="prClientWrap"><label>Client</label><input type="text" id="prClientAlt" placeholder="Client name"></div>
-      <div class="ff"><label>Consultant</label><input type="text" id="prConsultant" placeholder="Consultant name"></div>
+      <div class="ff"><label>Client</label><input type="text" id="prClientAlt" placeholder="Client name"></div>
+      <div class="ff"><label>Consultant</label><input type="text" id="prConsultant" placeholder="Consultant"></div>
     </div>
-
-    <!-- Items Table -->
-    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px" id="prItemsLabel">Payment Items</div>
-    <div style="overflow-x:auto;margin-bottom:6px" id="prTableWrapper">
-      <table style="width:100%;border-collapse:collapse;font-size:12px" id="prItemsTable">
+    <div style="overflow-x:auto;margin-bottom:6px">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead id="prItemsHead"></thead>
         <tbody id="prItemsBody"></tbody>
       </table>
     </div>
     <button onclick="addPRItem()" class="btn-secondary" style="font-size:11px;padding:5px 12px;margin-bottom:12px">+ Add Row</button>
-
-    <!-- VAT options -->
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px;background:var(--bg);padding:10px 14px;border-radius:9px">
-      <label style="font-size:12px;font-weight:700;color:var(--ink2)">VAT:</label>
-      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
-        <input type="radio" name="vatMode" id="vatExclusive" value="exclusive" checked onchange="calcPRTotals()"> Exclusive (add 15% VAT)
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
-        <input type="radio" name="vatMode" id="vatInclusive" value="inclusive" onchange="calcPRTotals()"> Inclusive (VAT already included)
-      </label>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px;background:var(--bg);padding:9px 13px;border-radius:9px">
+      <span style="font-size:12px;font-weight:700;color:var(--ink2)">VAT:</span>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="vatMode" value="exclusive" checked onchange="calcPRTotals()"> Exclusive (add 15%)</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="vatMode" value="inclusive" onchange="calcPRTotals()"> Inclusive (already included)</label>
     </div>
-
-    <!-- Totals -->
     <div class="pr-totals">
       <div class="pr-total-row"><span>Sub Total</span><span id="prSubTotal" style="font-weight:700">ETB 0</span></div>
-      <div class="pr-total-row"><span id="prVatLabel">15% VAT (exclusive)</span><span id="prVat" style="color:var(--amber)">ETB 0</span></div>
+      <div class="pr-total-row"><span id="prVatLabel">15% VAT</span><span id="prVat" style="color:var(--amber)">ETB 0</span></div>
       <div class="pr-total-row"><span style="font-weight:700">Grand Total</span><span id="prGrandTotal" style="font-weight:800;color:var(--teal-dark)">ETB 0</span></div>
-      <div class="pr-total-row" id="prWithholdRow"><span>3% Withholding Tax</span><span id="prWithhold" style="color:var(--red)">ETB 0</span></div>
-      <div class="pr-total-row" style="border-top:1px solid var(--border);margin-top:4px;padding-top:6px">
-        <span style="font-weight:800">Net Payable</span>
-        <span id="prNetPayable" style="font-weight:800;font-size:15px;color:var(--teal-dark)">ETB 0</span>
-      </div>
+      <div class="pr-total-row" id="prWithholdRow"><span>3% Withholding</span><span id="prWithhold" style="color:var(--red)">ETB 0</span></div>
+      <div class="pr-total-row" style="border-top:1px solid var(--border);margin-top:4px;padding-top:6px"><span style="font-weight:800">Net Payable</span><span id="prNetPayable" style="font-weight:800;font-size:15px;color:var(--teal-dark)">ETB 0</span></div>
     </div>
-
-    <div class="ff" style="margin-bottom:16px"><label>Note / Remarks</label><textarea id="prNote" style="min-height:46px" placeholder="Additional information..."></textarea></div>
+    <div class="ff" style="margin-bottom:14px"><label>Note</label><textarea id="prNote" style="min-height:46px" placeholder="Remarks..."></textarea></div>
     <div class="btn-row">
-      <button class="btn-primary" onclick="savePR()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        Save & Submit for Review
-      </button>
+      <button class="btn-primary" onclick="savePR()">Save & Submit for Review</button>
       <button class="btn-secondary" onclick="closePRModal()">Cancel</button>
     </div>
   </div>
 </div>
 
-<!-- PR Detail Modal --><!-- PR Detail Modal -->
+<!-- PR Detail Modal -->
 <div class="modal-overlay" id="prDetailModal">
   <div class="modal-box" style="max-width:780px" id="prDetailContent"></div>
 </div>
@@ -1026,11 +947,15 @@ const USD_DIVS = ['ME2','ME3'];
 const USD_RATE_DEFAULT = 157;
 
 // ══════════════════════════════════════
-// SUPABASE DIRECT — No Worker, No CORS
+// CLOUD API CONFIGURATION
 // ══════════════════════════════════════
+// After deploying your Cloudflare Worker, paste your Worker URL here:
 const SUPA_URL = 'https://carcospsxvrmvkxhdyym.supabase.co/rest/v1';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE';
-const API_BASE = ''; // unused — kept for compatibility
+const API_BASE = '';
+//
+// Example: 'https://omniflow-api.matisaneng.workers.dev'
+// Leave as-is until you have deployed the Worker.
 
 // ── OFFLINE QUEUE ─────────────────────
 // Operations that fail while offline are queued and replayed on reconnect
@@ -1039,13 +964,6 @@ let isOnline = navigator.onLine;
 
 window.addEventListener('online',  () => { isOnline=true;  flushOfflineQueue(); updateOnlineBadge(); });
 window.addEventListener('offline', () => { isOnline=false; updateOnlineBadge(); });
-// Periodically check real connectivity
-setInterval(async()=>{
-  try{
-    await fetch(API_BASE+'/health',{method:'HEAD'}).catch(()=>fetch(API_BASE+'/health'));
-    if(!isOnline){ isOnline=true; flushOfflineQueue(); updateOnlineBadge(); }
-  }catch(e){ isOnline=false; updateOnlineBadge(); }
-}, 10000);
 
 function updateOnlineBadge(){
   const badge = document.getElementById('offlineBadge');
@@ -1084,113 +1002,60 @@ function showSync(type, msg){
 let authToken = localStorage.getItem('omni-token');
 
 async function apiCall(method, path, body=null, skipQueue=false){
-  // Direct Supabase REST — no Worker, no CORS issues
-  const supaPath = pathToSupabase(method, path, body);
-  if(!supaPath) return body||{};
-
-  const headers = {
-    'apikey': SUPA_ANON,
-    'Authorization': 'Bearer ' + (authToken||SUPA_ANON),
-    'Content-Type': 'application/json',
-    'Prefer': 'return=representation'
+  // Direct Supabase REST
+  const hdrs={'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'return=representation'};
+  const pathMap={
+    'GET /transactions': SUPA_URL+'/transactions?select=*&order=date.desc,created_at.desc',
+    'GET /balances': SUPA_URL+'/balances?select=*&order=div_code',
+    'GET /outstanding': SUPA_URL+'/outstanding?select=*&order=amt.desc',
+    'GET /companies': SUPA_URL+'/companies?select=*,divisions(*)',
   };
-
-  try {
-    const res = await fetch(supaPath.url, {method: supaPath.method, headers, body: supaPath.body ? JSON.stringify(supaPath.body) : undefined});
+  const key=method+' '+path;
+  let url=pathMap[key];
+  if(!url){
+    // Build URL dynamically
+    if(path.startsWith('/transactions')) url=SUPA_URL+path.replace('/transactions','transactions');
+    else if(path.startsWith('/outstanding')) url=SUPA_URL+path.replace('/outstanding','outstanding');
+    else if(path.startsWith('/balances')) url=SUPA_URL+path.replace('/balances','balances');
+    else if(path.startsWith('/users')) url=SUPA_URL+path.replace('/users','users');
+    else url=SUPA_URL+path;
+  }
+  try{
+    const res=await fetch(url,{method,headers:hdrs,body:body?JSON.stringify(body):undefined});
     if(res.status===204) return {ok:true};
-    const text = await res.text();
-    const data = text ? JSON.parse(text) : [];
-    // Cache GETs for offline
-    if(method==='GET') localStorage.setItem('omni-cache-'+path.replace(/[^a-z]/gi,'_'), JSON.stringify(data));
+    const text=await res.text();
+    const data=text?JSON.parse(text):[];
+    if(method==='GET') localStorage.setItem('omni-cache-'+path.replace(/[^a-z]/gi,'_'),JSON.stringify(data));
     return data;
-  } catch(e) {
-    console.warn('Supabase call failed:', method, path, e.message);
-    if(['POST','PATCH','PUT','DELETE'].includes(method) && !skipQueue){
-      queueOffline(method, path, body);
+  }catch(e){
+    if(['POST','PATCH','PUT','DELETE'].includes(method)&&!skipQueue){
+      queueOffline(method,path,body);
       return {queued:true};
     }
-    const cached = localStorage.getItem('omni-cache-'+path.replace(/[^a-z]/gi,'_'));
-    if(cached){ try{ return JSON.parse(cached); }catch(ex){} }
+    const cached=localStorage.getItem('omni-cache-'+path.replace(/[^a-z]/gi,'_'));
+    if(cached){try{return JSON.parse(cached);}catch(ex){}}
     return [];
   }
 }
 
-function pathToSupabase(method, path, body){
-  const base = SUPA_URL;
-
-  // LOGIN
-  if(path==='/login'){
-    // Handle login directly — query users table
-    return null; // handled separately
-  }
-  // TRANSACTIONS
-  if(path==='/transactions' && method==='GET') return {url:base+'/transactions?select=*&order=date.desc,created_at.desc',method:'GET'};
-  if(path==='/transactions' && method==='POST') return {url:base+'/transactions',method:'POST',body};
-  const txm = path.match(/^\/transactions\/(.+)$/);
-  if(txm){
-    if(method==='PATCH'||method==='PUT') return {url:base+'/transactions?id=eq.'+txm[1],method:'PATCH',body};
-    if(method==='DELETE') return {url:base+'/transactions?id=eq.'+txm[1],method:'DELETE'};
-  }
-  // BALANCES
-  if(path==='/balances' && method==='GET') return {url:base+'/balances?select=*&order=div_code',method:'GET'};
-  if(path==='/balances' && (method==='PUT'||method==='POST')){
-    // Array of rows — handle in caller
-    return null;
-  }
-  // OUTSTANDING
-  if(path==='/outstanding' && method==='GET') return {url:base+'/outstanding?select=*&order=amt.desc',method:'GET'};
-  if(path==='/outstanding' && method==='POST') return {url:base+'/outstanding',method:'POST',body};
-  const outm = path.match(/^\/outstanding\/(.+)$/);
-  if(outm){
-    if(method==='PATCH') return {url:base+'/outstanding?id=eq.'+outm[1],method:'PATCH',body};
-    if(method==='DELETE') return {url:base+'/outstanding?id=eq.'+outm[1],method:'DELETE'};
-  }
-  // COMPANIES
-  if(path==='/companies' && method==='GET') return {url:base+'/companies?select=*,divisions(*)',method:'GET'};
-  // USERS password
-  const pwm = path.match(/^\/users\/(.+)\/password$/);
-  if(pwm && method==='PATCH') return {url:base+'/users?username=eq.'+pwm[1],method:'PATCH',body:{password:body.password}};
-  // HEALTH
-  if(path==='/health') return {url:SUPA_URL.replace('/rest/v1','')+'/rest/v1/?apikey='+SUPA_ANON,method:'GET'};
-
-  console.warn('No Supabase mapping for:', method, path);
-  return null;
-}
 
 
 // ── REALTIME SUBSCRIPTIONS ────────────
 let realtimeWs = null;
-async function startRealtime(){
+function startRealtime(){
   if(!authToken) return;
   // Supabase realtime via REST polling (simple, no extra deps needed)
   // Poll every 8 seconds to keep data fresh across devices
-  // Poll Supabase directly every 5 seconds
   setInterval(async ()=>{
+    if(!isOnline || !authToken) return;
     try {
-      const res = await fetch(
-        'https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?select=*&order=date.desc,created_at.desc',
-        {headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}}
-      );
-      if(!res.ok) return;
-      const fresh = await res.json();
-      if(!Array.isArray(fresh)) return;
-      const mapped = fresh.map(t=>({
-        id:t.id, date:t.date, co:t.company_id,
-        divCode:t.div_code, divName:t.div_name,
-        type:t.type, amt:parseFloat(t.amt)||0,
-        amtUsd:t.amt_usd?parseFloat(t.amt_usd):null,
-        ref:t.ref, note:t.note||''
-      }));
-      // Check if data changed
-      if(mapped.length !== transactions.length ||
-         JSON.stringify(mapped.map(t=>t.id)) !== JSON.stringify(transactions.map(t=>t.id))){
-        transactions = mapped;
-        ls('omni-tx', transactions);
+      const fresh = await apiCall('GET', '/transactions');
+      if(JSON.stringify(fresh) !== JSON.stringify(transactions)){
+        transactions = fresh;
         renderAll();
-        if(mapped.length > 0) showSync('ok','Synced ✓ — '+mapped.length+' transactions');
       }
-    } catch(e){ console.warn('Poll error:', e.message); }
-  }, 5000);
+    } catch(e){}
+  }, 8000);
 }
 
 // ── USER DEFINITIONS ──
@@ -1198,39 +1063,22 @@ async function startRealtime(){
 const DEFAULT_PASSWORDS = {
   admin:'omni2024', finance:'finance123',
   wanofi:'wanofi123', matisan:'matisan123',
-  // Wanofi PR users
-  we_prepare:'wanofi123', we_check:'wanofi123', we_approve:'wanofi123',
-  // Matisan ME1 Construction PR users
-  maednesh:'matisan123', askale:'matisan123', tamirat:'matisan123',
-  // Matisan ME2 Export PR users
-  me2_prepare:'matisan123', me2_check:'matisan123', me2_approve:'matisan123',
-  // Matisan ME3 Import PR users
-  me3_prepare:'matisan123', me3_check:'matisan123', me3_approve:'matisan123'
+  we_prepare:'we123', we_check:'we123', we_approve:'we123',
+  me_prepare:'me123', me_check:'me123', me_approve:'me123'
 };
 const USER_DEFS = [
-  // System users
-  {username:'admin',   role:'admin',   displayRole:'Administrator',   initials:'AD', accessLevel:'full',    company:null,    prRole:null},
-  {username:'finance', role:'finance', displayRole:'Finance Officer',  initials:'FO', accessLevel:'full',    company:null,    prRole:'paid'},
-  // Company managers (transaction entry only)
-  {username:'wanofi',  role:'limited', displayRole:'Wanofi Manager',   initials:'WE', accessLevel:'limited', company:'WE',    prRole:null},
-  {username:'matisan', role:'limited', displayRole:'Matisan Manager',  initials:'ME', accessLevel:'limited', company:'ME',    prRole:null},
-  // Wanofi PR users (all divisions)
-  {username:'we_prepare', role:'pr_prepare', displayRole:'WE Preparer',  initials:'WP', accessLevel:'pr_only', company:'WE', prRole:'prepare', prDiv:'ALL'},
-  {username:'we_check',   role:'pr_check',   displayRole:'WE Checker',   initials:'WC', accessLevel:'pr_only', company:'WE', prRole:'check',   prDiv:'ALL'},
-  {username:'we_approve', role:'pr_approve', displayRole:'WE Approver',  initials:'WA', accessLevel:'pr_only', company:'WE', prRole:'approve', prDiv:'ALL'},
-  // Matisan ME1 Construction PR users
-  {username:'maednesh', role:'pr_prepare', displayRole:'ME1 Preparer', initials:'MN', accessLevel:'pr_only', company:'ME', prRole:'prepare', prDiv:'ME1'},
-  {username:'askale',   role:'pr_check',   displayRole:'ME1 Checker',  initials:'AS', accessLevel:'pr_only', company:'ME', prRole:'check',   prDiv:'ME1'},
-  {username:'tamirat',  role:'pr_approve', displayRole:'ME1 Approver', initials:'TT', accessLevel:'pr_only', company:'ME', prRole:'approve', prDiv:'ME1'},
-  // Matisan ME2 Export PR users
-  {username:'me2_prepare', role:'pr_prepare', displayRole:'ME2 Preparer', initials:'E2', accessLevel:'pr_only', company:'ME', prRole:'prepare', prDiv:'ME2'},
-  {username:'me2_check',   role:'pr_check',   displayRole:'ME2 Checker',  initials:'C2', accessLevel:'pr_only', company:'ME', prRole:'check',   prDiv:'ME2'},
-  {username:'me2_approve', role:'pr_approve', displayRole:'ME2 Approver', initials:'A2', accessLevel:'pr_only', company:'ME', prRole:'approve', prDiv:'ME2'},
-  // Matisan ME3 Import PR users
-  {username:'me3_prepare', role:'pr_prepare', displayRole:'ME3 Preparer', initials:'E3', accessLevel:'pr_only', company:'ME', prRole:'prepare', prDiv:'ME3'},
-  {username:'me3_check',   role:'pr_check',   displayRole:'ME3 Checker',  initials:'C3', accessLevel:'pr_only', company:'ME', prRole:'check',   prDiv:'ME3'},
-  {username:'me3_approve', role:'pr_approve', displayRole:'ME3 Approver', initials:'A3', accessLevel:'pr_only', company:'ME', prRole:'approve', prDiv:'ME3'},
+  {username:'admin',      role:'admin',      displayRole:'Administrator',   initials:'AD', accessLevel:'full',    company:null, prRole:null},
+  {username:'finance',    role:'finance',    displayRole:'Finance Officer', initials:'FO', accessLevel:'full',    company:null, prRole:'paid'},
+  {username:'wanofi',     role:'limited',    displayRole:'Wanofi Manager',  initials:'WE', accessLevel:'limited', company:'WE', prRole:null},
+  {username:'matisan',    role:'limited',    displayRole:'Matisan Manager', initials:'ME', accessLevel:'limited', company:'ME', prRole:null},
+  {username:'we_prepare', role:'pr_prepare', displayRole:'WE Preparer',    initials:'WP', accessLevel:'pr_only', company:'WE', prRole:'prepare'},
+  {username:'we_check',   role:'pr_check',   displayRole:'WE Checker',     initials:'WC', accessLevel:'pr_only', company:'WE', prRole:'check'},
+  {username:'we_approve', role:'pr_approve', displayRole:'WE Approver',    initials:'WA', accessLevel:'pr_only', company:'WE', prRole:'approve'},
+  {username:'me_prepare', role:'pr_prepare', displayRole:'ME Preparer',    initials:'MP', accessLevel:'pr_only', company:'ME', prRole:'prepare'},
+  {username:'me_check',   role:'pr_check',   displayRole:'ME Checker',     initials:'MC', accessLevel:'pr_only', company:'ME', prRole:'check'},
+  {username:'me_approve', role:'pr_approve', displayRole:'ME Approver',    initials:'MA', accessLevel:'pr_only', company:'ME', prRole:'approve'},
 ];
+
 // Limited users: only Entry + Ledger, only today and yesterday
 const LIMITED_PAGES = ['Entry','Ledger'];
 const LIMITED_NAV_LABELS = ['Add Transaction','Ledger'];
@@ -1401,26 +1249,28 @@ function dismissPWA(){
 
 // ══════════════════════════════════════
 function initLogin(){
+  // Clear any old session — user must sign in every time
+  localStorage.removeItem('omni-token');
+  localStorage.removeItem('omni-session-user');
+  authToken=null; currentUser=null;
   const chips=document.getElementById('userChips');
-  // Group chips by company
-  const chipGroups = [
-    {label:'System', color:'var(--teal-dark)', users:USER_DEFS.filter(u=>!u.company)},
-    {label:'Wanofi PR', color:'#1d4ed8', users:USER_DEFS.filter(u=>u.company==='WE'&&u.prRole)},
-    {label:'Matisan PR', color:'#7c3aed', users:USER_DEFS.filter(u=>u.company==='ME'&&u.prRole)},
-  ].filter(g=>g.users.length);
-
-  chipGroups.forEach(group=>{
-    const groupLabel=document.createElement('div');
-    groupLabel.style.cssText='width:100%;font-size:10px;color:rgba(255,255,255,.3);margin:8px 0 4px;letter-spacing:.5px';
-    groupLabel.textContent=group.label;
-    chips.appendChild(groupLabel);
-    group.users.forEach(u=>{
+    const chipGroups=[
+    {label:'System',color:'#0ea87a',users:USER_DEFS.filter(u=>!u.company)},
+    {label:'Wanofi PR Team',color:'#1d4ed8',users:USER_DEFS.filter(u=>u.company==='WE'&&u.prRole)},
+    {label:'Matisan PR Team',color:'#7c3aed',users:USER_DEFS.filter(u=>u.company==='ME'&&u.prRole)},
+  ];
+  chipGroups.forEach(grp=>{
+    if(!grp.users.length) return;
+    const lbl=document.createElement('div');
+    lbl.style.cssText='width:100%;font-size:9px;color:rgba(255,255,255,.3);margin:8px 0 3px;text-transform:uppercase;letter-spacing:.6px';
+    lbl.textContent=grp.label;
+    chips.appendChild(lbl);
+    grp.users.forEach(u=>{
       const names=ls('omni-display-names')||{};
-      const displayName=names[u.username]||u.username;
       const chip=document.createElement('span');
       chip.className='login-user-chip';
-      chip.textContent=displayName+(u.prRole?' ('+u.prRole+')':'');
-      chip.style.borderColor=group.color+'44';
+      chip.textContent=(names[u.username]||u.username)+(u.prRole?' ('+u.prRole+')':'');
+      chip.style.borderColor=grp.color+'55';
       chip.onclick=()=>{
         document.getElementById('loginUser').value=u.username;
         document.getElementById('loginPass').value='';
@@ -1430,74 +1280,72 @@ function initLogin(){
     });
   });
   document.getElementById('loginPass').onkeydown=e=>{if(e.key==='Enter')doLogin()};
-  // NO auto-restore — user must sign in every time for security
-  // Clear any existing session on page load
-  localStorage.removeItem('omni-token');
-  localStorage.removeItem('omni-session-user');
-  authToken = null;
+  // Auto-restore session from saved token
+  authToken = localStorage.getItem('omni-token');
+  const savedUser = localStorage.getItem('omni-session-user');
+  if(authToken && savedUser){
+    try{
+      currentUser = JSON.parse(savedUser);
+      showApp();
+      return;
+    }catch(e){ localStorage.removeItem('omni-token'); }
+  }
 }
 
-async function doLogin(){
+async async function doLogin(){
   const username=document.getElementById('loginUser').value.trim();
   const password=document.getElementById('loginPass').value;
   const errEl=document.getElementById('loginErr');
   const btn=document.querySelector('.login-btn');
   btn.textContent='Signing in...'; btn.disabled=true;
 
-  // Step 1: Check local passwords first (always works)
-  const localUsers = getUsers();
-  const localUser = localUsers.find(x=>x.username===username&&x.password===password);
-  
+  // Check local user definitions first
+  const localUsers=getUsers();
+  const localUser=localUsers.find(x=>x.username===username&&x.password===password);
   if(localUser){
-    // Local auth succeeded — now try to connect to Supabase in background
-    authToken = btoa(JSON.stringify({username:localUser.username,role:localUser.role,exp:Date.now()+86400000*30}));
-    localStorage.setItem('omni-token', authToken);
-    currentUser = {...localUser};
-    localStorage.setItem('omni-session-user', JSON.stringify(currentUser));
+    authToken=btoa(JSON.stringify({username:localUser.username,role:localUser.role,exp:Date.now()+86400000*30}));
+    localStorage.setItem('omni-token',authToken);
+    currentUser={...localUser};
+    localStorage.setItem('omni-session-user',JSON.stringify(currentUser));
     errEl.style.display='none';
     btn.textContent='Sign In →'; btn.disabled=false;
     showApp();
     return;
   }
 
-  // Step 2: Try Supabase directly (in case password was changed via admin)
-  try {
-    const res = await fetch(
-      'https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/users?username=eq.'+encodeURIComponent(username)+'&select=username,password,role,initials',
-      {headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE'}}
-    );
+  // Try Supabase (for password changes made via admin)
+  try{
+    const res=await fetch(SUPA_URL+'/users?username=eq.'+encodeURIComponent(username)+'&select=*',
+      {headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}});
     if(res.ok){
-      const users = await res.json();
-      if(users && users.length && users[0].password===password){
-        const u = users[0];
-        // Update local cache with new password
+      const users=await res.json();
+      if(users&&users.length&&users[0].password===password){
+        const u=users[0];
+        const def=USER_DEFS.find(x=>x.username===u.username)||{};
         const pw=getPasswords(); pw[u.username]=password; ls('omni-passwords',pw);
-        authToken = btoa(JSON.stringify({username:u.username,role:u.role,exp:Date.now()+86400000*30}));
-        localStorage.setItem('omni-token', authToken);
-        currentUser = {username:u.username,role:u.role,initials:u.initials,accessLevel:u.role==='limited'?'limited':'full'};
-        localStorage.setItem('omni-session-user', JSON.stringify(currentUser));
+        authToken=btoa(JSON.stringify({username:u.username,role:def.role||u.role,exp:Date.now()+86400000*30}));
+        localStorage.setItem('omni-token',authToken);
+        currentUser={...def,username:u.username,role:def.role||u.role,initials:u.initials||def.initials||'??'};
+        localStorage.setItem('omni-session-user',JSON.stringify(currentUser));
         errEl.style.display='none';
         btn.textContent='Sign In →'; btn.disabled=false;
         showApp();
         return;
       }
     }
-  } catch(e){ console.warn('Supabase login check failed:', e.message); }
+  }catch(e){console.warn('Supabase login check:',e.message);}
 
-  // Both failed
   errEl.style.display='block';
   errEl.textContent='Incorrect username or password.';
   btn.textContent='Sign In →'; btn.disabled=false;
 }
+
 function doSignOut(){
-  clearTimeout(inactivityTimer);
   if(!confirm('Sign out of OmniFlow?'))return;
-  // Clear ALL session data — password must be entered again
   authToken=null;
   currentUser=null;
   localStorage.removeItem('omni-token');
   localStorage.removeItem('omni-session-user');
-  localStorage.removeItem('omni-session');
   ls('omni-session',null);
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('appLayout').style.display='none';
@@ -1510,7 +1358,8 @@ function showApp(){
   document.getElementById('appLayout').style.display='flex';
   initApp();
   applyAccessLevel();
-  resetInactivityTimer(); // Start inactivity timer
+  resetInactivityTimer();
+  setTimeout(loadPayRequests, 800);
 }
 function applyAccessLevel(){
   const allNavItems=document.querySelectorAll('.nav-item');
@@ -1538,17 +1387,15 @@ function applyAccessLevel(){
     document.querySelectorAll('.nav-item').forEach(n=>{
       if(n.textContent.trim()==='Add Transaction')n.classList.add('active');
     });
-  } else if(isPROnlyUser()){
-    // PR-only users: only see Payment Requests page
+  } else if(currentUser&&currentUser.accessLevel==='pr_only'){
     allNavItems.forEach(item=>item.style.display='none');
     const prNav=document.getElementById('payreqNav');
-    if(prNav) prNav.style.display='flex';
+    if(prNav){prNav.style.display='flex';}
     const soNav=document.getElementById('signoutNav');
-    if(soNav) soNav.style.display='flex';
+    if(soNav){soNav.style.display='flex';}
     document.getElementById('limitedBanner').style.display='none';
-    document.getElementById('adminNav') && (document.getElementById('adminNav').style.display='none');
-    // Auto-navigate to Payment Requests
-    nav('PayReq', prNav);
+    document.getElementById('adminNav').style.display='none';
+    if(prNav){nav('PayReq',prNav);}else{nav('Dashboard',document.querySelector('.nav-item'));}
   } else {
     allNavItems.forEach(item=>item.style.display='');
     document.getElementById('limitedBanner').style.display='none';
@@ -1582,14 +1429,10 @@ async function initApp(){
   try {
     // Load all data from cloud in parallel
     const [txData, balData, outData, coData] = await Promise.all([
-      fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?select=*&order=date.desc,created_at.desc',
-        {headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}}).then(r=>r.json()),
-      fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/balances?select=*&order=div_code',
-        {headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}}).then(r=>r.json()),
-      fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/outstanding?select=*&order=amt.desc',
-        {headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}}).then(r=>r.json()),
-      fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/companies?select=*,divisions(*)',
-        {headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}}).then(r=>r.json()),
+      apiCall('GET', '/transactions'),
+      apiCall('GET', '/balances'),
+      apiCall('GET', '/outstanding'),
+      apiCall('GET', '/companies'),
     ]);
     
     // Map cloud data to app state
@@ -1599,8 +1442,7 @@ async function initApp(){
       type: t.type, amt: parseFloat(t.amt)||0,
       amtUsd: t.amt_usd ? parseFloat(t.amt_usd) : null,
       ref: t.ref, note: t.note||''
-    })) : [];
-    ls('omni-tx', transactions);
+    })) : ls('omni-tx')||[];
 
     balances = {};
     if(Array.isArray(balData)){
@@ -1646,7 +1488,6 @@ async function initApp(){
   startRealtime();
   updateOnlineBadge();
   showMobileUI();
-  loadPayRequests();
 }
 
 // ══════════════════════════════════════
@@ -1666,8 +1507,7 @@ function nav(id,el){
   if(id==='Outstanding')renderOutstanding();
   if(id==='Dashboard')renderDashboard();
   if(id==='Companies')renderCompanies();
-  if(id==='Reports')renderReport();
-  if(id==='PayReq'){renderPRList();}
+  if(id==='PayReq'){loadPayRequests();renderPRList();}
   if(id==='AdminSettings')renderAdminSettings();
   if(id==='Payables'){if(!isFinanceOrAdmin()){showAccessDenied();return;}renderPayables();}
 }
@@ -1874,31 +1714,14 @@ async function addTx(){
 
   try {
     showSync('syncing','Saving...');
-    const txRes = await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions',
-      {method:'POST', headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
-       body:JSON.stringify(payload)});
-    const saved = txRes.ok ? (await txRes.json())[0] : null;
-    if(saved && saved.id){
+    const saved = await apiCall('POST', '/transactions', payload);
+    if(!saved.queued){
       // Map cloud response back to local format
       const tx = {id:saved.id||Date.now(), date, co, divCode, divName:divInfo?divInfo.name:'',
         type:txType, amt:finalAmt, amtUsd:amtUsd||null, ref, note:note||''};
       transactions.unshift(tx);
       ls('omni-tx', transactions);
       showSync('ok','Saved to cloud ✓');
-      // Re-fetch all transactions to ensure sync
-      try{
-        const fresh = await apiCall('GET','/transactions');
-        if(Array.isArray(fresh)){
-          transactions = fresh.map(t=>({
-            id:t.id, date:t.date, co:t.company_id,
-            divCode:t.div_code, divName:t.div_name,
-            type:t.type, amt:parseFloat(t.amt)||0,
-            amtUsd:t.amt_usd?parseFloat(t.amt_usd):null,
-            ref:t.ref, note:t.note||''
-          }));
-          ls('omni-tx', transactions);
-        }
-      }catch(e){}
     } else {
       // Offline — save locally
       const tx = {id:Date.now(), date, co, divCode, divName:divInfo?divInfo.name:'',
@@ -2322,13 +2145,7 @@ async function saveBalances(){
   });
   ls('omni-bal',balances);
   try{
-    for(const row of payload){
-      await fetch(SUPA_URL+'/balances?div_code=eq.'+row.div_code,{
-        method:'PATCH',
-        headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
-        body:JSON.stringify({opening_etb:row.opening_etb,opening_usd:row.opening_usd})
-      });
-    }
+    await apiCall('PUT','/balances',payload);
     showSync('ok','Balances saved to cloud ✓');
   }catch(e){ showSync('error','Saved locally — sync pending'); }
   showFlash('✓ Opening balances saved.');renderBalances();renderDashboard();
@@ -2500,14 +2317,6 @@ function renderAdminSettings(){
   const pw=getPasswords();
   const grid=document.getElementById('pwGrid');
   grid.innerHTML='';
-  // Group users by category
-  const groups = [
-    {label:'System Users', color:'var(--teal-dark)', users:USER_DEFS.filter(u=>u.company===null)},
-    {label:'Wanofi Engineering — PR Team', color:'#1d4ed8', users:USER_DEFS.filter(u=>u.company==='WE')},
-    {label:'Matisan ME1 Construction — PR Team', color:'#7c3aed', users:USER_DEFS.filter(u=>u.company==='ME'&&(u.prDiv==='ME1'||u.prDiv==='ALL'||!u.prDiv))},
-    {label:'Matisan ME2 Export — PR Team', color:'#b45309', users:USER_DEFS.filter(u=>u.company==='ME'&&u.prDiv==='ME2')},
-    {label:'Matisan ME3 Import — PR Team', color:'#0e7490', users:USER_DEFS.filter(u=>u.company==='ME'&&u.prDiv==='ME3')},
-  ].filter(g=>g.users.length>0);
 
   // ── Admin's own password change (with current password verification) ──
   grid.innerHTML+=`<div class="bc" style="padding:18px;border:1.5px solid var(--teal-light);grid-column:1/-1">
@@ -2596,7 +2405,7 @@ async function saveAllPasswords(){
     const el=document.getElementById('pw_'+u.username);
     if(el&&el.value.trim()&&el.value.trim().length>=6){
       pw[u.username]=el.value.trim();
-      saves.push(fetch(SUPA_URL+'/users?username=eq.'+u.username,{method:'PATCH',headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({password:el.value.trim()})}).catch(e=>{}));
+      saves.push(apiCall('PATCH','/users/'+u.username+'/password',{password:el.value.trim()}).catch(e=>{}));
     }
   });
   await Promise.all(saves);
@@ -2744,766 +2553,6 @@ function renderPayables(){
 }
 
 // ══════════════════════════════════════
-// TRANSACTION REPORT
-// ══════════════════════════════════════
-let reportPeriod = 'all';
-
-function setReportPeriod(mode, el){
-  reportPeriod = mode;
-  document.querySelectorAll('#rdfbAll,#rdfbSingle,#rdfbRange').forEach(b=>b.classList.remove('on'));
-  el.classList.add('on');
-  const inp=document.getElementById('rdfbInputs');
-  const toSep=document.getElementById('rdfbToSep');
-  const toInput=document.getElementById('rdfbTo');
-  if(mode==='all'){inp.style.display='none';}
-  else if(mode==='single'){inp.style.display='flex';toSep.style.display='none';toInput.style.display='none';}
-  else{inp.style.display='flex';toSep.style.display='inline';toInput.style.display='inline';}
-  renderReport();
-}
-
-function clearReportFilter(){
-  reportPeriod='all';
-  document.getElementById('rdfbAll').click();
-  document.getElementById('rdfbFrom').value='';
-  document.getElementById('rdfbTo').value='';
-}
-
-function renderReport(){
-  const el = document.getElementById('reportContent');
-  if(!el) return;
-
-  // Filter transactions by period
-  let filtered = [...transactions];
-  if(reportPeriod==='single'){
-    const from=document.getElementById('rdfbFrom').value;
-    if(from) filtered=filtered.filter(t=>t.date===from);
-  } else if(reportPeriod==='range'){
-    const from=document.getElementById('rdfbFrom').value;
-    const to=document.getElementById('rdfbTo').value;
-    if(from) filtered=filtered.filter(t=>t.date>=from&&(!to||t.date<=to));
-  }
-
-  // Period label
-  let periodLabel='All time';
-  if(reportPeriod==='single'){const d=document.getElementById('rdfbFrom').value;if(d)periodLabel='Date: '+d;}
-  else if(reportPeriod==='range'){
-    const f=document.getElementById('rdfbFrom').value;
-    const t=document.getElementById('rdfbTo').value;
-    if(f)periodLabel='Period: '+f+' to '+(t||'present');
-  }
-
-  let html = `
-    <div style="text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--teal)">
-      <div style="font-family:'DM Serif Display',serif;font-size:28px;color:var(--ink)">OmniFlow Transaction Report</div>
-      <div style="font-size:13px;color:var(--muted);margin-top:4px">${periodLabel} · Generated: ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div>
-      <div style="font-size:12px;color:var(--muted);margin-top:2px">Total transactions: ${filtered.length}</div>
-    </div>`;
-
-  // Per company
-  companies.forEach(co=>{
-    const coTxs = filtered.filter(t=>t.co===co.id);
-    if(!coTxs.length && filtered.length>0) return;
-
-    const coColor = co.color==='teal'?'var(--teal-dark)':co.color==='blue'?'var(--blue-dark)':'#5b21b6';
-    let coTotal=0, coTotalUsd=0;
-
-    html+=`<div class="report-company" style="margin-bottom:28px">
-      <div style="background:linear-gradient(135deg,var(--ink2),var(--ink));color:#fff;padding:12px 18px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center">
-        <div style="font-family:'DM Serif Display',serif;font-size:18px">${co.name}</div>
-        <div style="font-size:12px;opacity:.7">${coTxs.length} transactions</div>
-      </div>`;
-
-    co.divisions.forEach(d=>{
-      const divTxs = coTxs.filter(t=>t.divCode===d.code).sort((a,b)=>a.date.localeCompare(b.date));
-      const divIn = divTxs.filter(t=>t.type==='in').reduce((s,t)=>s+(t.amt||0),0);
-      const divOut = divTxs.filter(t=>t.type==='out').reduce((s,t)=>s+(t.amt||0),0);
-      const divNet = divIn-divOut;
-      const divInUsd = divTxs.filter(t=>t.type==='in'&&t.amtUsd).reduce((s,t)=>s+(t.amtUsd||0),0);
-      const divOutUsd = divTxs.filter(t=>t.type==='out'&&t.amtUsd).reduce((s,t)=>s+(t.amtUsd||0),0);
-      const usdDiv = isUsdDiv(d.code);
-      coTotal+=divNet;
-      coTotalUsd+=(divInUsd-divOutUsd);
-
-      html+=`<div style="margin:0 0 2px;background:var(--surface);border:1px solid var(--border);border-top:none">
-        <!-- Division header -->
-        <div style="background:var(--bg);padding:10px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)">
-          <div style="font-weight:700;color:${coColor};font-size:13px">${d.code} — ${d.name}${usdDiv?'<span style="margin-left:6px;font-size:10px;background:#fff7ed;color:#92400e;border:1px solid #fed7aa;border-radius:4px;padding:1px 6px">ETB+USD</span>':''}</div>
-          <div style="font-size:12px;display:flex;gap:16px">
-            <span style="color:var(--teal-dark)">In: ${fmt(divIn)}</span>
-            <span style="color:var(--red)">Out: ${fmt(divOut)}</span>
-            <span style="font-weight:700;color:${divNet>=0?'var(--teal-dark)':'var(--red)'}">Net: ${fmt(divNet)}</span>
-            ${usdDiv?`<span style="color:#92400e">Net USD: $${(divInUsd-divOutUsd).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`:''}
-          </div>
-        </div>
-        <!-- Transactions table -->
-        ${divTxs.length===0?
-          '<div style="padding:10px 16px;font-size:12px;color:var(--muted)">No transactions in this period</div>':
-          `<table class="report-table" style="width:100%;border-collapse:collapse">
-            <thead>
-              <tr style="background:var(--border2)">
-                <th style="padding:7px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border)">DATE</th>
-                <th style="padding:7px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border)">REFERENCE / CLIENT</th>
-                <th style="padding:7px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border)">TYPE</th>
-                <th style="padding:7px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border)">INFLOW (ETB)</th>
-                ${usdDiv?'<th style="padding:7px 12px;text-align:right;font-size:11px;font-weight:700;color:#92400e;border-bottom:1px solid var(--border)">INFLOW (USD)</th>':''}
-                <th style="padding:7px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border)">OUTFLOW (ETB)</th>
-                ${usdDiv?'<th style="padding:7px 12px;text-align:right;font-size:11px;font-weight:700;color:#92400e;border-bottom:1px solid var(--border)">OUTFLOW (USD)</th>':''}
-                <th style="padding:7px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border)">NOTE</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${divTxs.map((t,i)=>`
-                <tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}">
-                  <td style="padding:7px 12px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--border2);white-space:nowrap">${t.date}</td>
-                  <td style="padding:7px 12px;font-size:12px;font-weight:600;color:var(--ink2);border-bottom:1px solid var(--border2)">${t.ref}</td>
-                  <td style="padding:7px 12px;border-bottom:1px solid var(--border2)"><span style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:700;background:${t.type==='in'?'var(--teal-light)':'var(--red-light)'};color:${t.type==='in'?'var(--teal-dark)':'#991b1b'}">${t.type==='in'?'Inflow':'Outflow'}</span></td>
-                  <td style="padding:7px 12px;text-align:right;font-size:12px;font-weight:700;color:var(--teal-dark);border-bottom:1px solid var(--border2)">${t.type==='in'&&!t.amtUsd?fmt(t.amt):'—'}</td>
-                  ${usdDiv?`<td style="padding:7px 12px;text-align:right;font-size:12px;font-weight:700;color:#b45309;border-bottom:1px solid var(--border2)">${t.type==='in'&&t.amtUsd?'$'+t.amtUsd.toLocaleString('en-US',{minimumFractionDigits:2}):'—'}</td>`:''}
-                  <td style="padding:7px 12px;text-align:right;font-size:12px;font-weight:700;color:var(--red);border-bottom:1px solid var(--border2)">${t.type==='out'&&!t.amtUsd?fmt(t.amt):'—'}</td>
-                  ${usdDiv?`<td style="padding:7px 12px;text-align:right;font-size:12px;font-weight:700;color:#b45309;border-bottom:1px solid var(--border2)">${t.type==='out'&&t.amtUsd?'$'+t.amtUsd.toLocaleString('en-US',{minimumFractionDigits:2}):'—'}</td>`:''}
-                  <td style="padding:7px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border2)">${t.note||''}</td>
-                </tr>`).join('')}
-            </tbody>
-            <tfoot>
-              <tr style="background:var(--ink2);color:#fff">
-                <td colspan="2" style="padding:8px 12px;font-size:12px;font-weight:700">TOTAL — ${d.code} ${d.name}</td>
-                <td style="padding:8px 12px"></td>
-                <td style="padding:8px 12px;text-align:right;font-size:12px;font-weight:700;color:#34d399">${fmt(divIn)}</td>
-                ${usdDiv?`<td style="padding:8px 12px;text-align:right;font-size:12px;color:#fcd34d">$${divInUsd.toLocaleString('en-US',{minimumFractionDigits:2})}</td>`:''}
-                <td style="padding:8px 12px;text-align:right;font-size:12px;font-weight:700;color:#f87171">${fmt(divOut)}</td>
-                ${usdDiv?`<td style="padding:8px 12px;text-align:right;font-size:12px;color:#fcd34d">$${divOutUsd.toLocaleString('en-US',{minimumFractionDigits:2})}</td>`:''}
-                <td style="padding:8px 12px"></td>
-              </tr>
-            </tfoot>
-          </table>`
-        }
-      </div>`;
-    });
-
-    // Company total
-    html+=`<div style="background:linear-gradient(135deg,#0f172a,#1e293b);padding:12px 18px;border-radius:0 0 10px 10px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.7)">${co.name} — TOTAL NET</div>
-      <div style="display:flex;gap:20px;align-items:center">
-        <span style="font-family:'DM Serif Display',serif;font-size:20px;color:${coTotal>=0?'#34d399':'#f87171'}">${fmt(coTotal)}</span>
-        ${coTotalUsd!==0?`<span style="font-size:14px;color:#fcd34d">$${coTotalUsd.toLocaleString('en-US',{minimumFractionDigits:2})}</span>`:''}
-      </div>
-    </div>`;
-    html+='</div>';
-  });
-
-  // Grand total
-  const grandIn = filtered.filter(t=>t.type==='in'&&!t.amtUsd).reduce((s,t)=>s+(t.amt||0),0);
-  const grandOut = filtered.filter(t=>t.type==='out'&&!t.amtUsd).reduce((s,t)=>s+(t.amt||0),0);
-  const grandInUsd = filtered.filter(t=>t.type==='in'&&t.amtUsd).reduce((s,t)=>s+(t.amtUsd||0),0);
-  const grandOutUsd = filtered.filter(t=>t.type==='out'&&t.amtUsd).reduce((s,t)=>s+(t.amtUsd||0),0);
-
-  html+=`<div style="background:linear-gradient(135deg,var(--teal-dark),var(--teal));border-radius:12px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-    <div>
-      <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px">GRAND TOTAL — ALL COMPANIES</div>
-      <div style="font-size:12px;color:rgba(255,255,255,.6)">${filtered.length} transactions · ${periodLabel}</div>
-    </div>
-    <div style="display:flex;gap:24px;flex-wrap:wrap">
-      <div style="text-align:center"><div style="font-size:10px;color:rgba(255,255,255,.6);margin-bottom:2px">TOTAL INFLOW</div><div style="font-family:'DM Serif Display',serif;font-size:20px;color:#fff">${fmt(grandIn)}</div></div>
-      <div style="text-align:center"><div style="font-size:10px;color:rgba(255,255,255,.6);margin-bottom:2px">TOTAL OUTFLOW</div><div style="font-family:'DM Serif Display',serif;font-size:20px;color:#fff">${fmt(grandOut)}</div></div>
-      <div style="text-align:center"><div style="font-size:10px;color:rgba(255,255,255,.6);margin-bottom:2px">NET CHANGE</div><div style="font-family:'DM Serif Display',serif;font-size:20px;color:${grandIn-grandOut>=0?'#a7f3d0':'#fecaca'}">${fmt(grandIn-grandOut)}</div></div>
-      ${grandInUsd||grandOutUsd?`<div style="text-align:center"><div style="font-size:10px;color:rgba(255,255,255,.6);margin-bottom:2px">NET USD</div><div style="font-family:'DM Serif Display',serif;font-size:20px;color:#fcd34d">$${(grandInUsd-grandOutUsd).toLocaleString('en-US',{minimumFractionDigits:2})}</div></div>`:''}
-    </div>
-  </div>`;
-
-  el.innerHTML = html;
-}
-
-// ══════════════════════════════════════
-// PAYMENT REQUESTS — Full Version
-// ══════════════════════════════════════
-let payRequests = [];
-let prFilter = 'all';
-let currentPRType = 'Material';
-const PR_SB = 'https://carcospsxvrmvkxhdyym.supabase.co/rest/v1';
-const PR_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE';
-
-function prDisplayName(u){ const n=ls('omni-display-names')||{}; return n[u]||u; }
-
-function prCanAct(pr, step) {
-  if (!currentUser) return false;
-  const u = currentUser.username, r = currentUser.role||'', prRole = currentUser.prRole||'';
-  const co = currentUser.company||'';
-  const prDiv = currentUser.prDiv||'ALL';
-  if(currentUser.accessLevel==='pr_only'){
-    const prCo=(pr.company_id||'').toUpperCase().slice(0,2);
-    if(co && prCo!==co) return false;
-    if(prDiv!=='ALL'){
-      const reqDiv=(pr.division||'').toUpperCase().slice(0,3);
-      if(!reqDiv.startsWith(prDiv)) return false;
-    }
-  }
-  if(step==='prepared') return prRole==='prepare'||r==='admin'||currentUser.accessLevel==='full';
-  if(step==='checked')  return prRole==='check'||r==='admin'||u==='finance'||r==='full';
-  if(step==='approved') return prRole==='approve'||r==='admin';
-  if(step==='verified') return r==='admin';
-  if(step==='paid')     return u==='finance'||r==='admin';
-  return false;
-}
-function prNextStep(pr){ for(const s of PR_STEPS){if(!pr[s+'_by'])return s;} return 'complete'; }
-function prStatusInfo(pr){
-  const n=prNextStep(pr);
-  return {prepared:{label:'Draft',css:'pr-draft'},checked:{label:'Pending Review',css:'pr-pending'},approved:{label:'Checked ✓',css:'pr-checked'},verified:{label:'Approved ✓',css:'pr-approved'},paid:{label:'Verified ✓',css:'pr-verified'},complete:{label:'Paid ✓',css:'pr-paid'}}[n]||{label:'Unknown',css:'pr-draft'};
-}
-function prVisibleToUser(pr){
-  if(!currentUser) return false;
-  if(currentUser.accessLevel==='pr_only'){
-    const co=currentUser.company||'', prDiv=currentUser.prDiv||'ALL';
-    const prCo=(pr.company_id||'').toUpperCase().slice(0,2);
-    if(co && prCo!==co) return false;
-    if(prDiv!=='ALL'){const reqDiv=(pr.division||'').toUpperCase().slice(0,3);if(!reqDiv.startsWith(prDiv))return false;}
-  }
-  return true;
-}
-
-// ── PR Type & subdivision UI ──
-function setPRType(type, btn){
-  currentPRType = type;
-  document.getElementById('prType').value = type;
-  document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('prManpowerRow').style.display = type==='Manpower'?'block':'none';
-  buildPRTableHeader(type);
-  document.getElementById('prItemsBody').innerHTML='';
-  addPRItem();
-}
-
-function buildPRTableHeader(type){
-  const head = document.getElementById('prItemsHead');
-  if(type==='Material'){
-    head.innerHTML=`<tr style="background:var(--bg)">
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:28px">#</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border)">Item/Material</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border)">Description</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:50px">Unit</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:60px;text-align:right">Qty</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:88px;text-align:right">Unit Rate</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:95px;text-align:right">Amount</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:95px;text-align:right">To Be Paid</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border)">Transfer To</th>
-      <th style="width:22px;border-bottom:1px solid var(--border)"></th>
-    </tr>`;
-  } else if(type==='Manpower'){
-    head.innerHTML=`<tr style="background:var(--bg)">
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:28px">#</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border)">Name</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border)">Position / Trade</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:60px;text-align:right">Days</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:88px;text-align:right">Daily Rate</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:95px;text-align:right">Amount</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:95px;text-align:right">To Be Paid</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border)">Bank / Account</th>
-      <th style="width:22px;border-bottom:1px solid var(--border)"></th>
-    </tr>`;
-  } else {
-    // Machinery
-    head.innerHTML=`<tr style="background:var(--bg)">
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:28px">#</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border)">Machinery / Equipment</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border)">Description / Task</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:55px">Unit</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:60px;text-align:right">Qty</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:88px;text-align:right">Unit Rate</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:95px;text-align:right">Amount</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:95px;text-align:right">To Be Paid</th>
-      <th style="padding:6px 6px;border-bottom:1px solid var(--border)">Supplier / Owner</th>
-      <th style="width:22px;border-bottom:1px solid var(--border)"></th>
-    </tr>`;
-  }
-}
-
-function updatePRDiv(){
-  const co=document.getElementById('prCo').value;
-  const coObj=companies.find(x=>x.id===co);
-  const sel=document.getElementById('prDiv'); sel.innerHTML='';
-  if(!coObj) return;
-  const userCo=currentUser&&currentUser.company?currentUser.company:null;
-  const userPrDiv=currentUser&&currentUser.prDiv&&currentUser.prDiv!=='ALL'?currentUser.prDiv:null;
-  coObj.divisions.forEach(d=>{
-    if(userPrDiv && !d.code.toUpperCase().startsWith(userPrDiv)) return;
-    const o=document.createElement('option'); o.value=d.code+'. '+d.name; o.textContent=d.code+'. '+d.name; sel.appendChild(o);
-  });
-  updatePRSub();
-}
-
-function updatePRSub(){
-  const divVal=(document.getElementById('prDiv').value||'').toUpperCase();
-  const isME1=divVal.startsWith('ME1');
-  document.getElementById('prSubRow').style.display=isME1?'block':'none';
-  document.getElementById('prTypeRow').style.display=isME1?'block':'none';
-  if(isME1){
-    const subSel=document.getElementById('prSub');
-    subSel.innerHTML='<option value="">— Select site —</option>';
-    ME1_SUBS.forEach(s=>{
-      const o=document.createElement('option');
-      o.value=s.code; o.textContent=s.code+' — '+s.desc+' ('+s.client+')'; o.dataset.client=s.client; o.dataset.desc=s.desc;
-      subSel.appendChild(o);
-    });
-  }
-}
-
-function updatePRSubClient(){
-  const sel=document.getElementById('prSub');
-  const opt=sel.selectedOptions[0];
-  if(opt&&opt.dataset.client){
-    document.getElementById('prClient').value=opt.dataset.client;
-  }
-}
-
-function calcPRTotals(){
-  let sub=0;
-  document.querySelectorAll('.pr-item-paid').forEach(el=>{sub+=parseFloat(el.value)||0;});
-  const vatMode=document.querySelector('input[name="vatMode"]:checked')?.value||'exclusive';
-  let vat=0, grand=0, wh=0, net=0;
-  if(vatMode==='exclusive'){
-    vat=sub*0.15; grand=sub+vat; wh=grand*0.03; net=grand-wh;
-    document.getElementById('prVatLabel').textContent='15% VAT (exclusive)';
-    document.getElementById('prWithholdRow').style.display='flex';
-  } else {
-    // Inclusive — VAT already in price, no withholding
-    vat=sub-(sub/1.15); grand=sub; wh=0; net=sub;
-    document.getElementById('prVatLabel').textContent='VAT (inclusive — already in price)';
-    document.getElementById('prWithholdRow').style.display='none';
-  }
-  document.getElementById('prSubTotal').textContent=fmt(sub);
-  document.getElementById('prVat').textContent=fmt(vat);
-  document.getElementById('prGrandTotal').textContent=fmt(grand);
-  document.getElementById('prWithhold').textContent=fmt(wh);
-  document.getElementById('prNetPayable').textContent=fmt(net);
-}
-
-function calcPRRow(el){
-  const row=el.closest('tr');
-  const qty=parseFloat(row.querySelector('.pr-qty')?.value)||0;
-  const rate=parseFloat(row.querySelector('.pr-rate')?.value)||0;
-  const amt=qty*rate;
-  const amtEl=row.querySelector('.pr-amt'); if(amtEl) amtEl.value=amt||'';
-  const paidEl=row.querySelector('.pr-item-paid'); if(paidEl) paidEl.value=amt||'';
-  calcPRTotals();
-}
-
-function addPRItem(it){
-  it=it||{};
-  const type=document.getElementById('prType').value||currentPRType||'Material';
-  const tbody=document.getElementById('prItemsBody');
-  const n=tbody.children.length+1;
-  const row=document.createElement('tr');
-  const colStyle='padding:4px 4px';
-  const inp=(cls,val,ph,w,extra)=>`<input class="${cls}" type="number" value="${val||''}" placeholder="${ph}" oninput="calcPRRow(this)" style="width:${w||'80px'};font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;outline:none;text-align:right${extra||''}">`;
-  const txt=(cls,val,ph,w)=>`<input class="${cls}" type="text" value="${val||''}" placeholder="${ph}" style="width:${w||'100%'};font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;outline:none">`;
-
-  if(type==='Material'){
-    row.innerHTML=`
-      <td style="${colStyle};text-align:center;color:var(--muted);font-size:11px">${n}</td>
-      <td style="${colStyle}">${txt('pr-ii',it.item_name,'Item','100%')}</td>
-      <td style="${colStyle}">${txt('pr-id',it.description,'Description','100%')}</td>
-      <td style="${colStyle}">${txt('pr-un',it.unit,'pcs','45px')}</td>
-      <td style="${colStyle}">${inp('pr-qty',it.qty,'0','55px')}</td>
-      <td style="${colStyle}">${inp('pr-rate',it.unit_rate,'0','82px')}</td>
-      <td style="${colStyle}">${inp('pr-amt',it.amount,'0','88px;background:var(--bg)',';background:var(--bg)')} </td>
-      <td style="${colStyle}">${inp('pr-item-paid',it.to_be_paid,'0','88px')}</td>
-      <td style="${colStyle}">${txt('pr-tr',it.transfer_to,'Bank/Name','100%')}</td>
-      <td style="${colStyle}"><button onclick="this.closest('tr').remove();calcPRTotals()" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:15px;line-height:1">×</button></td>`;
-  } else if(type==='Manpower'){
-    row.innerHTML=`
-      <td style="${colStyle};text-align:center;color:var(--muted);font-size:11px">${n}</td>
-      <td style="${colStyle}">${txt('pr-ii',it.item_name,'Full name','100%')}</td>
-      <td style="${colStyle}">${txt('pr-id',it.description,'Position/Trade','100%')}</td>
-      <td style="${colStyle}">${inp('pr-qty',it.qty,'0','55px')}</td>
-      <td style="${colStyle}">${inp('pr-rate',it.unit_rate,'0','82px')}</td>
-      <td style="${colStyle}">${inp('pr-amt',it.amount,'0','88px;background:var(--bg)',';background:var(--bg)')}</td>
-      <td style="${colStyle}">${inp('pr-item-paid',it.to_be_paid,'0','88px')}</td>
-      <td style="${colStyle}">${txt('pr-tr',it.transfer_to,'Bank/Account','100%')}</td>
-      <td style="${colStyle}"><button onclick="this.closest('tr').remove();calcPRTotals()" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:15px;line-height:1">×</button></td>`;
-  } else {
-    // Machinery
-    row.innerHTML=`
-      <td style="${colStyle};text-align:center;color:var(--muted);font-size:11px">${n}</td>
-      <td style="${colStyle}">${txt('pr-ii',it.item_name,'Equipment name','100%')}</td>
-      <td style="${colStyle}">${txt('pr-id',it.description,'Task/description','100%')}</td>
-      <td style="${colStyle}">${txt('pr-un',it.unit,'Hr','45px')}</td>
-      <td style="${colStyle}">${inp('pr-qty',it.qty,'0','55px')}</td>
-      <td style="${colStyle}">${inp('pr-rate',it.unit_rate,'0','82px')}</td>
-      <td style="${colStyle}">${inp('pr-amt',it.amount,'0','88px;background:var(--bg)',';background:var(--bg)')}</td>
-      <td style="${colStyle}">${inp('pr-item-paid',it.to_be_paid,'0','88px')}</td>
-      <td style="${colStyle}">${txt('pr-tr',it.transfer_to,'Supplier/Owner','100%')}</td>
-      <td style="${colStyle}"><button onclick="this.closest('tr').remove();calcPRTotals()" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:15px;line-height:1">×</button></td>`;
-  }
-  tbody.appendChild(row);
-  calcPRTotals();
-}
-
-function openNewPR(){
-  document.getElementById('prEditId').value='';
-  document.getElementById('prItemsBody').innerHTML='';
-  document.getElementById('prDate').value=new Date().toISOString().slice(0,10);
-  ['prProject','prLocation','prClient','prClientAlt','prConsultant','prNote'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.value='';
-  });
-  currentPRType='Material';
-  document.getElementById('prType').value='Material';
-  document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active'));
-  const matBtn=document.getElementById('prTypeBtn-Material'); if(matBtn) matBtn.classList.add('active');
-  document.getElementById('prManpowerRow').style.display='none';
-
-  const sel=document.getElementById('prCo'); sel.innerHTML='';
-  const userCo=currentUser&&currentUser.company?currentUser.company:null;
-  companies.forEach(co=>{
-    if(userCo&&!co.id.toUpperCase().startsWith(userCo))return;
-    const o=document.createElement('option'); o.value=co.id; o.textContent=co.name; sel.appendChild(o);
-  });
-  updatePRDiv();
-  document.querySelector('input[name="vatMode"][value="exclusive"]').checked=true;
-  buildPRTableHeader('Material');
-  addPRItem();
-  calcPRTotals();
-  document.getElementById('prModal').classList.add('open');
-}
-function closePRModal(){ document.getElementById('prModal').classList.remove('open'); }
-function closePRDetail(){ document.getElementById('prDetailModal').classList.remove('open'); }
-
-function getPRFormItems(){
-  const rows=document.querySelectorAll('#prItemsBody tr');
-  const items=[];
-  rows.forEach((row,i)=>{
-    const v=s=>row.querySelector(s)?.value||'';
-    const item={
-      no:i+1, item_name:v('.pr-ii'), description:v('.pr-id'),
-      unit:v('.pr-un'), qty:parseFloat(v('.pr-qty'))||0,
-      unit_rate:parseFloat(v('.pr-rate'))||0, amount:parseFloat(v('.pr-amt'))||0,
-      to_be_paid:parseFloat(v('.pr-item-paid'))||0, transfer_to:v('.pr-tr')
-    };
-    if(item.item_name||item.description||item.amount) items.push(item);
-  });
-  return items;
-}
-
-async function savePR(){
-  const co=document.getElementById('prCo').value;
-  const div=document.getElementById('prDiv').value;
-  const date=document.getElementById('prDate').value;
-  const project=document.getElementById('prProject').value.trim();
-  const prType=document.getElementById('prType').value;
-  const subCode=document.getElementById('prSub')?.value||'';
-  const clientEl=document.getElementById('prClient');
-  const clientAltEl=document.getElementById('prClientAlt');
-  const client=(clientEl&&clientEl.value.trim())||(clientAltEl&&clientAltEl.value.trim())||'';
-  const vatMode=document.querySelector('input[name="vatMode"]:checked')?.value||'exclusive';
-  const manpowerCat=document.getElementById('prManpowerCat')?.value||'';
-  const items=getPRFormItems();
-  if(!project||!date||!items.length){alert('Please fill in date, project and at least one item.');return;}
-  let sub=0; items.forEach(i=>sub+=i.to_be_paid);
-  let vat=0, grand=0, wh=0, net=0;
-  if(vatMode==='exclusive'){vat=sub*0.15;grand=sub+vat;wh=grand*0.03;net=grand-wh;}
-  else{vat=sub-(sub/1.15);grand=sub;wh=0;net=sub;}
-  const payload={
-    company_id:co, division:div, request_date:date, project,
-    location:document.getElementById('prLocation').value.trim(),
-    client, consultant:document.getElementById('prConsultant').value.trim(),
-    note:document.getElementById('prNote').value.trim(),
-    items:JSON.stringify(items),
-    sub_total:sub, vat, grand_total:grand, withholding:wh, net_payable:net,
-    vat_mode:vatMode, request_type:prType, sub_project:subCode,
-    manpower_category:manpowerCat,
-    prepared_by:currentUser.username, prepared_at:new Date().toISOString(), status:'pending'
-  };
-  try{
-    const editId=document.getElementById('prEditId').value;
-    await fetch(PR_SB+'/payment_requests'+(editId?'?id=eq.'+editId:''),{
-      method:editId?'PATCH':'POST',
-      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
-      body:JSON.stringify(payload)
-    });
-    showFlash('✓ Payment request submitted.','prFlash','prFlashMsg');
-    closePRModal();
-    await loadPayRequests();
-  }catch(e){alert('Save failed: '+e.message);}
-}
-
-async function loadPayRequests(){
-  try{
-    const res=await fetch(PR_SB+'/payment_requests?select=*&order=created_at.desc',
-      {headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON}});
-    if(!res.ok) return;
-    payRequests=await res.json();
-    if(!Array.isArray(payRequests)) payRequests=[];
-    checkPRAlerts();
-    if(document.getElementById('pgPayReq').classList.contains('active')) renderPRList();
-  }catch(e){console.warn('PR load failed:',e.message);}
-}
-
-function checkPRAlerts(){
-  const needAction=payRequests.filter(pr=>{
-    const n=prNextStep(pr);
-    return n!=='complete'&&n!=='prepared'&&prCanAct(pr,n)&&prVisibleToUser(pr);
-  });
-  const dot=document.getElementById('prActionDot');
-  const banner=document.getElementById('prAlertBanner');
-  if(dot) dot.style.display=needAction.length?'inline-block':'none';
-  if(banner){
-    if(needAction.length){
-      document.getElementById('prAlertMsg').textContent=needAction.length+' payment request(s) need your action: '+needAction.map(p=>p.project).join(', ');
-      banner.style.display='flex';
-    } else banner.style.display='none';
-  }
-  const navItem=document.getElementById('payreqNav');
-  if(navItem){
-    const existing=navItem.querySelector('.alert-dot');
-    if(needAction.length&&!existing){const d=document.createElement('span');d.className='alert-dot';d.style.marginLeft='6px';navItem.appendChild(d);}
-    else if(!needAction.length&&existing) existing.remove();
-  }
-}
-
-function filterPR(f,el){
-  prFilter=f;
-  document.querySelectorAll('#pgPayReq .dfb-mode').forEach(b=>b.classList.remove('on'));
-  el.classList.add('on');
-  renderPRList();
-}
-
-function renderPRList(){
-  const el=document.getElementById('prList'); if(!el) return;
-  let list=payRequests.filter(pr=>prVisibleToUser(pr));
-  if(prFilter==='mine')   list=list.filter(pr=>pr.prepared_by===currentUser.username);
-  if(prFilter==='action') list=list.filter(pr=>{const n=prNextStep(pr);return n!=='complete'&&n!=='prepared'&&prCanAct(pr,n);});
-  if(prFilter==='paid')   list=list.filter(pr=>prNextStep(pr)==='complete');
-  if(!list.length){el.innerHTML='<div class="empty-state">No payment requests found.</div>';return;}
-  el.innerHTML=list.map(pr=>{
-    const st=prStatusInfo(pr);
-    const next=prNextStep(pr);
-    const canAct=next!=='complete'&&next!=='prepared'&&prCanAct(pr,next);
-    const typeTag=pr.request_type?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--border2);color:var(--muted);font-weight:600">${pr.request_type}</span>`:'';
-    const subTag=pr.sub_project?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#dbeafe;color:#1e40af;font-weight:600">${pr.sub_project}</span>`:'';
-    return `<div class="pr-card">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-        <div>
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">
-            <span style="font-size:15px;font-weight:700;color:var(--ink2)">${pr.project}</span>
-            <span class="pr-status-badge ${st.css}">${st.label}</span>
-            ${typeTag}${subTag}
-            ${canAct?'<span style="background:var(--red-light);color:var(--red);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">● ACTION NEEDED</span>':''}
-          </div>
-          <div style="font-size:11px;color:var(--muted)">${pr.division} · ${pr.company_id} · ${pr.request_date} · Net: <strong>${fmt(pr.net_payable)}</strong></div>
-          <div style="font-size:11px;color:var(--muted)">Client: ${pr.client||'—'} · By: ${prDisplayName(pr.prepared_by)}</div>
-        </div>
-        <div style="display:flex;gap:6px">
-          <button onclick="viewPR('${pr.id}')" class="btn-secondary" style="font-size:11px;padding:6px 12px">View</button>
-          ${canAct?`<button onclick="actOnPR('${pr.id}')" class="btn-primary" style="font-size:11px;padding:6px 14px;background:linear-gradient(135deg,#f59e0b,#d97706)">${next.charAt(0).toUpperCase()+next.slice(1)} ✓</button>`:''}
-        </div>
-      </div>
-      <div class="workflow-steps">
-        ${PR_STEPS.map(step=>{
-          const done=pr[step+'_by'];
-          const isNext=prNextStep(pr)===step;
-          return '<span class="ws-step '+(done?'done':isNext?'active':'pending')+'">'+
-            (done?'✓':isNext?'●':'○')+' '+step.charAt(0).toUpperCase()+step.slice(1)+
-            (done?' <span style="font-size:10px;opacity:.7">'+prDisplayName(pr[step+'_by'])+'</span>':'')+
-            '</span>'+(step!=='paid'?'<span class="ws-arrow">→</span>':'');
-        }).join('')}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function viewPR(id){
-  const pr=payRequests.find(x=>x.id===id); if(!pr) return;
-  const items=JSON.parse(pr.items||'[]');
-  const st=prStatusInfo(pr);
-  const next=prNextStep(pr);
-  const canAct=next!=='complete'&&prCanAct(pr,next);
-  const prType=pr.request_type||'Material';
-  const actionLabels={checked:'Confirm Check',approved:'Approve',verified:'Verify',paid:'Mark as Paid'};
-
-  const signers=[
-    {key:'prepared',label:'Prepared by',role:''},
-    {key:'checked', label:'Checked by', role:'Finance/Management'},
-    {key:'approved',label:'Approved by',role:'Director/Admin'},
-    {key:'verified',label:'Verified by',role:'General Manager'},
-    {key:'paid',    label:'Paid by',    role:'Finance'}
-  ];
-
-  // Table headers by type
-  let thead='',tbody='';
-  if(prType==='Material'){
-    thead=`<tr><th>#</th><th>Item/Material</th><th>Description</th><th>Unit</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Rate</th><th style="text-align:right">Amount</th><th style="text-align:right">To Be Paid</th><th>Transfer To</th></tr>`;
-    tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}"><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td>${it.unit||''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td></tr>`).join('');
-  } else if(prType==='Manpower'){
-    thead=`<tr><th>#</th><th>Name</th><th>Position/Trade</th><th style="text-align:right">Days</th><th style="text-align:right">Daily Rate</th><th style="text-align:right">Amount</th><th style="text-align:right">To Be Paid</th><th>Bank/Account</th></tr>`;
-    tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}"><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td></tr>`).join('');
-  } else {
-    thead=`<tr><th>#</th><th>Machinery/Equipment</th><th>Task/Description</th><th>Unit</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Rate</th><th style="text-align:right">Amount</th><th style="text-align:right">To Be Paid</th><th>Supplier/Owner</th></tr>`;
-    tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}"><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td>${it.unit||''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td></tr>`).join('');
-  }
-
-  const vatMode=pr.vat_mode||'exclusive';
-  const withholdRow=vatMode==='exclusive'?`<div class="pr-total-row"><span>3% Withholding Tax</span><span style="color:var(--red)">${fmt(pr.withholding)}</span></div>`:'';
-
-  document.getElementById('prDetailContent').innerHTML=`
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-      <div>
-        <div style="font-family:'DM Serif Display',serif;font-size:22px;color:var(--ink)">Payment Request</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">${pr.company_id} · ${pr.division}${pr.sub_project?' · '+pr.sub_project:''}</div>
-        <div style="display:flex;gap:6px;margin-top:4px">
-          ${pr.request_type?`<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--border2);color:var(--muted);font-weight:600">${pr.request_type}</span>`:''}
-          ${pr.manpower_category?`<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:#ede9fe;color:#5b21b6;font-weight:600">${pr.manpower_category}</span>`:''}
-          <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${vatMode==='exclusive'?'#dbeafe':'#fef3c7'};color:${vatMode==='exclusive'?'#1e40af':'#92400e'};font-weight:600">VAT ${vatMode}</span>
-        </div>
-      </div>
-      <span class="pr-status-badge ${st.css}" style="font-size:12px;padding:5px 14px">${st.label}</span>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;background:var(--bg);padding:10px 12px;border-radius:10px;font-size:12px">
-      <div><span style="color:var(--muted)">Project:</span> <strong>${pr.project}</strong></div>
-      <div><span style="color:var(--muted)">Date:</span> <strong>${pr.request_date}</strong></div>
-      <div><span style="color:var(--muted)">Client:</span> <strong>${pr.client||'—'}</strong></div>
-      <div><span style="color:var(--muted)">Location:</span> <strong>${pr.location||'—'}</strong></div>
-      ${pr.consultant?`<div><span style="color:var(--muted)">Consultant:</span> <strong>${pr.consultant}</strong></div>`:''}
-    </div>
-    <table class="pr-table" style="margin-bottom:10px">
-      <thead>${thead}</thead>
-      <tbody>${tbody}</tbody>
-    </table>
-    <div class="pr-totals">
-      <div class="pr-total-row"><span>Sub Total</span><span style="font-weight:700">${fmt(pr.sub_total)}</span></div>
-      <div class="pr-total-row"><span>VAT (${vatMode})</span><span style="color:var(--amber)">${fmt(pr.vat)}</span></div>
-      <div class="pr-total-row"><span style="font-weight:700">Grand Total</span><span style="font-weight:800;color:var(--teal-dark)">${fmt(pr.grand_total)}</span></div>
-      ${withholdRow}
-      <div class="pr-total-row" style="border-top:1px solid var(--border);margin-top:4px;padding-top:6px">
-        <span style="font-weight:800">Net Payable</span>
-        <span style="font-weight:800;font-size:16px;color:var(--teal-dark)">${fmt(pr.net_payable)}</span>
-      </div>
-    </div>
-    ${pr.note?`<div style="background:var(--bg);border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:10px"><strong>Note:</strong> ${pr.note}</div>`:''}
-    <!-- Transfer ID field for Finance (paid step) -->
-    ${next==='paid'&&prCanAct(pr,'paid')?`
-    <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:12px">
-      <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:8px">💳 Payment Details (Finance)</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Cheque / Transfer Number *</label>
-          <input type="text" id="prTransferId" placeholder="e.g. CHQ-001234 or TRF-567890" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;font-weight:700;outline:none"></div>
-        <div><label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Payment Method</label>
-          <select id="prPayMethod" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;outline:none">
-            <option>Bank Transfer</option><option>Cheque</option><option>Cash</option><option>CBE Birr</option>
-          </select></div>
-      </div>
-    </div>`:''}
-    ${pr.transfer_id?`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px"><strong style="color:#166534">Transfer ID:</strong> ${pr.transfer_id} &nbsp;|&nbsp; <strong style="color:#166534">Method:</strong> ${pr.pay_method||'—'}</div>`:''}
-    <!-- Signatures -->
-    <div class="pr-sign-row">
-      ${signers.map(s=>`<div class="pr-sign-box">
-        <div class="pr-sign-title">${s.label}</div>
-        ${pr[s.key+'_by']
-          ?`<div style="font-size:12px;font-weight:700;color:var(--ink2)">${prDisplayName(pr[s.key+'_by'])}</div>
-             <div style="font-size:11px;color:var(--muted)">${pr[s.key+'_at']?new Date(pr[s.key+'_at']).toLocaleDateString('en-GB'):''}</div>
-             <div style="margin-top:3px;font-size:11px;color:var(--teal-dark)">✓ Signed</div>`
-          :`<div style="font-size:11px;color:var(--muted2);font-style:italic">${s.role||'Pending'}</div>
-             <div style="margin-top:6px;border-top:1px solid var(--border);padding-top:5px;font-size:10px;color:var(--muted2)">Sign: ___________</div>
-             <div style="font-size:10px;color:var(--muted2)">Date: ___________</div>`
-        }
-      </div>`).join('')}
-    </div>
-    <div class="btn-row" style="margin-top:14px">
-      ${canAct&&next!=='prepared'?`<button onclick="actOnPR('${id}')" class="btn-primary" style="background:linear-gradient(135deg,#f59e0b,#d97706)">${actionLabels[next]||'Proceed'} ✓</button>`:''}
-      <button onclick="window.print()" class="btn-secondary">Print</button>
-      <button onclick="closePRDetail()" class="btn-secondary">Close</button>
-    </div>`;
-  document.getElementById('prDetailModal').classList.add('open');
-}
-
-async function actOnPR(id){
-  const pr=payRequests.find(x=>x.id===id); if(!pr) return;
-  const next=prNextStep(pr);
-  if(next==='complete'||!prCanAct(pr,next)) return;
-  const msgs={
-    checked:'Confirm you have CHECKED this payment request?',
-    approved:'Confirm you APPROVE payment of '+fmt(pr.net_payable)+'?',
-    verified:'Confirm you have VERIFIED this payment request?',
-    paid:'Confirm payment of '+fmt(pr.net_payable)+' has been MADE?'
-  };
-
-  // For paid step — require transfer ID
-  if(next==='paid'){
-    const transferEl=document.getElementById('prTransferId');
-    const methodEl=document.getElementById('prPayMethod');
-    if(!transferEl||!transferEl.value.trim()){
-      alert('Please enter the Cheque/Transfer Number before marking as paid.');
-      return;
-    }
-    if(!confirm(msgs[next]||'Proceed?')) return;
-    const transferId=transferEl.value.trim();
-    const payMethod=methodEl?methodEl.value:'Bank Transfer';
-    const update={paid_by:currentUser.username,paid_at:new Date().toISOString(),status:'paid',transfer_id:transferId,pay_method:payMethod};
-    try{
-      await fetch(PR_SB+'/payment_requests?id=eq.'+id,{
-        method:'PATCH',
-        headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
-        body:JSON.stringify(update)
-      });
-      // Auto-create transaction in ledger
-      await createPRTransaction(pr, transferId, payMethod);
-      closePRDetail();
-      await loadPayRequests(); renderPRList();
-      showFlash('✓ Paid — transaction added to ledger.','prFlash','prFlashMsg');
-    }catch(e){alert('Action failed: '+e.message);}
-    return;
-  }
-
-  if(!confirm(msgs[next]||'Proceed?')) return;
-  const update={};
-  update[next+'_by']=currentUser.username;
-  update[next+'_at']=new Date().toISOString();
-  update.status=next;
-  try{
-    await fetch(PR_SB+'/payment_requests?id=eq.'+id,{
-      method:'PATCH',
-      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
-      body:JSON.stringify(update)
-    });
-    closePRDetail();
-    await loadPayRequests(); renderPRList();
-    showFlash('✓ '+next.charAt(0).toUpperCase()+next.slice(1)+' by '+currentUser.username,'prFlash','prFlashMsg');
-  }catch(e){alert('Action failed: '+e.message);}
-}
-
-async function createPRTransaction(pr, transferId, payMethod){
-  // Extract division code from pr.division (e.g. "ME1. Construction" -> "ME1")
-  const divCode=(pr.division||'').split('.')[0].trim();
-  const coId=pr.company_id||'';
-  const ref=(pr.request_type||'Payment')+': '+pr.project+(pr.sub_project?' ['+pr.sub_project+']':'');
-  const payload={
-    company_id:coId, div_code:divCode,
-    div_name:pr.division,
-    date:new Date().toISOString().slice(0,10),
-    type:'out', amt:pr.net_payable, amt_usd:null,
-    ref:ref+(transferId?' | TRF:'+transferId:''),
-    note:'PR Payment — '+payMethod+(transferId?' — Ref: '+transferId:''),
-    created_by:currentUser.username
-  };
-  try{
-    const res=await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions',{
-      method:'POST',
-      headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer '+'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Content-Type':'application/json','Prefer':'return=representation'},
-      body:JSON.stringify(payload)
-    });
-    if(res.ok){
-      const saved=await res.json();
-      const tx={
-        id:saved[0]?.id||Date.now(), date:payload.date, co:coId,
-        divCode, divName:pr.division, type:'out',
-        amt:pr.net_payable, amtUsd:null,
-        ref:payload.ref, note:payload.note
-      };
-      transactions.unshift(tx);
-      ls('omni-tx',transactions);
-      renderAll();
-    }
-  }catch(e){console.warn('PR transaction creation failed:',e.message);}
-}
-
-// ══════════════════════════════════════
 // CSV EXPORT
 // ══════════════════════════════════════
 function copyCSV(){
@@ -3519,57 +2568,451 @@ function copyCSV(){
 async function runDiagnostics(){
   const el=document.getElementById('diagResult');
   el.style.display='block';
-  el.innerHTML='<div style="padding:10px 14px;background:var(--amber-light);border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e">Testing direct Supabase connection...</div>';
-  const start=Date.now();
-  fetch(SUPA_URL+'/users?select=count',{headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}})
-    .then(function(res){ return res.json().then(function(d){ return {res,d}; }); })
-    .then(function(obj){
-      const ms=Date.now()-start;
-      el.innerHTML='<div style="padding:10px 14px;background:var(--teal-light);border:1px solid #6ee7b7;border-radius:8px;font-size:12px;color:var(--teal-dark)">✓ Supabase connected ('+ms+'ms) · Direct connection active · No CORS issues</div>';
-      showSync('ok','Connected ✓');
-    })
-    .catch(function(e){
-      el.innerHTML='<div style="padding:10px 14px;background:var(--red-light);border:1px solid #fecaca;border-radius:8px;font-size:12px;color:#991b1b">✗ Connection failed: '+e.message+'</div>';
+  el.innerHTML='<div style="padding:10px 14px;background:var(--amber-light);border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e">Testing connection to Worker...</div>';
+
+  try{
+    const start=Date.now();
+    const ctrl=new AbortController();
+    const t=setTimeout(()=>ctrl.abort(),8000);
+    const res=await fetch(API_BASE+'/health',{signal:ctrl.signal});
+    clearTimeout(t);
+    const ms=Date.now()-start;
+    if(res.ok){
+      const data=await res.json();
+      el.innerHTML=`<div style="padding:10px 14px;background:var(--teal-light);border:1px solid #6ee7b7;border-radius:8px;font-size:12px;color:var(--teal-dark)">
+        ✓ Worker is online and responding (${ms}ms)<br>
+        Status: ${data.status||'OK'} · Time: ${data.time||'—'}
+      </div>`;
+      showSync('ok','Worker online ✓');
+    } else {
+      throw new Error('HTTP '+res.status);
+    }
+  } catch(e){
+    el.innerHTML=`<div style="padding:12px 14px;background:var(--red-light);border:1px solid #fecaca;border-radius:8px;font-size:12px;color:#991b1b">
+      <strong>✗ Worker not responding: ${e.message}</strong><br><br>
+      <strong>Fix steps:</strong><br>
+      1. Open Terminal on your computer<br>
+      2. Go to your omniflow-worker folder: <code style="background:#fee2e2;padding:1px 4px;border-radius:3px">cd Desktop\omniflow-worker</code><br>
+      3. Set the token: <code style="background:#fee2e2;padding:1px 4px;border-radius:3px">set CLOUDFLARE_API_TOKEN=your-token</code><br>
+      4. Re-run secrets:<br>
+      &nbsp;&nbsp;<code style="background:#fee2e2;padding:1px 4px;border-radius:3px">npx wrangler secret put SUPABASE_URL --name omniflow-api</code><br>
+      &nbsp;&nbsp;→ paste: https://carcospsxvrmvkxhdyym.supabase.co<br>
+      &nbsp;&nbsp;<code style="background:#fee2e2;padding:1px 4px;border-radius:3px">npx wrangler secret put SUPABASE_KEY --name omniflow-api</code><br>
+      &nbsp;&nbsp;→ paste your Supabase anon key (eyJh...)<br>
+      &nbsp;&nbsp;<code style="background:#fee2e2;padding:1px 4px;border-radius:3px">npx wrangler secret put JWT_SECRET --name omniflow-api</code><br>
+      &nbsp;&nbsp;→ type any 32+ character string<br><br>
+      Then click Test Connection again.
+    </div>`;
+  }
+}
+
+// ══════════════════════════════════════
+// PAYMENT REQUESTS
+// ══════════════════════════════════════
+let payRequests=[], prFilter='all', currentPRType='Material';
+const PR_SB='https://carcospsxvrmvkxhdyym.supabase.co/rest/v1', PR_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE';
+const PR_STEPS=['prepared','checked','approved','verified','paid'];
+const ME1_SUBS=[
+  {code:'ME1-1',client:'Matisan Engineering Plc',desc:'Head Office'},
+  {code:'ME1-2',client:'Haji Abdulkadir Aliyye',desc:'G+4 Mixed Use Building'},
+  {code:'ME1-3',client:'Almaz Yirba',desc:'Warehouse, Weigh Bridge & Guard House'},
+  {code:'ME1-4',client:"W/rt Rosa Mamuye",desc:'G+2+T Residential Building'},
+  {code:'ME1-5',client:'Fenaol Coffee Trading PLC',desc:'Factory Building, Fence & Guard House'},
+  {code:'ME1-6',client:'ECWC',desc:'B+G+5 Multi-purpose Hall'},
+  {code:'ME1-7',client:'Lampros Trading PLC',desc:'Factory Expansion Building'},
+  {code:'ME1-8',client:'CGCOC',desc:'BHS Civil Works'},
+];
+
+function prDispName(u){const n=ls('omni-display-names')||{};return n[u]||u;}
+
+function prCanAct(pr,step){
+  if(!currentUser) return false;
+  const u=currentUser.username, r=currentUser.role||'', pr_role=currentUser.prRole||'';
+  const co=currentUser.company||'';
+  // Company check
+  if(co){
+    const pCo=(pr.company_id||'').toUpperCase().slice(0,2);
+    if(pCo&&pCo!==co) return false;
+  }
+  if(step==='prepared') return pr_role==='prepare'||r==='admin'||r==='finance'||r==='limited'||currentUser.accessLevel==='full';
+  if(step==='checked')  return pr_role==='check'||r==='admin'||u==='finance';
+  if(step==='approved') return pr_role==='approve'||r==='admin';
+  if(step==='verified') return r==='admin';
+  if(step==='paid')     return u==='finance'||r==='admin';
+  return false;
+}
+function prNextStep(pr){for(const s of PR_STEPS){if(!pr[s+'_by'])return s;}return 'complete';}
+function prStatusInfo(pr){
+  return {prepared:{label:'Draft',css:'pr-draft'},checked:{label:'Pending Review',css:'pr-pending'},approved:{label:'Checked ✓',css:'pr-checked'},verified:{label:'Approved ✓',css:'pr-approved'},paid:{label:'Verified ✓',css:'pr-verified'},complete:{label:'Paid ✓',css:'pr-paid'}}[prNextStep(pr)]||{label:'Unknown',css:'pr-draft'};
+}
+function prVisible(pr){
+  if(!currentUser) return false;
+  const co=currentUser.company||'';
+  if(!co) return true;
+  return (pr.company_id||'').toUpperCase().slice(0,2)===co;
+}
+
+function setPRType(type,btn){
+  currentPRType=type; document.getElementById('prType').value=type;
+  document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active');
+  document.getElementById('prManpowerRow').style.display=type==='Manpower'?'block':'none';
+  buildPRHead(type);
+  document.getElementById('prItemsBody').innerHTML=''; addPRItem();
+}
+
+function buildPRHead(type){
+  const h=document.getElementById('prItemsHead');
+  const th=(t,w,r)=>`<th style="padding:6px 6px;border-bottom:1px solid var(--border);${w?'width:'+w:''}${r?';text-align:right':''}">${t}</th>`;
+  if(type==='Material'){
+    h.innerHTML=`<tr style="background:var(--bg)">${th('#','28px')}${th('Item/Material')}${th('Description')}${th('Unit','48px')}${th('Qty','58px',1)}${th('Unit Rate','85px',1)}${th('Amount','90px',1)}${th('To Be Paid','90px',1)}${th('Transfer To')}${th('','22px')}</tr>`;
+  }else if(type==='Manpower'){
+    h.innerHTML=`<tr style="background:var(--bg)">${th('#','28px')}${th('Name')}${th('Position/Trade')}${th('Days','58px',1)}${th('Daily Rate','85px',1)}${th('Amount','90px',1)}${th('To Be Paid','90px',1)}${th('Bank/Account')}${th('','22px')}</tr>`;
+  }else{
+    h.innerHTML=`<tr style="background:var(--bg)">${th('#','28px')}${th('Machinery/Equipment')}${th('Task/Description')}${th('Unit','48px')}${th('Qty','58px',1)}${th('Unit Rate','85px',1)}${th('Amount','90px',1)}${th('To Be Paid','90px',1)}${th('Supplier/Owner')}${th('','22px')}</tr>`;
+  }
+}
+
+function updatePRDiv(){
+  const coId=document.getElementById('prCo').value;
+  const divSel=document.getElementById('prDiv'); divSel.innerHTML='';
+  const coObj=companies.find(x=>x.id===coId);
+  const fallback={WE:[{code:'WE1',name:'Design'},{code:'WE2',name:'Supervision'},{code:'WE3',name:'Others'}],ME:[{code:'ME1',name:'Construction'},{code:'ME2',name:'Export'},{code:'ME3',name:'Import'}]};
+  const divs=coObj?coObj.divisions:(fallback[coId]||[]);
+  divs.forEach(d=>{const o=document.createElement('option');o.value=d.code+'. '+d.name;o.textContent=d.code+'. '+d.name;divSel.appendChild(o);});
+  updatePRSub();
+}
+function updatePRSub(){
+  const divVal=(document.getElementById('prDiv').value||'').toUpperCase();
+  const isME1=divVal.startsWith('ME1');
+  document.getElementById('prSubRow').style.display=isME1?'block':'none';
+  document.getElementById('prTypeRow').style.display=isME1?'block':'none';
+  if(isME1){
+    const s=document.getElementById('prSub'); s.innerHTML='<option value="">— Select site —</option>';
+    ME1_SUBS.forEach(x=>{const o=document.createElement('option');o.value=x.code;o.textContent=x.code+' — '+x.desc+' ('+x.client+')';o.dataset.client=x.client;s.appendChild(o);});
+  }
+}
+function updatePRSubClient(){
+  const opt=document.getElementById('prSub').selectedOptions[0];
+  if(opt&&opt.dataset.client) document.getElementById('prClient').value=opt.dataset.client;
+}
+
+function calcPRTotals(){
+  let sub=0; document.querySelectorAll('.pr-item-paid').forEach(el=>{sub+=parseFloat(el.value)||0;});
+  const vm=document.querySelector('input[name="vatMode"]:checked')?.value||'exclusive';
+  let vat=0,grand=0,wh=0,net=0;
+  if(vm==='exclusive'){vat=sub*0.15;grand=sub+vat;wh=grand*0.03;net=grand-wh;document.getElementById('prVatLabel').textContent='15% VAT (exclusive)';document.getElementById('prWithholdRow').style.display='flex';}
+  else{vat=sub-(sub/1.15);grand=sub;wh=0;net=sub;document.getElementById('prVatLabel').textContent='VAT (inclusive)';document.getElementById('prWithholdRow').style.display='none';}
+  document.getElementById('prSubTotal').textContent=fmt(sub);
+  document.getElementById('prVat').textContent=fmt(vat);
+  document.getElementById('prGrandTotal').textContent=fmt(grand);
+  document.getElementById('prWithhold').textContent=fmt(wh);
+  document.getElementById('prNetPayable').textContent=fmt(net);
+}
+function calcPRRow(el){
+  const row=el.closest('tr');
+  const q=parseFloat(row.querySelector('.pr-qty')?.value)||0, r=parseFloat(row.querySelector('.pr-rate')?.value)||0;
+  const a=q*r; const ae=row.querySelector('.pr-amt'); if(ae) ae.value=a||'';
+  const pe=row.querySelector('.pr-item-paid'); if(pe) pe.value=a||'';
+  calcPRTotals();
+}
+
+function addPRItem(it){
+  it=it||{};
+  const type=document.getElementById('prType').value||'Material';
+  const tbody=document.getElementById('prItemsBody');
+  const n=tbody.children.length+1;
+  const row=document.createElement('tr');
+  const s='padding:3px 4px';
+  const inp=(cls,v,p,w)=>`<input class="${cls}" type="number" value="${v||''}" placeholder="${p}" oninput="calcPRRow(this)" style="width:${w||'80px'};font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;outline:none;text-align:right">`;
+  const txt=(cls,v,p)=>`<input class="${cls}" type="text" value="${v||''}" placeholder="${p}" style="width:100%;font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;outline:none">`;
+  const del='<button onclick="this.closest('tr').remove();calcPRTotals()" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:15px">×</button>';
+  if(type==='Manpower'){
+    row.innerHTML=`<td style="${s};text-align:center;color:var(--muted)">${n}</td><td style="${s}">${txt('pr-ii',it.item_name,'Name')}</td><td style="${s}">${txt('pr-id',it.description,'Position')}</td><td style="${s}">${inp('pr-qty',it.qty,'0','55px')}</td><td style="${s}">${inp('pr-rate',it.unit_rate,'0','80px')}</td><td style="${s}">${inp('pr-amt',it.amount,'0','85px')}</td><td style="${s}">${inp('pr-item-paid',it.to_be_paid,'0','85px')}</td><td style="${s}">${txt('pr-tr',it.transfer_to,'Bank')}</td><td style="${s}">${del}</td>`;
+  }else{
+    row.innerHTML=`<td style="${s};text-align:center;color:var(--muted)">${n}</td><td style="${s}">${txt('pr-ii',it.item_name,type==='Machinery'?'Equipment':'Item')}</td><td style="${s}">${txt('pr-id',it.description,'Description')}</td><td style="${s}"><input class="pr-un" type="text" value="${it.unit||''}" placeholder="Unit" style="width:45px;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;outline:none"></td><td style="${s}">${inp('pr-qty',it.qty,'0','55px')}</td><td style="${s}">${inp('pr-rate',it.unit_rate,'0','80px')}</td><td style="${s}"><input class="pr-amt" type="number" value="${it.amount||''}" readonly style="width:85px;font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;background:var(--bg);text-align:right"></td><td style="${s}">${inp('pr-item-paid',it.to_be_paid,'0','85px')}</td><td style="${s}">${txt('pr-tr',it.transfer_to,type==='Machinery'?'Supplier':'Bank')}</td><td style="${s}">${del}</td>`;
+  }
+  tbody.appendChild(row); calcPRTotals();
+}
+
+function openNewPR(){
+  document.getElementById('prEditId').value='';
+  document.getElementById('prItemsBody').innerHTML='';
+  document.getElementById('prDate').value=new Date().toISOString().slice(0,10);
+  ['prProject','prLocation','prClient','prClientAlt','prConsultant','prNote'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  currentPRType='Material'; document.getElementById('prType').value='Material';
+  document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active'));
+  const mb=document.getElementById('prTypeBtn-Material'); if(mb) mb.classList.add('active');
+  document.getElementById('prManpowerRow').style.display='none';
+  // Populate company — filter by user's company
+  const coSel=document.getElementById('prCo'); coSel.innerHTML='';
+  const userCo=currentUser&&currentUser.company?currentUser.company:null;
+  const visCos=companies.filter(co=>!userCo||co.id.toUpperCase().startsWith(userCo));
+  if(visCos.length){
+    visCos.forEach(co=>{const o=document.createElement('option');o.value=co.id;o.textContent=co.name;coSel.appendChild(o);});
+  }else{
+    // Fallback if companies not loaded
+    const fallback=userCo==='WE'
+      ?[{id:'WE',name:'Wanofi Engineering Plc'}]
+      :[{id:'ME',name:'Matisan Engineering Plc'}];
+    if(!userCo){[{id:'WE',name:'Wanofi Engineering Plc'},{id:'ME',name:'Matisan Engineering Plc'}].forEach(co=>{const o=document.createElement('option');o.value=co.id;o.textContent=co.name;coSel.appendChild(o);});}
+    else fallback.forEach(co=>{const o=document.createElement('option');o.value=co.id;o.textContent=co.name;coSel.appendChild(o);});
+  }
+  updatePRDiv();
+  const vatEl=document.querySelector('input[name="vatMode"][value="exclusive"]');
+  if(vatEl) vatEl.checked=true;
+  buildPRHead('Material'); addPRItem(); calcPRTotals();
+  document.getElementById('prModal').classList.add('open');
+}
+function closePRModal(){document.getElementById('prModal').classList.remove('open');}
+function closePRDetail(){document.getElementById('prDetailModal').classList.remove('open');}
+
+function getPRItems(){
+  const rows=document.querySelectorAll('#prItemsBody tr');
+  const items=[];
+  rows.forEach((row,i)=>{
+    const v=s=>row.querySelector(s)?.value||'';
+    const it={no:i+1,item_name:v('.pr-ii'),description:v('.pr-id'),unit:v('.pr-un'),qty:parseFloat(v('.pr-qty'))||0,unit_rate:parseFloat(v('.pr-rate'))||0,amount:parseFloat(v('.pr-amt'))||0,to_be_paid:parseFloat(v('.pr-item-paid'))||0,transfer_to:v('.pr-tr')};
+    if(it.item_name||it.description||it.amount) items.push(it);
+  });
+  return items;
+}
+
+async function savePR(){
+  const co=document.getElementById('prCo').value;
+  const div=document.getElementById('prDiv').value;
+  const date=document.getElementById('prDate').value;
+  const project=document.getElementById('prProject').value.trim();
+  const prType=document.getElementById('prType').value;
+  const subCode=document.getElementById('prSub')?.value||'';
+  const clientMain=document.getElementById('prClient')?.value.trim()||'';
+  const clientAlt=document.getElementById('prClientAlt')?.value.trim()||'';
+  const client=clientMain||clientAlt;
+  const vatMode=document.querySelector('input[name="vatMode"]:checked')?.value||'exclusive';
+  const mpCat=document.getElementById('prManpowerCat')?.value||'';
+  const items=getPRItems();
+  if(!project||!date||!items.length){alert('Please fill in date, project and at least one item.');return;}
+  let sub=0; items.forEach(i=>sub+=i.to_be_paid);
+  let vat=0,grand=0,wh=0,net=0;
+  if(vatMode==='exclusive'){vat=sub*0.15;grand=sub+vat;wh=grand*0.03;net=grand-wh;}
+  else{vat=sub-(sub/1.15);grand=sub;wh=0;net=sub;}
+  const payload={
+    company_id:co,division:div,request_date:date,project,
+    location:document.getElementById('prLocation').value.trim(),
+    client,consultant:document.getElementById('prConsultant').value.trim(),
+    note:document.getElementById('prNote').value.trim(),
+    items:JSON.stringify(items),
+    sub_total:sub,vat,grand_total:grand,withholding:wh,net_payable:net,
+    vat_mode:vatMode,request_type:prType,sub_project:subCode,manpower_category:mpCat,
+    prepared_by:currentUser.username,prepared_at:new Date().toISOString(),status:'pending'
+  };
+  try{
+    const eid=document.getElementById('prEditId').value;
+    await fetch(PR_SB+'/payment_requests'+(eid?'?id=eq.'+eid:''),{
+      method:eid?'PATCH':'POST',
+      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify(payload)
     });
+    showFlash('✓ Payment request submitted.','prFlash','prFlashMsg');
+    closePRModal(); await loadPayRequests();
+  }catch(e){alert('Save failed: '+e.message);}
+}
+
+async function loadPayRequests(){
+  try{
+    const res=await fetch(PR_SB+'/payment_requests?select=*&order=created_at.desc',
+      {headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON}});
+    if(!res.ok) return;
+    payRequests=await res.json();
+    if(!Array.isArray(payRequests)) payRequests=[];
+    checkPRAlerts();
+    if(document.getElementById('pgPayReq')?.classList.contains('active')) renderPRList();
+  }catch(e){console.warn('PR load:',e.message);}
+}
+
+function checkPRAlerts(){
+  const need=payRequests.filter(pr=>prVisible(pr)&&prNextStep(pr)!=='complete'&&prNextStep(pr)!=='prepared'&&prCanAct(pr,prNextStep(pr)));
+  const dot=document.getElementById('prActionDot');
+  const banner=document.getElementById('prAlertBanner');
+  if(dot) dot.style.display=need.length?'inline-block':'none';
+  if(banner){
+    if(need.length){document.getElementById('prAlertMsg').textContent=need.length+' request(s) need your action: '+need.map(p=>p.project).join(', ');banner.style.display='flex';}
+    else banner.style.display='none';
+  }
+  const nav=document.getElementById('payreqNav');
+  if(nav){
+    const ex=nav.querySelector('.alert-dot');
+    if(need.length&&!ex){const d=document.createElement('span');d.className='alert-dot';d.style.marginLeft='6px';nav.appendChild(d);}
+    else if(!need.length&&ex) ex.remove();
+  }
+}
+function filterPR(f,el){prFilter=f;document.querySelectorAll('#pgPayReq .dfb-mode').forEach(b=>b.classList.remove('on'));el.classList.add('on');renderPRList();}
+
+function renderPRList(){
+  const el=document.getElementById('prList'); if(!el) return;
+  let list=payRequests.filter(pr=>prVisible(pr));
+  if(prFilter==='mine') list=list.filter(pr=>pr.prepared_by===currentUser.username);
+  if(prFilter==='action') list=list.filter(pr=>{const n=prNextStep(pr);return n!=='complete'&&n!=='prepared'&&prCanAct(pr,n);});
+  if(prFilter==='done') list=list.filter(pr=>prNextStep(pr)==='complete');
+  if(!list.length){el.innerHTML='<div class="empty-state">No payment requests found.</div>';return;}
+  el.innerHTML=list.map(pr=>{
+    const st=prStatusInfo(pr), next=prNextStep(pr);
+    const canAct=next!=='complete'&&next!=='prepared'&&prCanAct(pr,next);
+    const typeTag=pr.request_type?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--border2);color:var(--muted);font-weight:600">${pr.request_type}</span>`:'';
+    const subTag=pr.sub_project?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#dbeafe;color:#1e40af;font-weight:600">${pr.sub_project}</span>`:'';
+    return `<div class="pr-card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">
+            <span style="font-size:15px;font-weight:700;color:var(--ink2)">${pr.project}</span>
+            <span class="pr-status-badge ${st.css}">${st.label}</span>
+            ${typeTag}${subTag}
+            ${canAct?'<span style="background:var(--red-light);color:var(--red);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">● ACTION NEEDED</span>':''}
+          </div>
+          <div style="font-size:11px;color:var(--muted)">${pr.division} · ${pr.company_id} · ${pr.request_date} · Net: <strong>${fmt(pr.net_payable)}</strong></div>
+          <div style="font-size:11px;color:var(--muted)">Client: ${pr.client||'—'} · By: ${prDispName(pr.prepared_by)}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button onclick="viewPR('${pr.id}')" class="btn-secondary" style="font-size:11px;padding:6px 12px">View</button>
+          ${canAct?`<button onclick="actOnPR('${pr.id}')" class="btn-primary" style="font-size:11px;padding:6px 14px;background:linear-gradient(135deg,#f59e0b,#d97706)">${next.charAt(0).toUpperCase()+next.slice(1)} ✓</button>`:''}
+        </div>
+      </div>
+      <div class="workflow-steps">
+        ${PR_STEPS.map(step=>{
+          const done=pr[step+'_by'], isNext=prNextStep(pr)===step;
+          return '<span class="ws-step '+(done?'done':isNext?'active':'pending')+'">'+(done?'✓':isNext?'●':'○')+' '+step.charAt(0).toUpperCase()+step.slice(1)+(done?' <span style="font-size:10px;opacity:.7">'+prDispName(pr[step+'_by'])+'</span>':'')+
+            '</span>'+(step!=='paid'?'<span class="ws-arrow">→</span>':'');
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function viewPR(id){
+  const pr=payRequests.find(x=>x.id===id); if(!pr) return;
+  const items=JSON.parse(pr.items||'[]');
+  const st=prStatusInfo(pr), next=prNextStep(pr), canAct=next!=='complete'&&prCanAct(pr,next);
+  const prType=pr.request_type||'Material';
+  const aLabels={checked:'Confirm Check',approved:'Approve',verified:'Verify',paid:'Mark as Paid'};
+  const signers=[
+    {key:'prepared',label:'Prepared by',role:''},
+    {key:'checked',label:'Checked by',role:'Finance/Mgmt'},
+    {key:'approved',label:'Approved by',role:'Director'},
+    {key:'verified',label:'Verified by',role:'GM/Admin'},
+    {key:'paid',label:'Paid by',role:'Finance'}
+  ];
+  let thead='',tbody='';
+  if(prType==='Manpower'){
+    thead='<tr><th>#</th><th>Name</th><th>Position</th><th style="text-align:right">Days</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th><th style="text-align:right">To Be Paid</th><th>Bank</th></tr>';
+    tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}""><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td></tr>`).join('');
+  }else{
+    thead=`<tr><th>#</th><th>${prType==='Machinery'?'Equipment':'Item'}</th><th>Description</th><th>Unit</th><th style="text-align:right">Qty</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th><th style="text-align:right">To Be Paid</th><th>${prType==='Machinery'?'Supplier':'Transfer To'}</th></tr>`;
+    tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}""><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td>${it.unit||''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td></tr>`).join('');
+  }
+  const vatMode=pr.vat_mode||'exclusive';
+  document.getElementById('prDetailContent').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--ink)">Payment Request</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${pr.company_id} · ${pr.division}${pr.sub_project?' · '+pr.sub_project:''}</div>
+        <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">
+          ${pr.request_type?`<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--border2);color:var(--muted);font-weight:600">${pr.request_type}</span>`:''}
+          ${pr.manpower_category?`<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:#ede9fe;color:#5b21b6;font-weight:600">${pr.manpower_category}</span>`:''}
+          <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${vatMode==='exclusive'?'#dbeafe':'#fef3c7'};color:${vatMode==='exclusive'?'#1e40af':'#92400e'};font-weight:600">VAT ${vatMode}</span>
+        </div>
+      </div>
+      <span class="pr-status-badge ${st.css}" style="font-size:12px;padding:5px 14px">${st.label}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;background:var(--bg);padding:10px 12px;border-radius:10px;font-size:12px">
+      <div><span style="color:var(--muted)">Project:</span> <strong>${pr.project}</strong></div>
+      <div><span style="color:var(--muted)">Date:</span> <strong>${pr.request_date}</strong></div>
+      <div><span style="color:var(--muted)">Client:</span> <strong>${pr.client||'—'}</strong></div>
+      <div><span style="color:var(--muted)">Location:</span> <strong>${pr.location||'—'}</strong></div>
+      ${pr.consultant?`<div><span style="color:var(--muted)">Consultant:</span> <strong>${pr.consultant}</strong></div>`:''}
+    </div>
+    <table class="pr-table" style="margin-bottom:10px"><thead>${thead}</thead><tbody>${tbody}</tbody></table>
+    <div class="pr-totals">
+      <div class="pr-total-row"><span>Sub Total</span><span style="font-weight:700">${fmt(pr.sub_total)}</span></div>
+      <div class="pr-total-row"><span>VAT (${vatMode})</span><span style="color:var(--amber)">${fmt(pr.vat)}</span></div>
+      <div class="pr-total-row"><span style="font-weight:700">Grand Total</span><span style="font-weight:800;color:var(--teal-dark)">${fmt(pr.grand_total)}</span></div>
+      ${vatMode==='exclusive'?`<div class="pr-total-row"><span>3% Withholding</span><span style="color:var(--red)">${fmt(pr.withholding)}</span></div>`:''}
+      <div class="pr-total-row" style="border-top:1px solid var(--border);margin-top:4px;padding-top:6px"><span style="font-weight:800">Net Payable</span><span style="font-weight:800;font-size:16px;color:var(--teal-dark)">${fmt(pr.net_payable)}</span></div>
+    </div>
+    ${pr.note?`<div style="background:var(--bg);border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:10px"><strong>Note:</strong> ${pr.note}</div>`:''}
+    ${next==='paid'&&canAct?`
+    <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:8px">💳 Payment Details — Finance</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Cheque / Transfer Number *</label>
+          <input type="text" id="prTransferId" placeholder="e.g. CHQ-001234 or TRF-567890" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;font-weight:700;outline:none"></div>
+        <div><label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Payment Method</label>
+          <select id="prPayMethod" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;outline:none">
+            <option>Bank Transfer</option><option>Cheque</option><option>Cash</option><option>CBE Birr</option>
+          </select></div>
+      </div>
+    </div>`:''))}
+    ${pr.transfer_id?`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px"><strong style="color:#166534">Transfer ID:</strong> ${pr.transfer_id} | <strong style="color:#166534">Method:</strong> ${pr.pay_method||'—'}</div>`:''}
+    <div class="pr-sign-row">
+      ${signers.map(s=>`<div class="pr-sign-box">
+        <div class="pr-sign-title">${s.label}</div>
+        ${pr[s.key+'_by']
+          ?`<div style="font-size:12px;font-weight:700;color:var(--ink2)">${prDispName(pr[s.key+'_by'])}</div><div style="font-size:11px;color:var(--muted)">${pr[s.key+'_at']?new Date(pr[s.key+'_at']).toLocaleDateString('en-GB'):''}</div><div style="font-size:11px;color:var(--teal-dark);margin-top:2px">✓ Signed</div>`
+          :`<div style="font-size:11px;color:var(--muted2);font-style:italic">${s.role||'Pending'}</div><div style="margin-top:5px;border-top:1px solid var(--border);padding-top:5px;font-size:10px;color:var(--muted2)">Sign: ___________</div><div style="font-size:10px;color:var(--muted2)">Date: ___________</div>`
+        }
+      </div>`).join('')}
+    </div>
+    <div class="btn-row" style="margin-top:14px">
+      ${canAct&&next!=='prepared'?`<button onclick="actOnPR('${id}')" class="btn-primary" style="background:linear-gradient(135deg,#f59e0b,#d97706)">${aLabels[next]||'Proceed'} ✓</button>`:''}
+      <button onclick="window.print()" class="btn-secondary">Print</button>
+      <button onclick="closePRDetail()" class="btn-secondary">Close</button>
+    </div>`;
+  document.getElementById('prDetailModal').classList.add('open');
+}
+
+async function actOnPR(id){
+  const pr=payRequests.find(x=>x.id===id); if(!pr) return;
+  const next=prNextStep(pr);
+  if(next==='complete'||!prCanAct(pr,next)) return;
+  const msgs={checked:'Confirm you have CHECKED this payment request?',approved:'Confirm you APPROVE payment of '+fmt(pr.net_payable)+'?',verified:'Confirm you have VERIFIED this payment request?',paid:'Confirm payment of '+fmt(pr.net_payable)+' has been PAID?'};
+  if(next==='paid'){
+    const tel=document.getElementById('prTransferId');
+    const mel=document.getElementById('prPayMethod');
+    if(!tel||!tel.value.trim()){alert('Please enter the Cheque/Transfer Number before marking as paid.');return;}
+    if(!confirm(msgs.paid)) return;
+    const tid=tel.value.trim(), pm=mel?mel.value:'Bank Transfer';
+    try{
+      await fetch(PR_SB+'/payment_requests?id=eq.'+id,{method:'PATCH',headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({paid_by:currentUser.username,paid_at:new Date().toISOString(),status:'paid',transfer_id:tid,pay_method:pm})});
+      await createPRLedgerEntry(pr,tid,pm);
+      closePRDetail(); await loadPayRequests(); renderPRList();
+      showFlash('✓ Paid — transaction added to ledger.','prFlash','prFlashMsg');
+    }catch(e){alert('Failed: '+e.message);}
+    return;
+  }
+  if(!confirm(msgs[next]||'Proceed?')) return;
+  const upd={}; upd[next+'_by']=currentUser.username; upd[next+'_at']=new Date().toISOString(); upd.status=next;
+  try{
+    await fetch(PR_SB+'/payment_requests?id=eq.'+id,{method:'PATCH',headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(upd)});
+    closePRDetail(); await loadPayRequests(); renderPRList();
+    showFlash('✓ '+next.charAt(0).toUpperCase()+next.slice(1)+' by '+currentUser.username,'prFlash','prFlashMsg');
+  }catch(e){alert('Failed: '+e.message);}
+}
+
+async function createPRLedgerEntry(pr,transferId,payMethod){
+  const divCode=(pr.division||'').split('.')[0].trim();
+  const ref=(pr.request_type||'Payment')+': '+pr.project+(pr.sub_project?' ['+pr.sub_project+']':'')+(transferId?' | TRF:'+transferId:'');
+  const payload={company_id:pr.company_id,div_code:divCode,div_name:pr.division,date:new Date().toISOString().slice(0,10),type:'out',amt:pr.net_payable,amt_usd:null,ref:ref,note:'PR Payment — '+payMethod+(transferId?' — Ref: '+transferId:''),created_by:currentUser.username};
+  try{
+    const res=await fetch(SUPA_URL+'/transactions',{method:'POST',headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(payload)});
+    if(res.ok){
+      const saved=await res.json();
+      const tx={id:(saved[0]?.id||Date.now()),date:payload.date,co:pr.company_id,divCode,divName:pr.division,type:'out',amt:pr.net_payable,amtUsd:null,ref,note:payload.note};
+      transactions.unshift(tx); ls('omni-tx',transactions); renderAll();
+    }
+  }catch(e){console.warn('PR ledger entry failed:',e.message);}
 }
 
 // ══════════════════════════════════════
 // BOOT
 // ══════════════════════════════════════
-console.log("OmniFlow v7 - Direct Supabase - loaded at", new Date().toISOString());
-
-// ── AUTO SIGN-OUT after 5 minutes of inactivity ──
-let inactivityTimer = null;
-const INACTIVITY_MINUTES = 5;
-
-function resetInactivityTimer(){
-  clearTimeout(inactivityTimer);
-  if(!currentUser) return;
-  inactivityTimer = setTimeout(()=>{
-    if(!currentUser) return;
-    // Show warning 30 seconds before sign out
-    showSync('error','Auto sign-out in 30 seconds due to inactivity...');
-    setTimeout(()=>{
-      if(!currentUser) return;
-      // Auto sign-out — no confirm dialog
-      clearTimeout(inactivityTimer);
-      authToken=null; currentUser=null;
-      localStorage.removeItem('omni-token');
-      localStorage.removeItem('omni-session-user');
-      document.getElementById('loginScreen').style.display='flex';
-      document.getElementById('appLayout').style.display='none';
-      document.getElementById('loginUser').value='';
-      document.getElementById('loginPass').value='';
-      showSync('ok','Signed out automatically due to inactivity.');
-    }, 30000);
-  }, (INACTIVITY_MINUTES * 60 * 1000) - 30000);
-}
-
-// Track user activity
-['mousemove','mousedown','keypress','touchstart','scroll','click'].forEach(evt=>{
-  document.addEventListener(evt, resetInactivityTimer, {passive:true});
-});
-
 initLogin();
 </script>
 </body>
