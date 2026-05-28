@@ -282,6 +282,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 /* ── USD BADGE ── */
 .usd-badge{display:inline-flex;align-items:center;gap:3px;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:1px 6px;font-size:10px;font-weight:700;color:#92400e;margin-left:4px}
 
+.pr-type-btn{padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;transition:all .15s;color:var(--ink2)}
+.pr-type-btn.active{background:var(--teal-dark);color:#fff;border-color:var(--teal-dark)}
+.pr-type-btn:hover{border-color:var(--teal)}
 .pr-status-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
 .pr-draft{background:#f1f5f9;color:#64748b}.pr-pending{background:#fef3c7;color:#92400e}
 .pr-checked{background:#dbeafe;color:#1e40af}.pr-approved{background:#ede9fe;color:#5b21b6}
@@ -844,52 +847,97 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 
 <!-- New PR Modal -->
 <div class="modal-overlay" id="prModal">
-  <div class="modal-box" style="max-width:760px">
-    <div class="modal-title">New <em>Payment Request</em></div>
+  <div class="modal-box" style="max-width:820px">
+    <div class="modal-title" id="prModalTitle">New <em>Payment Request</em></div>
     <input type="hidden" id="prEditId">
-    <div class="fr fr3" style="margin-bottom:12px">
+
+    <!-- Company / Division / Sub / Date -->
+    <div class="fr fr3" style="margin-bottom:10px">
       <div class="ff"><label>Company</label><select id="prCo" onchange="updatePRDiv()"></select></div>
-      <div class="ff"><label>Division</label><select id="prDiv"></select></div>
+      <div class="ff"><label>Division</label><select id="prDiv" onchange="updatePRSub()"></select></div>
       <div class="ff"><label>Date</label><input type="date" id="prDate"></div>
     </div>
-    <div class="fr" style="margin-bottom:12px">
-      <div class="ff"><label>Project</label><input type="text" id="prProject" placeholder="Project name"></div>
-      <div class="ff"><label>Location</label><input type="text" id="prLocation" placeholder="Location"></div>
+
+    <!-- ME1 Subdivision (shown only for ME1) -->
+    <div id="prSubRow" style="display:none;margin-bottom:10px">
+      <div class="fr">
+        <div class="ff">
+          <label>Sub-Project / Site</label>
+          <select id="prSub" onchange="updatePRSubClient()">
+            <option value="">— Select site —</option>
+          </select>
+        </div>
+        <div class="ff"><label>Client (auto-filled)</label><input type="text" id="prClient" placeholder="Auto-filled from site"></div>
+      </div>
     </div>
-    <div class="fr" style="margin-bottom:14px">
-      <div class="ff"><label>Client</label><input type="text" id="prClient" placeholder="Client name"></div>
-      <div class="ff"><label>Consultant</label><input type="text" id="prConsultant" placeholder="Consultant"></div>
+
+    <!-- Request Type tabs (shown only for ME1) -->
+    <div id="prTypeRow" style="display:none;margin-bottom:12px">
+      <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px">Request Type</label>
+      <div style="display:flex;gap:8px">
+        <button class="pr-type-btn active" id="prTypeBtn-Material" onclick="setPRType('Material',this)">📦 Material</button>
+        <button class="pr-type-btn" id="prTypeBtn-Manpower" onclick="setPRType('Manpower',this)">👷 Manpower</button>
+        <button class="pr-type-btn" id="prTypeBtn-Machinery" onclick="setPRType('Machinery',this)">🚜 Machinery</button>
+      </div>
     </div>
-    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Payment Items</div>
-    <div style="overflow-x:auto;margin-bottom:8px">
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
-        <thead><tr style="background:var(--bg)">
-          <th style="padding:7px 6px;border-bottom:1px solid var(--border);width:28px">#</th>
-          <th style="padding:7px 6px;border-bottom:1px solid var(--border)">Item/Material</th>
-          <th style="padding:7px 6px;border-bottom:1px solid var(--border)">Description</th>
-          <th style="padding:7px 6px;border-bottom:1px solid var(--border);width:50px">Unit</th>
-          <th style="padding:7px 6px;border-bottom:1px solid var(--border);width:65px;text-align:right">Qty</th>
-          <th style="padding:7px 6px;border-bottom:1px solid var(--border);width:90px;text-align:right">Unit Rate</th>
-          <th style="padding:7px 6px;border-bottom:1px solid var(--border);width:100px;text-align:right">Amount</th>
-          <th style="padding:7px 6px;border-bottom:1px solid var(--border);width:100px;text-align:right">To Be Paid</th>
-          <th style="padding:7px 6px;border-bottom:1px solid var(--border)">Transfer To</th>
-          <th style="padding:7px 6px;border-bottom:1px solid var(--border);width:24px"></th>
-        </tr></thead>
+    <input type="hidden" id="prType" value="Material">
+
+    <!-- Manpower category (shown for Manpower type) -->
+    <div id="prManpowerRow" style="display:none;margin-bottom:10px">
+      <div class="ff">
+        <label>Labour Category</label>
+        <select id="prManpowerCat">
+          <option value="Skilled">Skilled</option>
+          <option value="Non-Skilled">Non-Skilled</option>
+          <option value="Subcontract (International)">Subcontract (International)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Header info row -->
+    <div class="fr" style="margin-bottom:10px">
+      <div class="ff" id="prProjectRow"><label>Project / Description</label><input type="text" id="prProject" placeholder="Project name or description"></div>
+      <div class="ff"><label>Location</label><input type="text" id="prLocation" placeholder="Site location"></div>
+    </div>
+    <div class="fr" style="margin-bottom:10px" id="prClientRow2">
+      <div class="ff" id="prClientWrap"><label>Client</label><input type="text" id="prClientAlt" placeholder="Client name"></div>
+      <div class="ff"><label>Consultant</label><input type="text" id="prConsultant" placeholder="Consultant name"></div>
+    </div>
+
+    <!-- Items Table -->
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px" id="prItemsLabel">Payment Items</div>
+    <div style="overflow-x:auto;margin-bottom:6px" id="prTableWrapper">
+      <table style="width:100%;border-collapse:collapse;font-size:12px" id="prItemsTable">
+        <thead id="prItemsHead"></thead>
         <tbody id="prItemsBody"></tbody>
       </table>
     </div>
     <button onclick="addPRItem()" class="btn-secondary" style="font-size:11px;padding:5px 12px;margin-bottom:12px">+ Add Row</button>
+
+    <!-- VAT options -->
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px;background:var(--bg);padding:10px 14px;border-radius:9px">
+      <label style="font-size:12px;font-weight:700;color:var(--ink2)">VAT:</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+        <input type="radio" name="vatMode" id="vatExclusive" value="exclusive" checked onchange="calcPRTotals()"> Exclusive (add 15% VAT)
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+        <input type="radio" name="vatMode" id="vatInclusive" value="inclusive" onchange="calcPRTotals()"> Inclusive (VAT already included)
+      </label>
+    </div>
+
+    <!-- Totals -->
     <div class="pr-totals">
       <div class="pr-total-row"><span>Sub Total</span><span id="prSubTotal" style="font-weight:700">ETB 0</span></div>
-      <div class="pr-total-row"><span>15% VAT</span><span id="prVat" style="color:var(--amber)">ETB 0</span></div>
+      <div class="pr-total-row"><span id="prVatLabel">15% VAT (exclusive)</span><span id="prVat" style="color:var(--amber)">ETB 0</span></div>
       <div class="pr-total-row"><span style="font-weight:700">Grand Total</span><span id="prGrandTotal" style="font-weight:800;color:var(--teal-dark)">ETB 0</span></div>
-      <div class="pr-total-row"><span>3% Withholding Tax</span><span id="prWithhold" style="color:var(--red)">ETB 0</span></div>
+      <div class="pr-total-row" id="prWithholdRow"><span>3% Withholding Tax</span><span id="prWithhold" style="color:var(--red)">ETB 0</span></div>
       <div class="pr-total-row" style="border-top:1px solid var(--border);margin-top:4px;padding-top:6px">
         <span style="font-weight:800">Net Payable</span>
         <span id="prNetPayable" style="font-weight:800;font-size:15px;color:var(--teal-dark)">ETB 0</span>
       </div>
     </div>
-    <div class="ff" style="margin-bottom:16px"><label>Note</label><textarea id="prNote" style="min-height:50px" placeholder="Additional remarks..."></textarea></div>
+
+    <div class="ff" style="margin-bottom:16px"><label>Note / Remarks</label><textarea id="prNote" style="min-height:46px" placeholder="Additional information..."></textarea></div>
     <div class="btn-row">
       <button class="btn-primary" onclick="savePR()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -900,7 +948,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   </div>
 </div>
 
-<!-- PR Detail Modal -->
+<!-- PR Detail Modal --><!-- PR Detail Modal -->
 <div class="modal-overlay" id="prDetailModal">
   <div class="modal-box" style="max-width:780px" id="prDetailContent"></div>
 </div>
@@ -1148,13 +1196,40 @@ async function startRealtime(){
 // ── USER DEFINITIONS ──
 // Auth is now server-side — these are only used for the quick-sign-in chips
 const DEFAULT_PASSWORDS = {
-  admin:'omni2024', wanofi:'wanofi123', matisan:'matisan123', finance:'finance123'
+  admin:'omni2024', finance:'finance123',
+  wanofi:'wanofi123', matisan:'matisan123',
+  // Wanofi PR users
+  we_prepare:'wanofi123', we_check:'wanofi123', we_approve:'wanofi123',
+  // Matisan ME1 Construction PR users
+  maednesh:'matisan123', askale:'matisan123', tamirat:'matisan123',
+  // Matisan ME2 Export PR users
+  me2_prepare:'matisan123', me2_check:'matisan123', me2_approve:'matisan123',
+  // Matisan ME3 Import PR users
+  me3_prepare:'matisan123', me3_check:'matisan123', me3_approve:'matisan123'
 };
 const USER_DEFS = [
-  {username:'admin',  role:'Administrator',  initials:'AD', accessLevel:'full'},
-  {username:'finance',role:'Finance Officer', initials:'FO', accessLevel:'full'},
-  {username:'wanofi', role:'Wanofi Manager',  initials:'WE', accessLevel:'limited'},
-  {username:'matisan',role:'Matisan Manager', initials:'ME', accessLevel:'limited'}
+  // System users
+  {username:'admin',   role:'admin',   displayRole:'Administrator',   initials:'AD', accessLevel:'full',    company:null,    prRole:null},
+  {username:'finance', role:'finance', displayRole:'Finance Officer',  initials:'FO', accessLevel:'full',    company:null,    prRole:'paid'},
+  // Company managers (transaction entry only)
+  {username:'wanofi',  role:'limited', displayRole:'Wanofi Manager',   initials:'WE', accessLevel:'limited', company:'WE',    prRole:null},
+  {username:'matisan', role:'limited', displayRole:'Matisan Manager',  initials:'ME', accessLevel:'limited', company:'ME',    prRole:null},
+  // Wanofi PR users (all divisions)
+  {username:'we_prepare', role:'pr_prepare', displayRole:'WE Preparer',  initials:'WP', accessLevel:'pr_only', company:'WE', prRole:'prepare', prDiv:'ALL'},
+  {username:'we_check',   role:'pr_check',   displayRole:'WE Checker',   initials:'WC', accessLevel:'pr_only', company:'WE', prRole:'check',   prDiv:'ALL'},
+  {username:'we_approve', role:'pr_approve', displayRole:'WE Approver',  initials:'WA', accessLevel:'pr_only', company:'WE', prRole:'approve', prDiv:'ALL'},
+  // Matisan ME1 Construction PR users
+  {username:'maednesh', role:'pr_prepare', displayRole:'ME1 Preparer', initials:'MN', accessLevel:'pr_only', company:'ME', prRole:'prepare', prDiv:'ME1'},
+  {username:'askale',   role:'pr_check',   displayRole:'ME1 Checker',  initials:'AS', accessLevel:'pr_only', company:'ME', prRole:'check',   prDiv:'ME1'},
+  {username:'tamirat',  role:'pr_approve', displayRole:'ME1 Approver', initials:'TT', accessLevel:'pr_only', company:'ME', prRole:'approve', prDiv:'ME1'},
+  // Matisan ME2 Export PR users
+  {username:'me2_prepare', role:'pr_prepare', displayRole:'ME2 Preparer', initials:'E2', accessLevel:'pr_only', company:'ME', prRole:'prepare', prDiv:'ME2'},
+  {username:'me2_check',   role:'pr_check',   displayRole:'ME2 Checker',  initials:'C2', accessLevel:'pr_only', company:'ME', prRole:'check',   prDiv:'ME2'},
+  {username:'me2_approve', role:'pr_approve', displayRole:'ME2 Approver', initials:'A2', accessLevel:'pr_only', company:'ME', prRole:'approve', prDiv:'ME2'},
+  // Matisan ME3 Import PR users
+  {username:'me3_prepare', role:'pr_prepare', displayRole:'ME3 Preparer', initials:'E3', accessLevel:'pr_only', company:'ME', prRole:'prepare', prDiv:'ME3'},
+  {username:'me3_check',   role:'pr_check',   displayRole:'ME3 Checker',  initials:'C3', accessLevel:'pr_only', company:'ME', prRole:'check',   prDiv:'ME3'},
+  {username:'me3_approve', role:'pr_approve', displayRole:'ME3 Approver', initials:'A3', accessLevel:'pr_only', company:'ME', prRole:'approve', prDiv:'ME3'},
 ];
 // Limited users: only Entry + Ledger, only today and yesterday
 const LIMITED_PAGES = ['Entry','Ledger'];
@@ -1327,17 +1402,32 @@ function dismissPWA(){
 // ══════════════════════════════════════
 function initLogin(){
   const chips=document.getElementById('userChips');
-  USER_DEFS.forEach(u=>{
-    const chip=document.createElement('span');
-    chip.className='login-user-chip';
-    chip.textContent=u.username+(u.accessLevel==='limited'?' (limited)':'');
-    chip.onclick=()=>{
-      // Only fill username — user must type password themselves
-      document.getElementById('loginUser').value=u.username;
-      document.getElementById('loginPass').value='';
-      document.getElementById('loginPass').focus();
-    };
-    chips.appendChild(chip);
+  // Group chips by company
+  const chipGroups = [
+    {label:'System', color:'var(--teal-dark)', users:USER_DEFS.filter(u=>!u.company)},
+    {label:'Wanofi PR', color:'#1d4ed8', users:USER_DEFS.filter(u=>u.company==='WE'&&u.prRole)},
+    {label:'Matisan PR', color:'#7c3aed', users:USER_DEFS.filter(u=>u.company==='ME'&&u.prRole)},
+  ].filter(g=>g.users.length);
+
+  chipGroups.forEach(group=>{
+    const groupLabel=document.createElement('div');
+    groupLabel.style.cssText='width:100%;font-size:10px;color:rgba(255,255,255,.3);margin:8px 0 4px;letter-spacing:.5px';
+    groupLabel.textContent=group.label;
+    chips.appendChild(groupLabel);
+    group.users.forEach(u=>{
+      const names=ls('omni-display-names')||{};
+      const displayName=names[u.username]||u.username;
+      const chip=document.createElement('span');
+      chip.className='login-user-chip';
+      chip.textContent=displayName+(u.prRole?' ('+u.prRole+')':'');
+      chip.style.borderColor=group.color+'44';
+      chip.onclick=()=>{
+        document.getElementById('loginUser').value=u.username;
+        document.getElementById('loginPass').value='';
+        document.getElementById('loginPass').focus();
+      };
+      chips.appendChild(chip);
+    });
   });
   document.getElementById('loginPass').onkeydown=e=>{if(e.key==='Enter')doLogin()};
   // NO auto-restore — user must sign in every time for security
@@ -1448,6 +1538,17 @@ function applyAccessLevel(){
     document.querySelectorAll('.nav-item').forEach(n=>{
       if(n.textContent.trim()==='Add Transaction')n.classList.add('active');
     });
+  } else if(isPROnlyUser()){
+    // PR-only users: only see Payment Requests page
+    allNavItems.forEach(item=>item.style.display='none');
+    const prNav=document.getElementById('payreqNav');
+    if(prNav) prNav.style.display='flex';
+    const soNav=document.getElementById('signoutNav');
+    if(soNav) soNav.style.display='flex';
+    document.getElementById('limitedBanner').style.display='none';
+    document.getElementById('adminNav') && (document.getElementById('adminNav').style.display='none');
+    // Auto-navigate to Payment Requests
+    nav('PayReq', prNav);
   } else {
     allNavItems.forEach(item=>item.style.display='');
     document.getElementById('limitedBanner').style.display='none';
@@ -2399,6 +2500,14 @@ function renderAdminSettings(){
   const pw=getPasswords();
   const grid=document.getElementById('pwGrid');
   grid.innerHTML='';
+  // Group users by category
+  const groups = [
+    {label:'System Users', color:'var(--teal-dark)', users:USER_DEFS.filter(u=>u.company===null)},
+    {label:'Wanofi Engineering — PR Team', color:'#1d4ed8', users:USER_DEFS.filter(u=>u.company==='WE')},
+    {label:'Matisan ME1 Construction — PR Team', color:'#7c3aed', users:USER_DEFS.filter(u=>u.company==='ME'&&(u.prDiv==='ME1'||u.prDiv==='ALL'||!u.prDiv))},
+    {label:'Matisan ME2 Export — PR Team', color:'#b45309', users:USER_DEFS.filter(u=>u.company==='ME'&&u.prDiv==='ME2')},
+    {label:'Matisan ME3 Import — PR Team', color:'#0e7490', users:USER_DEFS.filter(u=>u.company==='ME'&&u.prDiv==='ME3')},
+  ].filter(g=>g.users.length>0);
 
   // ── Admin's own password change (with current password verification) ──
   grid.innerHTML+=`<div class="bc" style="padding:18px;border:1.5px solid var(--teal-light);grid-column:1/-1">
@@ -2805,356 +2914,593 @@ function renderReport(){
 }
 
 // ══════════════════════════════════════
-// PAYMENT REQUESTS
+// PAYMENT REQUESTS — Full Version
 // ══════════════════════════════════════
 let payRequests = [];
 let prFilter = 'all';
+let currentPRType = 'Material';
 const PR_SB = 'https://carcospsxvrmvkxhdyym.supabase.co/rest/v1';
 const PR_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE';
-const PR_STEPS = ['prepared','checked','approved','verified','paid'];
+
+function prDisplayName(u){ const n=ls('omni-display-names')||{}; return n[u]||u; }
 
 function prCanAct(pr, step) {
   if (!currentUser) return false;
-  const u = currentUser.username, r = currentUser.role || '';
-  if (step === 'prepared') return true;
-  if (step === 'checked')  return r === 'admin' || r === 'full' || u === 'finance';
-  if (step === 'approved') return r === 'admin';
-  if (step === 'verified') return r === 'admin';
-  if (step === 'paid')     return u === 'finance' || r === 'admin';
+  const u = currentUser.username, r = currentUser.role||'', prRole = currentUser.prRole||'';
+  const co = currentUser.company||'';
+  const prDiv = currentUser.prDiv||'ALL';
+  if(currentUser.accessLevel==='pr_only'){
+    const prCo=(pr.company_id||'').toUpperCase().slice(0,2);
+    if(co && prCo!==co) return false;
+    if(prDiv!=='ALL'){
+      const reqDiv=(pr.division||'').toUpperCase().slice(0,3);
+      if(!reqDiv.startsWith(prDiv)) return false;
+    }
+  }
+  if(step==='prepared') return prRole==='prepare'||r==='admin'||currentUser.accessLevel==='full';
+  if(step==='checked')  return prRole==='check'||r==='admin'||u==='finance'||r==='full';
+  if(step==='approved') return prRole==='approve'||r==='admin';
+  if(step==='verified') return r==='admin';
+  if(step==='paid')     return u==='finance'||r==='admin';
   return false;
 }
-
-function prNextStep(pr) {
-  for (const s of PR_STEPS) { if (!pr[s + '_by']) return s; }
-  return 'complete';
+function prNextStep(pr){ for(const s of PR_STEPS){if(!pr[s+'_by'])return s;} return 'complete'; }
+function prStatusInfo(pr){
+  const n=prNextStep(pr);
+  return {prepared:{label:'Draft',css:'pr-draft'},checked:{label:'Pending Review',css:'pr-pending'},approved:{label:'Checked ✓',css:'pr-checked'},verified:{label:'Approved ✓',css:'pr-approved'},paid:{label:'Verified ✓',css:'pr-verified'},complete:{label:'Paid ✓',css:'pr-paid'}}[n]||{label:'Unknown',css:'pr-draft'};
+}
+function prVisibleToUser(pr){
+  if(!currentUser) return false;
+  if(currentUser.accessLevel==='pr_only'){
+    const co=currentUser.company||'', prDiv=currentUser.prDiv||'ALL';
+    const prCo=(pr.company_id||'').toUpperCase().slice(0,2);
+    if(co && prCo!==co) return false;
+    if(prDiv!=='ALL'){const reqDiv=(pr.division||'').toUpperCase().slice(0,3);if(!reqDiv.startsWith(prDiv))return false;}
+  }
+  return true;
 }
 
-function prStatusInfo(pr) {
-  const n = prNextStep(pr);
-  const map = {
-    prepared: {label:'Draft',css:'pr-draft'},
-    checked:  {label:'Pending Review',css:'pr-pending'},
-    approved: {label:'Checked ✓',css:'pr-checked'},
-    verified: {label:'Approved ✓',css:'pr-approved'},
-    paid:     {label:'Verified ✓',css:'pr-verified'},
-    complete: {label:'Paid ✓',css:'pr-paid'}
-  };
-  return map[n] || {label:'Unknown',css:'pr-draft'};
+// ── PR Type & subdivision UI ──
+function setPRType(type, btn){
+  currentPRType = type;
+  document.getElementById('prType').value = type;
+  document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('prManpowerRow').style.display = type==='Manpower'?'block':'none';
+  buildPRTableHeader(type);
+  document.getElementById('prItemsBody').innerHTML='';
+  addPRItem();
 }
 
-function updatePRDiv() {
-  const co = document.getElementById('prCo').value;
-  const coObj = companies.find(x => x.id === co);
-  const sel = document.getElementById('prDiv'); sel.innerHTML = '';
-  if (!coObj) return;
-  coObj.divisions.forEach(d => {
-    const o = document.createElement('option');
-    o.value = d.code + '. ' + d.name;
-    o.textContent = d.code + '. ' + d.name;
-    sel.appendChild(o);
+function buildPRTableHeader(type){
+  const head = document.getElementById('prItemsHead');
+  if(type==='Material'){
+    head.innerHTML=`<tr style="background:var(--bg)">
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:28px">#</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border)">Item/Material</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border)">Description</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:50px">Unit</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:60px;text-align:right">Qty</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:88px;text-align:right">Unit Rate</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:95px;text-align:right">Amount</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:95px;text-align:right">To Be Paid</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border)">Transfer To</th>
+      <th style="width:22px;border-bottom:1px solid var(--border)"></th>
+    </tr>`;
+  } else if(type==='Manpower'){
+    head.innerHTML=`<tr style="background:var(--bg)">
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:28px">#</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border)">Name</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border)">Position / Trade</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:60px;text-align:right">Days</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:88px;text-align:right">Daily Rate</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:95px;text-align:right">Amount</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:95px;text-align:right">To Be Paid</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border)">Bank / Account</th>
+      <th style="width:22px;border-bottom:1px solid var(--border)"></th>
+    </tr>`;
+  } else {
+    // Machinery
+    head.innerHTML=`<tr style="background:var(--bg)">
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:28px">#</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border)">Machinery / Equipment</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border)">Description / Task</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:55px">Unit</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:60px;text-align:right">Qty</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:88px;text-align:right">Unit Rate</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:95px;text-align:right">Amount</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border);width:95px;text-align:right">To Be Paid</th>
+      <th style="padding:6px 6px;border-bottom:1px solid var(--border)">Supplier / Owner</th>
+      <th style="width:22px;border-bottom:1px solid var(--border)"></th>
+    </tr>`;
+  }
+}
+
+function updatePRDiv(){
+  const co=document.getElementById('prCo').value;
+  const coObj=companies.find(x=>x.id===co);
+  const sel=document.getElementById('prDiv'); sel.innerHTML='';
+  if(!coObj) return;
+  const userCo=currentUser&&currentUser.company?currentUser.company:null;
+  const userPrDiv=currentUser&&currentUser.prDiv&&currentUser.prDiv!=='ALL'?currentUser.prDiv:null;
+  coObj.divisions.forEach(d=>{
+    if(userPrDiv && !d.code.toUpperCase().startsWith(userPrDiv)) return;
+    const o=document.createElement('option'); o.value=d.code+'. '+d.name; o.textContent=d.code+'. '+d.name; sel.appendChild(o);
   });
+  updatePRSub();
 }
 
-function calcPRTotals() {
-  let sub = 0;
-  document.querySelectorAll('.pr-item-paid').forEach(el => { sub += parseFloat(el.value) || 0; });
-  const vat = sub * 0.15, grand = sub + vat, wh = grand * 0.03, net = grand - wh;
-  document.getElementById('prSubTotal').textContent = fmt(sub);
-  document.getElementById('prVat').textContent = fmt(vat);
-  document.getElementById('prGrandTotal').textContent = fmt(grand);
-  document.getElementById('prWithhold').textContent = fmt(wh);
-  document.getElementById('prNetPayable').textContent = fmt(net);
+function updatePRSub(){
+  const divVal=(document.getElementById('prDiv').value||'').toUpperCase();
+  const isME1=divVal.startsWith('ME1');
+  document.getElementById('prSubRow').style.display=isME1?'block':'none';
+  document.getElementById('prTypeRow').style.display=isME1?'block':'none';
+  if(isME1){
+    const subSel=document.getElementById('prSub');
+    subSel.innerHTML='<option value="">— Select site —</option>';
+    ME1_SUBS.forEach(s=>{
+      const o=document.createElement('option');
+      o.value=s.code; o.textContent=s.code+' — '+s.desc+' ('+s.client+')'; o.dataset.client=s.client; o.dataset.desc=s.desc;
+      subSel.appendChild(o);
+    });
+  }
 }
 
-function calcPRRow(el) {
-  const row = el.closest('tr');
-  const qty = parseFloat(row.querySelector('.pr-qty').value) || 0;
-  const rate = parseFloat(row.querySelector('.pr-rate').value) || 0;
-  const amt = qty * rate;
-  row.querySelector('.pr-amt').value = amt || '';
-  row.querySelector('.pr-item-paid').value = amt || '';
+function updatePRSubClient(){
+  const sel=document.getElementById('prSub');
+  const opt=sel.selectedOptions[0];
+  if(opt&&opt.dataset.client){
+    document.getElementById('prClient').value=opt.dataset.client;
+  }
+}
+
+function calcPRTotals(){
+  let sub=0;
+  document.querySelectorAll('.pr-item-paid').forEach(el=>{sub+=parseFloat(el.value)||0;});
+  const vatMode=document.querySelector('input[name="vatMode"]:checked')?.value||'exclusive';
+  let vat=0, grand=0, wh=0, net=0;
+  if(vatMode==='exclusive'){
+    vat=sub*0.15; grand=sub+vat; wh=grand*0.03; net=grand-wh;
+    document.getElementById('prVatLabel').textContent='15% VAT (exclusive)';
+    document.getElementById('prWithholdRow').style.display='flex';
+  } else {
+    // Inclusive — VAT already in price, no withholding
+    vat=sub-(sub/1.15); grand=sub; wh=0; net=sub;
+    document.getElementById('prVatLabel').textContent='VAT (inclusive — already in price)';
+    document.getElementById('prWithholdRow').style.display='none';
+  }
+  document.getElementById('prSubTotal').textContent=fmt(sub);
+  document.getElementById('prVat').textContent=fmt(vat);
+  document.getElementById('prGrandTotal').textContent=fmt(grand);
+  document.getElementById('prWithhold').textContent=fmt(wh);
+  document.getElementById('prNetPayable').textContent=fmt(net);
+}
+
+function calcPRRow(el){
+  const row=el.closest('tr');
+  const qty=parseFloat(row.querySelector('.pr-qty')?.value)||0;
+  const rate=parseFloat(row.querySelector('.pr-rate')?.value)||0;
+  const amt=qty*rate;
+  const amtEl=row.querySelector('.pr-amt'); if(amtEl) amtEl.value=amt||'';
+  const paidEl=row.querySelector('.pr-item-paid'); if(paidEl) paidEl.value=amt||'';
   calcPRTotals();
 }
 
-function addPRItem(it) {
-  it = it || {};
-  const tbody = document.getElementById('prItemsBody');
-  const n = tbody.children.length + 1;
-  const row = document.createElement('tr');
-  row.innerHTML = `
-    <td style="padding:4px 5px;text-align:center;color:var(--muted);font-size:11px">${n}</td>
-    <td style="padding:4px 5px"><input class="pr-ii" type="text" value="${it.item_name||''}" placeholder="Item" style="width:100%;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;outline:none"></td>
-    <td style="padding:4px 5px"><input class="pr-id" type="text" value="${it.description||''}" placeholder="Desc" style="width:100%;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;outline:none"></td>
-    <td style="padding:4px 5px"><input class="pr-un" type="text" value="${it.unit||''}" placeholder="pcs" style="width:48px;font-size:12px;padding:4px 5px;border:1px solid var(--border);border-radius:5px;outline:none"></td>
-    <td style="padding:4px 5px"><input class="pr-qty" type="number" value="${it.qty||''}" placeholder="0" oninput="calcPRRow(this)" style="width:58px;font-size:12px;padding:4px 5px;border:1px solid var(--border);border-radius:5px;outline:none;text-align:right"></td>
-    <td style="padding:4px 5px"><input class="pr-rate" type="number" value="${it.unit_rate||''}" placeholder="0" oninput="calcPRRow(this)" style="width:85px;font-size:12px;padding:4px 5px;border:1px solid var(--border);border-radius:5px;outline:none;text-align:right"></td>
-    <td style="padding:4px 5px"><input class="pr-amt" type="number" value="${it.amount||''}" readonly style="width:95px;font-size:12px;padding:4px 5px;border:1px solid var(--border);border-radius:5px;background:var(--bg);text-align:right"></td>
-    <td style="padding:4px 5px"><input class="pr-item-paid" type="number" value="${it.to_be_paid||''}" placeholder="0" oninput="calcPRTotals()" style="width:95px;font-size:12px;padding:4px 5px;border:1px solid var(--border);border-radius:5px;outline:none;text-align:right"></td>
-    <td style="padding:4px 5px"><input class="pr-tr" type="text" value="${it.transfer_to||''}" placeholder="Bank/Name" style="width:100%;font-size:12px;padding:4px 5px;border:1px solid var(--border);border-radius:5px;outline:none"></td>
-    <td style="padding:4px 5px"><button onclick="this.closest('tr').remove();calcPRTotals()" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:16px;line-height:1">×</button></td>`;
+function addPRItem(it){
+  it=it||{};
+  const type=document.getElementById('prType').value||currentPRType||'Material';
+  const tbody=document.getElementById('prItemsBody');
+  const n=tbody.children.length+1;
+  const row=document.createElement('tr');
+  const colStyle='padding:4px 4px';
+  const inp=(cls,val,ph,w,extra)=>`<input class="${cls}" type="number" value="${val||''}" placeholder="${ph}" oninput="calcPRRow(this)" style="width:${w||'80px'};font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;outline:none;text-align:right${extra||''}">`;
+  const txt=(cls,val,ph,w)=>`<input class="${cls}" type="text" value="${val||''}" placeholder="${ph}" style="width:${w||'100%'};font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;outline:none">`;
+
+  if(type==='Material'){
+    row.innerHTML=`
+      <td style="${colStyle};text-align:center;color:var(--muted);font-size:11px">${n}</td>
+      <td style="${colStyle}">${txt('pr-ii',it.item_name,'Item','100%')}</td>
+      <td style="${colStyle}">${txt('pr-id',it.description,'Description','100%')}</td>
+      <td style="${colStyle}">${txt('pr-un',it.unit,'pcs','45px')}</td>
+      <td style="${colStyle}">${inp('pr-qty',it.qty,'0','55px')}</td>
+      <td style="${colStyle}">${inp('pr-rate',it.unit_rate,'0','82px')}</td>
+      <td style="${colStyle}">${inp('pr-amt',it.amount,'0','88px;background:var(--bg)',';background:var(--bg)')} </td>
+      <td style="${colStyle}">${inp('pr-item-paid',it.to_be_paid,'0','88px')}</td>
+      <td style="${colStyle}">${txt('pr-tr',it.transfer_to,'Bank/Name','100%')}</td>
+      <td style="${colStyle}"><button onclick="this.closest('tr').remove();calcPRTotals()" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:15px;line-height:1">×</button></td>`;
+  } else if(type==='Manpower'){
+    row.innerHTML=`
+      <td style="${colStyle};text-align:center;color:var(--muted);font-size:11px">${n}</td>
+      <td style="${colStyle}">${txt('pr-ii',it.item_name,'Full name','100%')}</td>
+      <td style="${colStyle}">${txt('pr-id',it.description,'Position/Trade','100%')}</td>
+      <td style="${colStyle}">${inp('pr-qty',it.qty,'0','55px')}</td>
+      <td style="${colStyle}">${inp('pr-rate',it.unit_rate,'0','82px')}</td>
+      <td style="${colStyle}">${inp('pr-amt',it.amount,'0','88px;background:var(--bg)',';background:var(--bg)')}</td>
+      <td style="${colStyle}">${inp('pr-item-paid',it.to_be_paid,'0','88px')}</td>
+      <td style="${colStyle}">${txt('pr-tr',it.transfer_to,'Bank/Account','100%')}</td>
+      <td style="${colStyle}"><button onclick="this.closest('tr').remove();calcPRTotals()" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:15px;line-height:1">×</button></td>`;
+  } else {
+    // Machinery
+    row.innerHTML=`
+      <td style="${colStyle};text-align:center;color:var(--muted);font-size:11px">${n}</td>
+      <td style="${colStyle}">${txt('pr-ii',it.item_name,'Equipment name','100%')}</td>
+      <td style="${colStyle}">${txt('pr-id',it.description,'Task/description','100%')}</td>
+      <td style="${colStyle}">${txt('pr-un',it.unit,'Hr','45px')}</td>
+      <td style="${colStyle}">${inp('pr-qty',it.qty,'0','55px')}</td>
+      <td style="${colStyle}">${inp('pr-rate',it.unit_rate,'0','82px')}</td>
+      <td style="${colStyle}">${inp('pr-amt',it.amount,'0','88px;background:var(--bg)',';background:var(--bg)')}</td>
+      <td style="${colStyle}">${inp('pr-item-paid',it.to_be_paid,'0','88px')}</td>
+      <td style="${colStyle}">${txt('pr-tr',it.transfer_to,'Supplier/Owner','100%')}</td>
+      <td style="${colStyle}"><button onclick="this.closest('tr').remove();calcPRTotals()" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:15px;line-height:1">×</button></td>`;
+  }
   tbody.appendChild(row);
   calcPRTotals();
 }
 
-function openNewPR() {
-  document.getElementById('prEditId').value = '';
-  document.getElementById('prItemsBody').innerHTML = '';
-  document.getElementById('prDate').value = new Date().toISOString().slice(0,10);
-  ['prProject','prLocation','prClient','prConsultant','prNote'].forEach(id => { document.getElementById(id).value = ''; });
-  const sel = document.getElementById('prCo'); sel.innerHTML = '';
-  companies.forEach(co => { const o = document.createElement('option'); o.value = co.id; o.textContent = co.name; sel.appendChild(o); });
+function openNewPR(){
+  document.getElementById('prEditId').value='';
+  document.getElementById('prItemsBody').innerHTML='';
+  document.getElementById('prDate').value=new Date().toISOString().slice(0,10);
+  ['prProject','prLocation','prClient','prClientAlt','prConsultant','prNote'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  currentPRType='Material';
+  document.getElementById('prType').value='Material';
+  document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active'));
+  const matBtn=document.getElementById('prTypeBtn-Material'); if(matBtn) matBtn.classList.add('active');
+  document.getElementById('prManpowerRow').style.display='none';
+
+  const sel=document.getElementById('prCo'); sel.innerHTML='';
+  const userCo=currentUser&&currentUser.company?currentUser.company:null;
+  companies.forEach(co=>{
+    if(userCo&&!co.id.toUpperCase().startsWith(userCo))return;
+    const o=document.createElement('option'); o.value=co.id; o.textContent=co.name; sel.appendChild(o);
+  });
   updatePRDiv();
+  document.querySelector('input[name="vatMode"][value="exclusive"]').checked=true;
+  buildPRTableHeader('Material');
   addPRItem();
   calcPRTotals();
   document.getElementById('prModal').classList.add('open');
 }
+function closePRModal(){ document.getElementById('prModal').classList.remove('open'); }
+function closePRDetail(){ document.getElementById('prDetailModal').classList.remove('open'); }
 
-function closePRModal() { document.getElementById('prModal').classList.remove('open'); }
-function closePRDetail() { document.getElementById('prDetailModal').classList.remove('open'); }
-
-function getPRFormItems() {
-  const rows = document.querySelectorAll('#prItemsBody tr');
-  const items = [];
-  rows.forEach((row, i) => {
-    const v = s => row.querySelector(s)?.value || '';
-    const item = {
-      no: i+1, item_name: v('.pr-ii'), description: v('.pr-id'), unit: v('.pr-un'),
-      qty: parseFloat(v('.pr-qty'))||0, unit_rate: parseFloat(v('.pr-rate'))||0,
-      amount: parseFloat(v('.pr-amt'))||0, to_be_paid: parseFloat(v('.pr-item-paid'))||0,
-      transfer_to: v('.pr-tr')
+function getPRFormItems(){
+  const rows=document.querySelectorAll('#prItemsBody tr');
+  const items=[];
+  rows.forEach((row,i)=>{
+    const v=s=>row.querySelector(s)?.value||'';
+    const item={
+      no:i+1, item_name:v('.pr-ii'), description:v('.pr-id'),
+      unit:v('.pr-un'), qty:parseFloat(v('.pr-qty'))||0,
+      unit_rate:parseFloat(v('.pr-rate'))||0, amount:parseFloat(v('.pr-amt'))||0,
+      to_be_paid:parseFloat(v('.pr-item-paid'))||0, transfer_to:v('.pr-tr')
     };
-    if (item.item_name || item.description || item.amount) items.push(item);
+    if(item.item_name||item.description||item.amount) items.push(item);
   });
   return items;
 }
 
-async function savePR() {
-  const co = document.getElementById('prCo').value;
-  const div = document.getElementById('prDiv').value;
-  const date = document.getElementById('prDate').value;
-  const project = document.getElementById('prProject').value.trim();
-  const items = getPRFormItems();
-  if (!project || !date || !items.length) { alert('Please fill in date, project and at least one item.'); return; }
-  let sub = 0; items.forEach(i => sub += i.to_be_paid);
-  const vat = sub * 0.15, grand = sub + vat, wh = grand * 0.03, net = grand - wh;
-  const payload = {
-    company_id: co, division: div, request_date: date,
-    project, location: document.getElementById('prLocation').value.trim(),
-    client: document.getElementById('prClient').value.trim(),
-    consultant: document.getElementById('prConsultant').value.trim(),
-    note: document.getElementById('prNote').value.trim(),
-    items: JSON.stringify(items),
-    sub_total: sub, vat, grand_total: grand, withholding: wh, net_payable: net,
-    prepared_by: currentUser.username, prepared_at: new Date().toISOString(), status: 'pending'
+async function savePR(){
+  const co=document.getElementById('prCo').value;
+  const div=document.getElementById('prDiv').value;
+  const date=document.getElementById('prDate').value;
+  const project=document.getElementById('prProject').value.trim();
+  const prType=document.getElementById('prType').value;
+  const subCode=document.getElementById('prSub')?.value||'';
+  const clientEl=document.getElementById('prClient');
+  const clientAltEl=document.getElementById('prClientAlt');
+  const client=(clientEl&&clientEl.value.trim())||(clientAltEl&&clientAltEl.value.trim())||'';
+  const vatMode=document.querySelector('input[name="vatMode"]:checked')?.value||'exclusive';
+  const manpowerCat=document.getElementById('prManpowerCat')?.value||'';
+  const items=getPRFormItems();
+  if(!project||!date||!items.length){alert('Please fill in date, project and at least one item.');return;}
+  let sub=0; items.forEach(i=>sub+=i.to_be_paid);
+  let vat=0, grand=0, wh=0, net=0;
+  if(vatMode==='exclusive'){vat=sub*0.15;grand=sub+vat;wh=grand*0.03;net=grand-wh;}
+  else{vat=sub-(sub/1.15);grand=sub;wh=0;net=sub;}
+  const payload={
+    company_id:co, division:div, request_date:date, project,
+    location:document.getElementById('prLocation').value.trim(),
+    client, consultant:document.getElementById('prConsultant').value.trim(),
+    note:document.getElementById('prNote').value.trim(),
+    items:JSON.stringify(items),
+    sub_total:sub, vat, grand_total:grand, withholding:wh, net_payable:net,
+    vat_mode:vatMode, request_type:prType, sub_project:subCode,
+    manpower_category:manpowerCat,
+    prepared_by:currentUser.username, prepared_at:new Date().toISOString(), status:'pending'
   };
-  try {
-    const editId = document.getElementById('prEditId').value;
-    const url = PR_SB + '/payment_requests' + (editId ? '?id=eq.' + editId : '');
-    await fetch(url, {
-      method: editId ? 'PATCH' : 'POST',
-      headers: { 'apikey': PR_ANON, 'Authorization': 'Bearer ' + PR_ANON, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-      body: JSON.stringify(payload)
+  try{
+    const editId=document.getElementById('prEditId').value;
+    await fetch(PR_SB+'/payment_requests'+(editId?'?id=eq.'+editId:''),{
+      method:editId?'PATCH':'POST',
+      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify(payload)
     });
-    showFlash('✓ Payment request submitted.', 'prFlash', 'prFlashMsg');
+    showFlash('✓ Payment request submitted.','prFlash','prFlashMsg');
     closePRModal();
     await loadPayRequests();
-  } catch(e) { alert('Save failed: ' + e.message); }
+  }catch(e){alert('Save failed: '+e.message);}
 }
 
-async function loadPayRequests() {
-  try {
-    const res = await fetch(PR_SB + '/payment_requests?select=*&order=created_at.desc',
-      { headers: { 'apikey': PR_ANON, 'Authorization': 'Bearer ' + PR_ANON } });
-    if (!res.ok) return;
-    payRequests = await res.json();
-    if (!Array.isArray(payRequests)) payRequests = [];
+async function loadPayRequests(){
+  try{
+    const res=await fetch(PR_SB+'/payment_requests?select=*&order=created_at.desc',
+      {headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON}});
+    if(!res.ok) return;
+    payRequests=await res.json();
+    if(!Array.isArray(payRequests)) payRequests=[];
     checkPRAlerts();
-    if (document.getElementById('pgPayReq').classList.contains('active')) renderPRList();
-  } catch(e) { console.warn('PR load failed:', e.message); }
+    if(document.getElementById('pgPayReq').classList.contains('active')) renderPRList();
+  }catch(e){console.warn('PR load failed:',e.message);}
 }
 
-function checkPRAlerts() {
-  const needAction = payRequests.filter(pr => {
-    const n = prNextStep(pr);
-    return n !== 'complete' && n !== 'prepared' && prCanAct(pr, n);
+function checkPRAlerts(){
+  const needAction=payRequests.filter(pr=>{
+    const n=prNextStep(pr);
+    return n!=='complete'&&n!=='prepared'&&prCanAct(pr,n)&&prVisibleToUser(pr);
   });
-  const dot = document.getElementById('prActionDot');
-  const banner = document.getElementById('prAlertBanner');
-  if (dot) dot.style.display = needAction.length ? 'inline-block' : 'none';
-  if (banner) {
-    if (needAction.length) {
-      document.getElementById('prAlertMsg').textContent = needAction.length + ' payment request(s) need your action: ' + needAction.map(p => p.project).join(', ');
-      banner.style.display = 'flex';
-    } else { banner.style.display = 'none'; }
+  const dot=document.getElementById('prActionDot');
+  const banner=document.getElementById('prAlertBanner');
+  if(dot) dot.style.display=needAction.length?'inline-block':'none';
+  if(banner){
+    if(needAction.length){
+      document.getElementById('prAlertMsg').textContent=needAction.length+' payment request(s) need your action: '+needAction.map(p=>p.project).join(', ');
+      banner.style.display='flex';
+    } else banner.style.display='none';
   }
-  // Update nav badge
-  const navItem = document.getElementById('payreqNav');
-  if (navItem && needAction.length) {
-    if (!navItem.querySelector('.alert-dot')) {
-      const dot2 = document.createElement('span');
-      dot2.className = 'alert-dot'; dot2.style.marginLeft = '6px';
-      navItem.appendChild(dot2);
-    }
-  } else if (navItem) {
-    const existing = navItem.querySelector('.alert-dot');
-    if (existing) existing.remove();
+  const navItem=document.getElementById('payreqNav');
+  if(navItem){
+    const existing=navItem.querySelector('.alert-dot');
+    if(needAction.length&&!existing){const d=document.createElement('span');d.className='alert-dot';d.style.marginLeft='6px';navItem.appendChild(d);}
+    else if(!needAction.length&&existing) existing.remove();
   }
 }
 
-function filterPR(f, el) {
-  prFilter = f;
-  document.querySelectorAll('#pgPayReq .dfb-mode').forEach(b => b.classList.remove('on'));
+function filterPR(f,el){
+  prFilter=f;
+  document.querySelectorAll('#pgPayReq .dfb-mode').forEach(b=>b.classList.remove('on'));
   el.classList.add('on');
   renderPRList();
 }
 
-function renderPRList() {
-  const el = document.getElementById('prList');
-  if (!el) return;
-  let list = [...payRequests];
-  if (prFilter === 'mine')   list = list.filter(pr => pr.prepared_by === currentUser.username);
-  if (prFilter === 'action') list = list.filter(pr => { const n = prNextStep(pr); return n !== 'complete' && n !== 'prepared' && prCanAct(pr, n); });
-  if (prFilter === 'paid')   list = list.filter(pr => prNextStep(pr) === 'complete');
-  if (!list.length) { el.innerHTML = '<div class="empty-state">No payment requests found.</div>'; return; }
-  el.innerHTML = list.map(pr => {
-    const st = prStatusInfo(pr);
-    const next = prNextStep(pr);
-    const canAct = next !== 'complete' && next !== 'prepared' && prCanAct(pr, next);
+function renderPRList(){
+  const el=document.getElementById('prList'); if(!el) return;
+  let list=payRequests.filter(pr=>prVisibleToUser(pr));
+  if(prFilter==='mine')   list=list.filter(pr=>pr.prepared_by===currentUser.username);
+  if(prFilter==='action') list=list.filter(pr=>{const n=prNextStep(pr);return n!=='complete'&&n!=='prepared'&&prCanAct(pr,n);});
+  if(prFilter==='paid')   list=list.filter(pr=>prNextStep(pr)==='complete');
+  if(!list.length){el.innerHTML='<div class="empty-state">No payment requests found.</div>';return;}
+  el.innerHTML=list.map(pr=>{
+    const st=prStatusInfo(pr);
+    const next=prNextStep(pr);
+    const canAct=next!=='complete'&&next!=='prepared'&&prCanAct(pr,next);
+    const typeTag=pr.request_type?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--border2);color:var(--muted);font-weight:600">${pr.request_type}</span>`:'';
+    const subTag=pr.sub_project?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#dbeafe;color:#1e40af;font-weight:600">${pr.sub_project}</span>`:'';
     return `<div class="pr-card">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
         <div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">
             <span style="font-size:15px;font-weight:700;color:var(--ink2)">${pr.project}</span>
             <span class="pr-status-badge ${st.css}">${st.label}</span>
-            ${canAct ? '<span style="background:var(--red-light);color:var(--red);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">● ACTION NEEDED</span>' : ''}
+            ${typeTag}${subTag}
+            ${canAct?'<span style="background:var(--red-light);color:var(--red);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">● ACTION NEEDED</span>':''}
           </div>
-          <div style="font-size:11px;color:var(--muted)">${pr.division} · ${pr.company_id} · ${pr.request_date} · Net Payable: <strong>${fmt(pr.net_payable)}</strong></div>
-          <div style="font-size:11px;color:var(--muted)">Client: ${pr.client||'—'} · Prepared by: ${pr.prepared_by}</div>
+          <div style="font-size:11px;color:var(--muted)">${pr.division} · ${pr.company_id} · ${pr.request_date} · Net: <strong>${fmt(pr.net_payable)}</strong></div>
+          <div style="font-size:11px;color:var(--muted)">Client: ${pr.client||'—'} · By: ${prDisplayName(pr.prepared_by)}</div>
         </div>
         <div style="display:flex;gap:6px">
           <button onclick="viewPR('${pr.id}')" class="btn-secondary" style="font-size:11px;padding:6px 12px">View</button>
-          ${canAct ? `<button onclick="actOnPR('${pr.id}')" class="btn-primary" style="font-size:11px;padding:6px 14px;background:linear-gradient(135deg,#f59e0b,#d97706)">${next.charAt(0).toUpperCase()+next.slice(1)} ✓</button>` : ''}
+          ${canAct?`<button onclick="actOnPR('${pr.id}')" class="btn-primary" style="font-size:11px;padding:6px 14px;background:linear-gradient(135deg,#f59e0b,#d97706)">${next.charAt(0).toUpperCase()+next.slice(1)} ✓</button>`:''}
         </div>
       </div>
       <div class="workflow-steps">
-        ${PR_STEPS.map(step => {
-          const done = pr[step+'_by'];
-          const isNext = prNextStep(pr) === step;
-          return '<span class="ws-step ' + (done?'done':isNext?'active':'pending') + '">' +
-            (done?'✓':isNext?'●':'○') + ' ' + step.charAt(0).toUpperCase()+step.slice(1) +
-            (done ? ' <span style="font-size:10px;opacity:.7">' + pr[step+'_by'] + '</span>' : '') +
-            '</span>' + (step!=='paid' ? '<span class="ws-arrow">→</span>' : '');
+        ${PR_STEPS.map(step=>{
+          const done=pr[step+'_by'];
+          const isNext=prNextStep(pr)===step;
+          return '<span class="ws-step '+(done?'done':isNext?'active':'pending')+'">'+
+            (done?'✓':isNext?'●':'○')+' '+step.charAt(0).toUpperCase()+step.slice(1)+
+            (done?' <span style="font-size:10px;opacity:.7">'+prDisplayName(pr[step+'_by'])+'</span>':'')+
+            '</span>'+(step!=='paid'?'<span class="ws-arrow">→</span>':'');
         }).join('')}
       </div>
     </div>`;
   }).join('');
 }
 
-function viewPR(id) {
-  const pr = payRequests.find(x => x.id === id);
-  if (!pr) return;
-  const items = JSON.parse(pr.items || '[]');
-  const st = prStatusInfo(pr);
-  const next = prNextStep(pr);
-  const canAct = next !== 'complete' && prCanAct(pr, next);
-  const signers = [
-    {key:'prepared', label:'Prepared by', role:''},
-    {key:'checked',  label:'Checked by',  role:'Finance/Management'},
-    {key:'approved', label:'Approved by', role:'Director/Admin'},
-    {key:'verified', label:'Verified by', role:'General Manager'},
-    {key:'paid',     label:'Paid by',     role:'Finance'}
+function viewPR(id){
+  const pr=payRequests.find(x=>x.id===id); if(!pr) return;
+  const items=JSON.parse(pr.items||'[]');
+  const st=prStatusInfo(pr);
+  const next=prNextStep(pr);
+  const canAct=next!=='complete'&&prCanAct(pr,next);
+  const prType=pr.request_type||'Material';
+  const actionLabels={checked:'Confirm Check',approved:'Approve',verified:'Verify',paid:'Mark as Paid'};
+
+  const signers=[
+    {key:'prepared',label:'Prepared by',role:''},
+    {key:'checked', label:'Checked by', role:'Finance/Management'},
+    {key:'approved',label:'Approved by',role:'Director/Admin'},
+    {key:'verified',label:'Verified by',role:'General Manager'},
+    {key:'paid',    label:'Paid by',    role:'Finance'}
   ];
-  const actionLabels = {checked:'Confirm Check',approved:'Approve',verified:'Verify',paid:'Mark as Paid'};
-  document.getElementById('prDetailContent').innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+
+  // Table headers by type
+  let thead='',tbody='';
+  if(prType==='Material'){
+    thead=`<tr><th>#</th><th>Item/Material</th><th>Description</th><th>Unit</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Rate</th><th style="text-align:right">Amount</th><th style="text-align:right">To Be Paid</th><th>Transfer To</th></tr>`;
+    tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}"><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td>${it.unit||''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td></tr>`).join('');
+  } else if(prType==='Manpower'){
+    thead=`<tr><th>#</th><th>Name</th><th>Position/Trade</th><th style="text-align:right">Days</th><th style="text-align:right">Daily Rate</th><th style="text-align:right">Amount</th><th style="text-align:right">To Be Paid</th><th>Bank/Account</th></tr>`;
+    tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}"><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td></tr>`).join('');
+  } else {
+    thead=`<tr><th>#</th><th>Machinery/Equipment</th><th>Task/Description</th><th>Unit</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Rate</th><th style="text-align:right">Amount</th><th style="text-align:right">To Be Paid</th><th>Supplier/Owner</th></tr>`;
+    tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}"><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td>${it.unit||''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td></tr>`).join('');
+  }
+
+  const vatMode=pr.vat_mode||'exclusive';
+  const withholdRow=vatMode==='exclusive'?`<div class="pr-total-row"><span>3% Withholding Tax</span><span style="color:var(--red)">${fmt(pr.withholding)}</span></div>`:'';
+
+  document.getElementById('prDetailContent').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:8px">
       <div>
         <div style="font-family:'DM Serif Display',serif;font-size:22px;color:var(--ink)">Payment Request</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">${pr.company_id} · ${pr.division}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${pr.company_id} · ${pr.division}${pr.sub_project?' · '+pr.sub_project:''}</div>
+        <div style="display:flex;gap:6px;margin-top:4px">
+          ${pr.request_type?`<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--border2);color:var(--muted);font-weight:600">${pr.request_type}</span>`:''}
+          ${pr.manpower_category?`<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:#ede9fe;color:#5b21b6;font-weight:600">${pr.manpower_category}</span>`:''}
+          <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${vatMode==='exclusive'?'#dbeafe':'#fef3c7'};color:${vatMode==='exclusive'?'#1e40af':'#92400e'};font-weight:600">VAT ${vatMode}</span>
+        </div>
       </div>
       <span class="pr-status-badge ${st.css}" style="font-size:12px;padding:5px 14px">${st.label}</span>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;background:var(--bg);padding:12px;border-radius:10px;font-size:12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;background:var(--bg);padding:10px 12px;border-radius:10px;font-size:12px">
       <div><span style="color:var(--muted)">Project:</span> <strong>${pr.project}</strong></div>
       <div><span style="color:var(--muted)">Date:</span> <strong>${pr.request_date}</strong></div>
       <div><span style="color:var(--muted)">Client:</span> <strong>${pr.client||'—'}</strong></div>
       <div><span style="color:var(--muted)">Location:</span> <strong>${pr.location||'—'}</strong></div>
-      <div><span style="color:var(--muted)">Consultant:</span> <strong>${pr.consultant||'—'}</strong></div>
+      ${pr.consultant?`<div><span style="color:var(--muted)">Consultant:</span> <strong>${pr.consultant}</strong></div>`:''}
     </div>
-    <table class="pr-table" style="margin-bottom:12px">
-      <thead><tr>
-        <th>#</th><th>Item/Material</th><th>Description</th><th>Unit</th>
-        <th style="text-align:right">Qty</th><th style="text-align:right">Unit Rate</th>
-        <th style="text-align:right">Amount</th><th style="text-align:right">To Be Paid</th><th>Transfer To</th>
-      </tr></thead>
-      <tbody>
-        ${items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}">
-          <td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td>${it.unit||''}</td>
-          <td style="text-align:right">${it.qty||''}</td>
-          <td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td>
-          <td style="text-align:right">${(it.amount||0).toLocaleString()}</td>
-          <td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td>
-          <td>${it.transfer_to||''}</td>
-        </tr>`).join('')}
-      </tbody>
+    <table class="pr-table" style="margin-bottom:10px">
+      <thead>${thead}</thead>
+      <tbody>${tbody}</tbody>
     </table>
     <div class="pr-totals">
       <div class="pr-total-row"><span>Sub Total</span><span style="font-weight:700">${fmt(pr.sub_total)}</span></div>
-      <div class="pr-total-row"><span>15% VAT</span><span style="color:var(--amber)">${fmt(pr.vat)}</span></div>
+      <div class="pr-total-row"><span>VAT (${vatMode})</span><span style="color:var(--amber)">${fmt(pr.vat)}</span></div>
       <div class="pr-total-row"><span style="font-weight:700">Grand Total</span><span style="font-weight:800;color:var(--teal-dark)">${fmt(pr.grand_total)}</span></div>
-      <div class="pr-total-row"><span>3% Withholding</span><span style="color:var(--red)">${fmt(pr.withholding)}</span></div>
+      ${withholdRow}
       <div class="pr-total-row" style="border-top:1px solid var(--border);margin-top:4px;padding-top:6px">
         <span style="font-weight:800">Net Payable</span>
         <span style="font-weight:800;font-size:16px;color:var(--teal-dark)">${fmt(pr.net_payable)}</span>
       </div>
     </div>
-    ${pr.note?`<div style="background:var(--bg);border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:12px"><strong>Note:</strong> ${pr.note}</div>`:''}
+    ${pr.note?`<div style="background:var(--bg);border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:10px"><strong>Note:</strong> ${pr.note}</div>`:''}
+    <!-- Transfer ID field for Finance (paid step) -->
+    ${next==='paid'&&prCanAct(pr,'paid')?`
+    <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:8px">💳 Payment Details (Finance)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Cheque / Transfer Number *</label>
+          <input type="text" id="prTransferId" placeholder="e.g. CHQ-001234 or TRF-567890" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;font-weight:700;outline:none"></div>
+        <div><label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Payment Method</label>
+          <select id="prPayMethod" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;outline:none">
+            <option>Bank Transfer</option><option>Cheque</option><option>Cash</option><option>CBE Birr</option>
+          </select></div>
+      </div>
+    </div>`:''}
+    ${pr.transfer_id?`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px"><strong style="color:#166534">Transfer ID:</strong> ${pr.transfer_id} &nbsp;|&nbsp; <strong style="color:#166534">Method:</strong> ${pr.pay_method||'—'}</div>`:''}
+    <!-- Signatures -->
     <div class="pr-sign-row">
       ${signers.map(s=>`<div class="pr-sign-box">
         <div class="pr-sign-title">${s.label}</div>
         ${pr[s.key+'_by']
-          ?`<div style="font-size:12px;font-weight:700;color:var(--ink2)">${pr[s.key+'_by']}</div>
+          ?`<div style="font-size:12px;font-weight:700;color:var(--ink2)">${prDisplayName(pr[s.key+'_by'])}</div>
              <div style="font-size:11px;color:var(--muted)">${pr[s.key+'_at']?new Date(pr[s.key+'_at']).toLocaleDateString('en-GB'):''}</div>
-             <div style="margin-top:4px;font-size:11px;color:var(--teal-dark)">✓ Signed</div>`
+             <div style="margin-top:3px;font-size:11px;color:var(--teal-dark)">✓ Signed</div>`
           :`<div style="font-size:11px;color:var(--muted2);font-style:italic">${s.role||'Pending'}</div>
-             <div style="margin-top:6px;border-top:1px solid var(--border);padding-top:6px;font-size:10px;color:var(--muted2)">Sign: ___________</div>
-             <div style="font-size:10px;color:var(--muted2)">Date: ___________</div>`}
+             <div style="margin-top:6px;border-top:1px solid var(--border);padding-top:5px;font-size:10px;color:var(--muted2)">Sign: ___________</div>
+             <div style="font-size:10px;color:var(--muted2)">Date: ___________</div>`
+        }
       </div>`).join('')}
     </div>
-    <div class="btn-row" style="margin-top:16px">
-      ${canAct && next !== 'prepared' ? `<button onclick="actOnPR('${id}')" class="btn-primary" style="background:linear-gradient(135deg,#f59e0b,#d97706)">${actionLabels[next]||'Proceed'} ✓</button>` : ''}
+    <div class="btn-row" style="margin-top:14px">
+      ${canAct&&next!=='prepared'?`<button onclick="actOnPR('${id}')" class="btn-primary" style="background:linear-gradient(135deg,#f59e0b,#d97706)">${actionLabels[next]||'Proceed'} ✓</button>`:''}
       <button onclick="window.print()" class="btn-secondary">Print</button>
       <button onclick="closePRDetail()" class="btn-secondary">Close</button>
     </div>`;
   document.getElementById('prDetailModal').classList.add('open');
 }
 
-async function actOnPR(id) {
-  const pr = payRequests.find(x => x.id === id);
-  if (!pr) return;
-  const next = prNextStep(pr);
-  if (next === 'complete' || !prCanAct(pr, next)) return;
-  const msgs = {
-    checked: 'Confirm you have CHECKED this payment request?',
-    approved: 'Confirm you APPROVE payment of ' + fmt(pr.net_payable) + '?',
-    verified: 'Confirm you have VERIFIED this payment request?',
-    paid: 'Confirm this payment of ' + fmt(pr.net_payable) + ' has been PAID?'
+async function actOnPR(id){
+  const pr=payRequests.find(x=>x.id===id); if(!pr) return;
+  const next=prNextStep(pr);
+  if(next==='complete'||!prCanAct(pr,next)) return;
+  const msgs={
+    checked:'Confirm you have CHECKED this payment request?',
+    approved:'Confirm you APPROVE payment of '+fmt(pr.net_payable)+'?',
+    verified:'Confirm you have VERIFIED this payment request?',
+    paid:'Confirm payment of '+fmt(pr.net_payable)+' has been MADE?'
   };
-  if (!confirm(msgs[next] || 'Proceed?')) return;
-  const update = {};
-  update[next + '_by'] = currentUser.username;
-  update[next + '_at'] = new Date().toISOString();
-  update.status = next === 'paid' ? 'paid' : next;
-  try {
-    await fetch(PR_SB + '/payment_requests?id=eq.' + id, {
-      method: 'PATCH',
-      headers: { 'apikey': PR_ANON, 'Authorization': 'Bearer ' + PR_ANON, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-      body: JSON.stringify(update)
+
+  // For paid step — require transfer ID
+  if(next==='paid'){
+    const transferEl=document.getElementById('prTransferId');
+    const methodEl=document.getElementById('prPayMethod');
+    if(!transferEl||!transferEl.value.trim()){
+      alert('Please enter the Cheque/Transfer Number before marking as paid.');
+      return;
+    }
+    if(!confirm(msgs[next]||'Proceed?')) return;
+    const transferId=transferEl.value.trim();
+    const payMethod=methodEl?methodEl.value:'Bank Transfer';
+    const update={paid_by:currentUser.username,paid_at:new Date().toISOString(),status:'paid',transfer_id:transferId,pay_method:payMethod};
+    try{
+      await fetch(PR_SB+'/payment_requests?id=eq.'+id,{
+        method:'PATCH',
+        headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
+        body:JSON.stringify(update)
+      });
+      // Auto-create transaction in ledger
+      await createPRTransaction(pr, transferId, payMethod);
+      closePRDetail();
+      await loadPayRequests(); renderPRList();
+      showFlash('✓ Paid — transaction added to ledger.','prFlash','prFlashMsg');
+    }catch(e){alert('Action failed: '+e.message);}
+    return;
+  }
+
+  if(!confirm(msgs[next]||'Proceed?')) return;
+  const update={};
+  update[next+'_by']=currentUser.username;
+  update[next+'_at']=new Date().toISOString();
+  update.status=next;
+  try{
+    await fetch(PR_SB+'/payment_requests?id=eq.'+id,{
+      method:'PATCH',
+      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify(update)
     });
     closePRDetail();
-    await loadPayRequests();
-    renderPRList();
-    showFlash('✓ ' + next.charAt(0).toUpperCase()+next.slice(1) + ' by ' + currentUser.username, 'prFlash', 'prFlashMsg');
-  } catch(e) { alert('Action failed: ' + e.message); }
+    await loadPayRequests(); renderPRList();
+    showFlash('✓ '+next.charAt(0).toUpperCase()+next.slice(1)+' by '+currentUser.username,'prFlash','prFlashMsg');
+  }catch(e){alert('Action failed: '+e.message);}
+}
+
+async function createPRTransaction(pr, transferId, payMethod){
+  // Extract division code from pr.division (e.g. "ME1. Construction" -> "ME1")
+  const divCode=(pr.division||'').split('.')[0].trim();
+  const coId=pr.company_id||'';
+  const ref=(pr.request_type||'Payment')+': '+pr.project+(pr.sub_project?' ['+pr.sub_project+']':'');
+  const payload={
+    company_id:coId, div_code:divCode,
+    div_name:pr.division,
+    date:new Date().toISOString().slice(0,10),
+    type:'out', amt:pr.net_payable, amt_usd:null,
+    ref:ref+(transferId?' | TRF:'+transferId:''),
+    note:'PR Payment — '+payMethod+(transferId?' — Ref: '+transferId:''),
+    created_by:currentUser.username
+  };
+  try{
+    const res=await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions',{
+      method:'POST',
+      headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer '+'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify(payload)
+    });
+    if(res.ok){
+      const saved=await res.json();
+      const tx={
+        id:saved[0]?.id||Date.now(), date:payload.date, co:coId,
+        divCode, divName:pr.division, type:'out',
+        amt:pr.net_payable, amtUsd:null,
+        ref:payload.ref, note:payload.note
+      };
+      transactions.unshift(tx);
+      ls('omni-tx',transactions);
+      renderAll();
+    }
+  }catch(e){console.warn('PR transaction creation failed:',e.message);}
 }
 
 // ══════════════════════════════════════
