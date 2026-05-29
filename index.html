@@ -3154,18 +3154,25 @@ async function savePR(){
   const mpCat=document.getElementById('prManpowerCat')?.value||'';
   const items=getPRItems();
   if(!project||!date||!items.length){alert('Please fill in date, project and at least one item.');return;}
-  // Pre-payment invoice is required
-  if(!prAttachments.pre_invoice){
-    // Highlight the upload zone
-    const zone=document.getElementById('preInvZone');
-    if(zone){
-      zone.style.borderColor='var(--red)';
-      zone.style.background='var(--red-light)';
-      setTimeout(()=>{zone.style.borderColor='';zone.style.background='';},3000);
-      zone.scrollIntoView({behavior:'smooth',block:'center'});
+  // Pre-payment invoice required ONLY when pre-payment type is selected
+  // Post-payment invoice is optional (collected after payment)
+  if(!prAttachments.pre_invoice && !prAttachments.post_invoice){
+    // Neither attached — check which type was selected
+    if(currentInvType==='pre'){
+      const zone=document.getElementById('preInvZone');
+      if(zone){
+        zone.style.borderColor='var(--red)';
+        zone.style.background='var(--red-light)';
+        setTimeout(()=>{zone.style.borderColor='';zone.style.background='';},3000);
+        zone.scrollIntoView({behavior:'smooth',block:'center'});
+      }
+      alert('⚠ Pre-Payment Invoice is required.\nPlease upload the invoice before submitting.\n\nIf you do not have it yet, switch to "Post-Payment Invoice" and submit.');
+      return;
     }
-    alert('⚠ Pre-Payment Invoice is required.\nPlease upload the invoice before submitting.');
-    return;
+    // Post-payment selected — allow submission without invoice
+  } else if(currentInvType==='pre' && !prAttachments.pre_invoice){
+    // Pre selected but only post attached — warn but allow
+    if(!confirm('You have selected Pre-Payment Invoice but uploaded a Post-Payment Invoice.\nSubmit anyway?')) return;
   }
   let sub=0; items.forEach(i=>sub+=i.to_be_paid);
   let vat=0,grand=0,wh=0,net=0;
