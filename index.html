@@ -3158,7 +3158,7 @@ function renderPRList(){
         <div style="display:flex;gap:6px">
           <button onclick="viewPR('${pr.id}')" class="btn-secondary" style="font-size:11px;padding:6px 12px">View</button>
           ${canAct?`<button onclick="actOnPR('${pr.id}')" class="btn-primary" style="font-size:11px;padding:6px 14px;background:linear-gradient(135deg,#f59e0b,#d97706)">${next.charAt(0).toUpperCase()+next.slice(1)} ✓</button>`:''}
-          ${next==='paid'?`<button onclick="requestPaymentPR('${pr.id}')" class="btn-primary" style="font-size:11px;padding:6px 12px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:700">📢 Request Payment</button>`:''}
+          ${(next==='paid'||(next==='complete'&&partialAmt>0&&partialAmt<pr.net_payable))?`<button onclick="requestPaymentPR('${pr.id}')" class="btn-primary" style="font-size:11px;padding:6px 12px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:700">📢 Request Payment</button>`:''}
         </div>
       </div>
       <div class="workflow-steps">
@@ -3330,7 +3330,7 @@ function viewPR(id){
     <div class="btn-row" style="margin-top:14px;flex-wrap:wrap">
       ${canAct&&next!=='prepared'?`<button onclick="actOnPR('${id}')" class="btn-primary" style="background:linear-gradient(135deg,#f59e0b,#d97706)">${{checked:'✓ Confirm Check',approved:'✓ Approve',verified:'✓ Verify',paid:'✓ Mark as Paid'}[next]||'Proceed'}</button>`:''}
       ${next==='verified'&&canAct?`<button onclick="rejectPR('${id}')" class="btn-secondary" style="border-color:var(--red);color:var(--red)">✗ Reject</button>`:''}
-      ${next==='paid'?`<button onclick="requestPaymentPR('${id}')" class="btn-primary" style="background:linear-gradient(135deg,#f59e0b,#d97706);font-weight:700">📢 Request Payment</button>`:''}
+      ${(next==='paid'||(next==='complete'&&parseFloat(pr.partial_amount||0)>0&&parseFloat(pr.partial_amount||0)<pr.net_payable))?`<button onclick="requestPaymentPR('${id}')" class="btn-primary" style="background:linear-gradient(135deg,#f59e0b,#d97706);font-weight:700">📢 Request Payment</button>`:''}
       ${canEdit?`<button onclick="editPR('${id}')" class="btn-primary">✏ Edit Request</button>`:''}
       ${next!=='complete'?`<button onclick="cancelPR('${id}')" class="btn-secondary" style="border-color:var(--red);color:var(--red)">✗ Cancel Request</button>`:''}
       <button onclick="window.print()" class="btn-secondary">Print</button>
@@ -3346,7 +3346,9 @@ function requestPaymentPR(id){
   const rawDiv=(pr.division||'');
   const divCode=rawDiv.split('.')[0].trim();
   const partial=parseFloat(pr.partial_amount||0);
-  const pendingAmt=partial>0&&partial<pr.net_payable?pr.net_payable-partial:pr.net_payable;
+  const pendingAmt=partial>0&&partial<parseFloat(pr.net_payable||0)
+    ? parseFloat(pr.net_payable)-partial
+    : parseFloat(pr.net_payable||0);
   const summary=`${pr.company_id} · ${pr.division}${pr.sub_project?' · '+pr.sub_project:''}
 Project: ${pr.project}
 Client: ${pr.client||'—'}
