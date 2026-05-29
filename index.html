@@ -1187,7 +1187,7 @@ function canEditTx(tx){
 
 const DEFAULT_COMPANIES = [
   {
-    id:'Wanofi',
+    id:'WE',
     name:'Wanofi Engineering Plc',
     code:'WE',
     color:'teal',
@@ -1198,7 +1198,7 @@ const DEFAULT_COMPANIES = [
     ]
   },
   {
-    id:'Matisan',
+    id:'ME',
     name:'Matisan Engineering Plc',
     code:'ME',
     color:'blue',
@@ -1541,7 +1541,8 @@ async function initApp(){
 
     if(Array.isArray(coData) && coData.length){
       companies = coData.map(co=>({
-        id: co.id, name: co.name, code: co.code, color: co.color,
+        id: co.id==='Wanofi'?'WE':co.id==='Matisan'?'ME':co.id,
+        name: co.name, code: co.code||co.id, color: co.color,
         divisions: (co.divisions||[]).map(d=>({
           code: d.code, name: d.name, isUsd: d.is_usd_div
         }))
@@ -2818,12 +2819,7 @@ function buildPRHead(type){
 }
 
 function updatePRDiv(){
-  const coId=document.getElementById('prCo').value;
-  const divSel=document.getElementById('prDiv'); divSel.innerHTML='';
-  const coObj=companies.find(x=>x.id===coId);
-  const divs=coObj?coObj.divisions:[];
-  divs.forEach(d=>{const o=document.createElement('option');o.value=d.code+'. '+d.name;o.textContent=d.code+'. '+d.name;divSel.appendChild(o);});
-  updatePRSub();
+  populatePRDivision(null);
 }
 function updatePRSub(){
   const divVal=(document.getElementById('prDiv').value||'').toUpperCase();
@@ -2927,41 +2923,103 @@ function addPRItem(it){
   tbody.appendChild(row); calcPRTotals();
 }
 
+function getCompaniesForPR(){
+  // Returns companies array guaranteed to have correct id/divisions
+  // Priority: 1) loaded companies with correct ids 2) DEFAULT_COMPANIES
+  const validCos = companies.filter(co=>
+    co.id&&co.divisions&&co.divisions.length>0
+  );
+  if(validCos.length > 0) return validCos;
+  return JSON.parse(JSON.stringify(DEFAULT_COMPANIES));
+}
+
+function populatePRCompany(targetCoId){
+  // Populate company dropdown — guaranteed to work
+  const coSel = document.getElementById('prCo');
+  if(!coSel) return;
+  coSel.innerHTML = '';
+  const userCo = currentUser&&currentUser.company ? currentUser.company : null;
+  const allCos = getCompaniesForPR();
+  const visCos = allCos.filter(co => !userCo || co.id===userCo || co.code===userCo);
+  const toShow = visCos.length ? visCos : allCos;
+  toShow.forEach(co => {
+    const o = document.createElement('option');
+    o.value = co.id; o.textContent = co.name;
+    if(targetCoId && (co.id===targetCoId||co.code===targetCoId)) o.selected = true;
+    coSel.appendChild(o);
+  });
+}
+
+function populatePRDivision(targetDivCode){
+  // Populate division dropdown — guaranteed to work
+  const coSel = document.getElementById('prCo');
+  const divSel = document.getElementById('prDiv');
+  if(!divSel||!coSel) return;
+  divSel.innerHTML = '';
+  const coId = coSel.value;
+  const allCos = getCompaniesForPR();
+  const coObj = allCos.find(co=>co.id===coId||co.code===coId);
+  const divs = coObj ? coObj.divisions : [];
+  divs.forEach(d => {
+    const o = document.createElement('option');
+    o.value = d.code+'. '+d.name; o.textContent = d.code+'. '+d.name;
+    if(targetDivCode && d.code===targetDivCode) o.selected = true;
+    divSel.appendChild(o);
+  });
+  updatePRSub();
+}
+
 async function loadCompanies(){
+  // Start with DEFAULT_COMPANIES (always correct baseline)
+  // then try to get fresh data from Supabase on top
+  if(!companies||companies.length===0){
+    companies = JSON.parse(JSON.stringify(DEFAULT_COMPANIES));
+  }
+
   try{
-    const hdr={'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE'};
-    // Fetch companies and divisions separately then merge
-    const [coRes,divRes]=await Promise.all([
-      fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/companies?select=*',{headers:hdr}),
-      fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/divisions?select=*&order=code',{headers:hdr})
-    ]);
-    if(coRes.ok&&divRes.ok){
-      const coData=await coRes.json();
-      const divData=await divRes.json();
-      if(Array.isArray(coData)&&coData.length>0){
-        // Merge: attach divisions array to each company
-        companies=coData.map(co=>({
-          ...co,
-          divisions:(Array.isArray(divData)?divData.filter(d=>d.company_id===co.id):[])
+    const hdr={
+      'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
+      'Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE'
+    };
+    // Try to get companies from Supabase
+    const coRes = await fetch(
+      'https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/companies?select=*,divisions(*)',
+      {headers:hdr}
+    );
+    if(coRes.ok){
+      const coData = await coRes.json();
+      if(Array.isArray(coData) && coData.length > 0){
+        // Normalise and use Supabase data
+        const mapped = coData.map(co=>({
+          id: co.id==='Wanofi'?'WE': co.id==='Matisan'?'ME': co.id,
+          name: co.name,
+          code: co.code || co.id,
+          color: co.color || 'teal',
+          divisions: Array.isArray(co.divisions) && co.divisions.length > 0
+            ? co.divisions.map(d=>({code:d.code, name:d.name, isUsd:d.is_usd_div}))
+            : (companies.find(dc=>
+                (dc.id===co.id||dc.id===(co.id==='Wanofi'?'WE':co.id==='Matisan'?'ME':co.id))
+              )||{divisions:[]}).divisions
         }));
-        ls('omni-companies',companies);
-        console.log('loadCompanies: loaded',companies.length,'companies',companies.map(co=>co.id+':'+co.divisions.length+'divs'));
-        return companies;
+        // Only update if we got meaningful data
+        if(mapped.every(co=>co.divisions && co.divisions.length > 0)){
+          companies = mapped;
+        }
+        ls('omni-companies', companies);
       }
     }
-  }catch(e){console.warn('loadCompanies failed:',e.message);}
-  // Fallback: cached data
-  const cached=ls('omni-companies');
-  if(cached&&Array.isArray(cached)&&cached.length>0){
-    companies=cached;
-    console.log('loadCompanies: using cache',companies.length,'companies');
-    return companies;
+  } catch(e){
+    console.warn('loadCompanies Supabase fetch failed:', e.message);
   }
-  console.warn('loadCompanies: no data available');
+
+  // Always return something valid
+  if(!companies || companies.length === 0){
+    companies = JSON.parse(JSON.stringify(DEFAULT_COMPANIES));
+  }
   return companies;
 }
 
-async function openNewPR(){
+function openNewPR(){
   document.getElementById('prEditId').value='';
   document.getElementById('prItemsBody').innerHTML='';
   document.getElementById('prDate').value=new Date().toISOString().slice(0,10);
@@ -2971,21 +3029,8 @@ async function openNewPR(){
   document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active'));
   const mb=document.getElementById('prTypeBtn-Material'); if(mb) mb.classList.add('active');
   document.getElementById('prManpowerRow').style.display='none';
-  // Load fresh companies+divisions from Supabase
-  const freshCos=await loadCompanies();
-
-  // Populate company — filter by user's company
-  const coSel=document.getElementById('prCo'); coSel.innerHTML='';
-  const userCo=currentUser&&currentUser.company?currentUser.company:null;
-  const visCos=freshCos.filter(co=>!userCo||co.id.toUpperCase().startsWith(userCo));
-  if(visCos.length){
-    visCos.forEach(co=>{const o=document.createElement('option');o.value=co.id;o.textContent=co.name;coSel.appendChild(o);});
-  } else {
-    // Emergency fallback if Supabase unreachable
-    [{id:'WE',name:'Wanofi Engineering Plc'},{id:'ME',name:'Matisan Engineering Plc'}]
-      .filter(co=>!userCo||co.id.startsWith(userCo))
-      .forEach(co=>{const o=document.createElement('option');o.value=co.id;o.textContent=co.name;coSel.appendChild(o);});
-  }
+  // Populate company dropdown — uses DEFAULT_COMPANIES as guaranteed baseline
+  populatePRCompany(null);
   updatePRDiv();
   const vatEl=document.querySelector('input[name="vatMode"][value="exclusive"]');
   if(vatEl) vatEl.checked=true;
@@ -3373,7 +3418,7 @@ function viewPR(id){
   document.getElementById('prDetailModal').classList.add('open');
 }
 
-async function requestPaymentPR(id){
+function requestPaymentPR(id){
   const pr=payRequests.find(x=>x.id===id);
   if(!pr) return;
 
@@ -3386,7 +3431,6 @@ async function requestPaymentPR(id){
 
   closePRDetail();
   // Load fresh companies/divisions from Supabase — picks up any future additions
-  const freshReqCos=await loadCompanies();
 
   // Reset form state
   currentPRType=pr.request_type||'Material';
@@ -3397,32 +3441,11 @@ async function requestPaymentPR(id){
   if(tb) tb.classList.add('active');
   document.getElementById('prManpowerRow').style.display=currentPRType==='Manpower'?'block':'none';
 
-  // ── Company dropdown ──
-  // Use hardcoded fallback + companies array
-  const coSel=document.getElementById('prCo');
-  coSel.innerHTML='';
-  const coList=freshReqCos; // Always fresh from loadCompanies() above
-  const userCo=currentUser&&currentUser.company?currentUser.company:null;
-  coList.filter(co=>!userCo||co.id.toUpperCase().startsWith(userCo)).forEach(co=>{
-    const o=document.createElement('option');
-    o.value=co.id; o.textContent=co.name;
-    if(co.id===pr.company_id) o.selected=true;
-    coSel.appendChild(o);
-  });
-
-  // ── Division dropdown ──
-  const divSel=document.getElementById('prDiv');
-  divSel.innerHTML='';
-  const prCoId=pr.company_id||coSel.value;
-  const coObj=coList.find(co=>co.id===prCoId);
-  const divs=coObj?coObj.divisions:[];
-  const prDivCode=(pr.division||'').split('.')[0].trim();
-  divs.forEach(d=>{
-    const o=document.createElement('option');
-    o.value=d.code+'. '+d.name; o.textContent=d.code+'. '+d.name;
-    if(d.code===prDivCode) o.selected=true;
-    divSel.appendChild(o);
-  });
+  // ── Populate Company + Division using guaranteed helpers ──
+  const prCoId = pr.company_id==='Wanofi'?'WE':pr.company_id==='Matisan'?'ME':pr.company_id;
+  const prDivCode = (pr.division||'').split('.')[0].trim();
+  populatePRCompany(prCoId);
+  populatePRDivision(prDivCode);
 
   // ── Subdivision (ME1 sites) ──
   updatePRSub();
