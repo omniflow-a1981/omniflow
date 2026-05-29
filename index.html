@@ -3340,7 +3340,6 @@ function viewPR(id){
 }
 
 function requestPaymentPR(id){
-  // Open a new PR pre-filled with the pending balance from the original PR
   const pr=payRequests.find(x=>x.id===id);
   if(!pr) return;
 
@@ -3349,100 +3348,142 @@ function requestPaymentPR(id){
     ? parseFloat(pr.net_payable)-partial
     : parseFloat(pr.net_payable||0);
 
-  if(!confirm('Create a new payment request for the pending balance of '+fmt(pendingAmt)+'?\n\nThis will open a fresh request form pre-filled with the original details.\nIt will go through the full workflow: Prepared → Checked → Approved → Verified → Paid.')) return;
+  if(!confirm('Create a new payment request for the pending balance of '+fmt(pendingAmt)+'?\n\nGoes through full workflow: Prepared → Checked → Approved → Verified → Paid')) return;
 
-  // Open the PR modal pre-filled
   closePRDetail();
 
-  // Reset form
+  // Reset form state
+  currentPRType=pr.request_type||'Material';
   document.getElementById('prEditId').value='';
-  document.getElementById('prItemsBody').innerHTML='';
-  document.getElementById('prDate').value=new Date().toISOString().slice(0,10);
-  ['prProject','prLocation','prClient','prClientAlt','prConsultant','prNote'].forEach(id2=>{
-    const el=document.getElementById(id2); if(el) el.value='';
+  document.getElementById('prType').value=currentPRType;
+  document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active'));
+  const tb=document.getElementById('prTypeBtn-'+currentPRType);
+  if(tb) tb.classList.add('active');
+  document.getElementById('prManpowerRow').style.display=currentPRType==='Manpower'?'block':'none';
+
+  // ── Company dropdown ──
+  // Use hardcoded fallback + companies array
+  const coSel=document.getElementById('prCo');
+  coSel.innerHTML='';
+  const coList=companies.length>0 ? companies : [
+    {id:'WE',name:'Wanofi Engineering Plc',divisions:[{code:'WE1',name:'Design'},{code:'WE2',name:'Supervision'},{code:'WE3',name:'Others'}]},
+    {id:'ME',name:'Matisan Engineering Plc',divisions:[{code:'ME1',name:'Construction'},{code:'ME2',name:'Export'},{code:'ME3',name:'Import'}]}
+  ];
+  const userCo=currentUser&&currentUser.company?currentUser.company:null;
+  coList.filter(co=>!userCo||co.id.toUpperCase().startsWith(userCo)).forEach(co=>{
+    const o=document.createElement('option');
+    o.value=co.id; o.textContent=co.name;
+    if(co.id===pr.company_id) o.selected=true;
+    coSel.appendChild(o);
   });
 
-  // Set type
-  const prType=pr.request_type||'Material';
-  currentPRType=prType;
-  document.getElementById('prType').value=prType;
-  document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active'));
-  const tb=document.getElementById('prTypeBtn-'+prType); if(tb) tb.classList.add('active');
-  document.getElementById('prManpowerRow').style.display=prType==='Manpower'?'block':'none';
+  // ── Division dropdown ──
+  const divSel=document.getElementById('prDiv');
+  divSel.innerHTML='';
+  const prCoId=pr.company_id||coSel.value;
+  const coObj=coList.find(co=>co.id===prCoId);
+  const fallbackDivs={
+    WE:[{code:'WE1',name:'Design'},{code:'WE2',name:'Supervision'},{code:'WE3',name:'Others'}],
+    ME:[{code:'ME1',name:'Construction'},{code:'ME2',name:'Export'},{code:'ME3',name:'Import'}]
+  };
+  const divs=coObj?coObj.divisions:(fallbackDivs[prCoId]||[]);
+  const prDivCode=(pr.division||'').split('.')[0].trim();
+  divs.forEach(d=>{
+    const o=document.createElement('option');
+    o.value=d.code+'. '+d.name; o.textContent=d.code+'. '+d.name;
+    if(d.code===prDivCode) o.selected=true;
+    divSel.appendChild(o);
+  });
 
-  // Set company
-  const coSel=document.getElementById('prCo'); coSel.innerHTML='';
-  const userCo=currentUser&&currentUser.company?currentUser.company:null;
-  const visCos=companies.filter(co=>!userCo||co.id.toUpperCase().startsWith(userCo));
-  if(visCos.length){
-    visCos.forEach(co=>{const o=document.createElement('option');o.value=co.id;o.textContent=co.name;if(co.id===pr.company_id)o.selected=true;coSel.appendChild(o);});
-  }
-  updatePRDiv();
-
-  // Set division
-  setTimeout(()=>{
-    const divSel=document.getElementById('prDiv');
-    for(let o of divSel.options){
-      const code=o.value.split('.')[0].trim();
-      if(code===(pr.division||'').split('.')[0].trim()){o.selected=true;break;}
-    }
-    updatePRSub();
-    // Set subdivision
+  // ── Subdivision (ME1 sites) ──
+  updatePRSub();
+  if(pr.sub_project){
     setTimeout(()=>{
-      if(pr.sub_project){
-        const subSel=document.getElementById('prSub');
-        if(subSel){
-          for(let o of subSel.options){if(o.value===pr.sub_project){o.selected=true;break;}}
-          updatePRSubClient();
-        }
+      const subSel=document.getElementById('prSub');
+      if(subSel){
+        for(let o of subSel.options){if(o.value===pr.sub_project){o.selected=true;break;}}
+        updatePRSubClient();
       }
-      // Set other fields
-      document.getElementById('prProject').value=pr.project||'';
-      document.getElementById('prLocation').value=pr.location||'';
-      const clientEl=document.getElementById('prClient');
-      const clientAltEl=document.getElementById('prClientAlt');
-      if(clientEl) clientEl.value=pr.client||'';
-      if(clientAltEl) clientAltEl.value=pr.client||'';
-      document.getElementById('prConsultant').value=pr.consultant||'';
-      document.getElementById('prNote').value='Pending balance request from: '+pr.project+' (original net: '+fmt(pr.net_payable)+', already paid: '+fmt(partial)+')';
+    },30);
+  }
 
-      // Set VAT mode
-      const vatEl=document.querySelector('input[name="vatMode"][value="'+(pr.vat_mode||'exclusive')+'"]');
-      if(vatEl) vatEl.checked=true;
+  // ── Fill text fields ──
+  document.getElementById('prDate').value=new Date().toISOString().slice(0,10);
+  document.getElementById('prProject').value=pr.project||'';
+  document.getElementById('prLocation').value=pr.location||'';
+  const cEl=document.getElementById('prClient'), caEl=document.getElementById('prClientAlt');
+  if(cEl) cEl.value=pr.client||'';
+  if(caEl) caEl.value=pr.client||'';
+  document.getElementById('prConsultant').value=pr.consultant||'';
+  document.getElementById('prNote').value=
+    'Pending balance request. Original project: '+pr.project+
+    ' | Original net: '+fmt(pr.net_payable)+
+    ' | Already paid: '+fmt(partial)+
+    ' | This request: '+fmt(pendingAmt);
 
-      // Pre-fill items with pending amount
-      buildPRHead(prType);
-      document.getElementById('prItemsBody').innerHTML='';
-      // Load original items but adjust "to_be_paid" to pending balance proportionally
-      const origItems=JSON.parse(pr.items||'[]');
-      if(origItems.length>0){
-        // Calculate ratio of pending vs original
-        const origTotal=origItems.reduce((s,i)=>s+(i.to_be_paid||0),0);
-        const ratio=origTotal>0?pendingAmt/origTotal:1;
-        origItems.forEach(it=>{
-          addPRItem({
-            item_name:it.item_name,
-            description:it.description,
-            unit:it.unit,
-            qty:it.qty,
-            unit_rate:it.unit_rate,
-            amount:it.amount,
-            to_be_paid:Math.round((it.to_be_paid||0)*ratio),
-            transfer_to:it.transfer_to
-          });
-        });
-      } else {
-        // Single row with pending amount
-        addPRItem({item_name:'Pending Balance',description:'Remaining from: '+pr.project,to_be_paid:Math.round(pendingAmt)});
-      }
-      calcPRTotals();
-      resetPRAttachments();
-    },50);
-  },50);
+  // ── VAT ──
+  const vatEl=document.querySelector('input[name="vatMode"][value="'+(pr.vat_mode||'exclusive')+'"]');
+  if(vatEl) vatEl.checked=true;
+
+  // ── Items — pre-fill with proportional pending amounts ──
+  buildPRHead(currentPRType);
+  document.getElementById('prItemsBody').innerHTML='';
+  const origItems=JSON.parse(pr.items||'[]');
+  if(origItems.length>0){
+    const origTotal=origItems.reduce((s,i)=>s+(parseFloat(i.to_be_paid)||0),0);
+    const ratio=origTotal>0?pendingAmt/origTotal:1;
+    origItems.forEach(it=>{
+      addPRItem({
+        item_name:it.item_name,
+        description:it.description,
+        unit:it.unit,
+        qty:it.qty,
+        unit_rate:it.unit_rate,
+        amount:it.amount,
+        to_be_paid:Math.round((parseFloat(it.to_be_paid)||0)*ratio),
+        transfer_to:it.transfer_to
+      });
+    });
+  } else {
+    addPRItem({item_name:'Pending Balance',description:'Remaining from: '+pr.project,to_be_paid:Math.round(pendingAmt)});
+  }
+  calcPRTotals();
+
+  // ── Attachments: carry over from original PR for reference ──
+  resetPRAttachments();
+  // Show original attachments as reference in the modal note area
+  let refHtml='';
+  if(pr.pre_invoice||pr.post_invoice||pr.transfer_slip){
+    refHtml='<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:9px;padding:10px 14px;margin-bottom:10px">';
+    refHtml+='<div style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:6px">📎 Original PR Attachments (for reference)</div>';
+    refHtml+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
+    if(pr.pre_invoice){
+      try{const a=JSON.parse(pr.pre_invoice);refHtml+=`<button onclick="viewAttachment('${a.data}','${a.name}')" class="btn-secondary" style="font-size:11px;padding:4px 10px">📄 Pre-Invoice: ${a.name}</button>`;}catch(e){}
+    }
+    if(pr.post_invoice){
+      try{const a=JSON.parse(pr.post_invoice);refHtml+=`<button onclick="viewAttachment('${a.data}','${a.name}')" class="btn-secondary" style="font-size:11px;padding:4px 10px">📄 Post-Invoice: ${a.name}</button>`;}catch(e){}
+    }
+    if(pr.transfer_slip){
+      try{const a=JSON.parse(pr.transfer_slip);refHtml+=`<button onclick="viewAttachment('${a.data}','${a.name}')" class="btn-secondary" style="font-size:11px;padding:4px 10px;background:var(--teal-light);color:var(--teal-dark)">🧾 Transfer Slip: ${a.name}</button>`;}catch(e){}
+    }
+    refHtml+='</div></div>';
+  }
+  // Insert reference attachments before the invoice upload section
+  const invSection=document.querySelector('#prModal .pr-totals');
+  if(invSection&&refHtml){
+    // Find note field and insert after it
+    const noteWrap=document.querySelector('#prNote')?.closest('.ff');
+    if(noteWrap){
+      const refDiv=document.createElement('div');
+      refDiv.innerHTML=refHtml;
+      noteWrap.parentNode.insertBefore(refDiv.firstElementChild,noteWrap.nextSibling);
+    }
+  }
 
   document.getElementById('prModal').classList.add('open');
-  showFlash('📢 New request opened for pending balance of '+fmt(pendingAmt),'prFlash','prFlashMsg');
+  showFlash('New request opened — pending balance: '+fmt(pendingAmt),'prFlash','prFlashMsg');
 }
+
 
 async function cancelPR(id){
   const pr=payRequests.find(x=>x.id===id); if(!pr) return;
