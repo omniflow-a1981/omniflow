@@ -893,33 +893,35 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     </div>
     <div class="ff" style="margin-bottom:14px"><label>Note</label><textarea id="prNote" style="min-height:46px" placeholder="Remarks..."></textarea></div>
 
-    <!-- Invoice Upload -->
-    <div style="background:var(--bg);border-radius:10px;padding:12px 14px;margin-bottom:14px">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">Invoice Attachment</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div>
-          <div style="font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:5px">Pre-Payment Invoice <span style="color:var(--red)">*</span></div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Required before payment</div>
-          <label class="upload-zone" id="preInvZone" style="display:block">
-            <input type="file" id="preInvFile" accept="image/*,.pdf" style="display:none" onchange="handleInvUpload(this,'pre')">
-            <div id="preInvLabel">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="color:var(--muted2)"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <div style="font-size:11px;color:var(--muted);margin-top:4px">Click to upload</div>
-            </div>
-          </label>
-        </div>
-        <div>
-          <div style="font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:5px">Post-Payment Invoice</div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">For invoices collected after payment</div>
-          <label class="upload-zone" id="postInvZone" style="display:block">
-            <input type="file" id="postInvFile" accept="image/*,.pdf" style="display:none" onchange="handleInvUpload(this,'post')">
-            <div id="postInvLabel">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="color:var(--muted2)"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <div style="font-size:11px;color:var(--muted);margin-top:4px">Click to upload</div>
-            </div>
-          </label>
-        </div>
+    <!-- Invoice Attachment with type selection -->
+    <div style="background:var(--bg);border-radius:10px;padding:12px 14px;margin-bottom:14px" id="invAttachSection">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">
+        Invoice Attachment <span style="color:var(--red)">*</span>
       </div>
+      <!-- Type toggle -->
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button type="button" class="pr-type-btn active" id="invTypePre" onclick="setInvType('pre',this)">
+          📄 Pre-Payment Invoice
+        </button>
+        <button type="button" class="pr-type-btn" id="invTypePost" onclick="setInvType('post',this)">
+          📋 Post-Payment Invoice
+        </button>
+      </div>
+      <!-- Type descriptions -->
+      <div id="invTypeDesc" style="font-size:11px;color:var(--muted);margin-bottom:8px">
+        Required before payment is processed
+      </div>
+      <!-- Upload zone — shared, type changes what gets stored -->
+      <label class="upload-zone" id="preInvZone" style="display:block">
+        <input type="file" id="invFileInput" accept="image/*,.pdf" style="display:none" onchange="handleInvUpload(this)">
+        <div id="preInvLabel" style="text-align:center;padding:4px 0">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--muted2)"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">Click to upload invoice</div>
+          <div style="font-size:10px;color:var(--muted2);margin-top:2px">JPG, PNG or PDF</div>
+        </div>
+      </label>
+      <!-- Attached files summary -->
+      <div id="invSummary" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"></div>
     </div>
     <div class="btn-row">
       <button class="btn-primary" onclick="savePR()">Save & Submit for Review</button>
@@ -1109,7 +1111,7 @@ function startRealtime(){
   setInterval(async ()=>{
     if(!authToken) return;
     // Skip poll for 10 seconds after PR payment to protect local state
-    if(Date.now() - lastPRPaymentTime < 10000) return;
+    if(Date.now() - lastPRPaymentTime < 30000) return; // Pause after PR payment
     try {
       const res = await fetch(
         "https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?select=*&order=date.desc,created_at.desc",
@@ -2859,19 +2861,64 @@ function calcPRRow(el){
 // File attachments stored as base64 in prAttachments object
 let prAttachments = {pre_invoice:null, post_invoice:null, transfer_slip:null};
 
-function handleInvUpload(input, type){
+let currentInvType = 'pre'; // Track which type is selected
+
+function setInvType(type, btn){
+  currentInvType = type;
+  document.querySelectorAll('#invTypePre,#invTypePost').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const desc = document.getElementById('invTypeDesc');
+  if(desc){
+    desc.textContent = type==='pre'
+      ? 'Required before payment is processed'
+      : 'For invoices collected after purchase or payment';
+  }
+  // Show already-attached file for this type if exists
+  updateInvSummary();
+}
+
+function handleInvUpload(input){
   const file = input.files[0]; if(!file) return;
+  const type = currentInvType;
   const reader = new FileReader();
-  const zone = document.getElementById(type==='pre'?'preInvZone':'postInvZone');
-  const label = document.getElementById(type==='pre'?'preInvLabel':'postInvLabel');
   reader.onload = function(e){
-    const b64 = e.target.result;
-    if(type==='pre') prAttachments.pre_invoice = {name:file.name, data:b64, type:file.type};
-    else prAttachments.post_invoice = {name:file.name, data:b64, type:file.type};
-    if(zone) zone.classList.add('has-file');
-    if(label) label.innerHTML = '<div class="upload-thumb"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg><span style="color:var(--teal-dark);font-weight:600">'+file.name+'</span></div>';
+    const att = {name:file.name, data:e.target.result, type:file.type};
+    if(type==='pre') prAttachments.pre_invoice = att;
+    else prAttachments.post_invoice = att;
+    // Reset file input so same file can be re-selected
+    input.value='';
+    updateInvSummary();
+    // Visual feedback on zone
+    const zone = document.getElementById('preInvZone');
+    if(zone){ zone.classList.add('has-file'); }
   };
   reader.readAsDataURL(file);
+}
+
+function updateInvSummary(){
+  const summary = document.getElementById('invSummary');
+  if(!summary) return;
+  const items = [];
+  if(prAttachments.pre_invoice){
+    items.push(`<div class="upload-thumb" style="cursor:pointer" onclick="viewAttachment(prAttachments.pre_invoice.data,prAttachments.pre_invoice.name)">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+      <span style="color:var(--teal-dark);font-weight:600">📄 Pre: ${prAttachments.pre_invoice.name}</span>
+      <button onclick="event.stopPropagation();prAttachments.pre_invoice=null;updateInvSummary()" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px;margin-left:4px">×</button>
+    </div>`);
+  }
+  if(prAttachments.post_invoice){
+    items.push(`<div class="upload-thumb" style="cursor:pointer" onclick="viewAttachment(prAttachments.post_invoice.data,prAttachments.post_invoice.name)">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+      <span style="color:var(--teal-dark);font-weight:600">📋 Post: ${prAttachments.post_invoice.name}</span>
+      <button onclick="event.stopPropagation();prAttachments.post_invoice=null;updateInvSummary()" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px;margin-left:4px">×</button>
+    </div>`);
+  }
+  summary.innerHTML = items.join('') || '';
+  // Update zone state
+  const zone = document.getElementById('preInvZone');
+  if(zone){
+    zone.classList.toggle('has-file', !!(prAttachments.pre_invoice||prAttachments.post_invoice));
+  }
 }
 
 function handleSlipUpload(input){
@@ -3866,7 +3913,6 @@ async function createPRLedgerEntry(pr, transferId, payMethod){
     + (parseFloat(pr.partial_amount||0)>0 ? " (Partial)" : "");
 
   // STEP 1: Add to local transactions array IMMEDIATELY
-  // This ensures renderAll() sees the new outflow right away
   const tempId = "pr-" + Date.now();
   const localTx = {
     id: tempId,
@@ -3883,8 +3929,11 @@ async function createPRLedgerEntry(pr, transferId, payMethod){
   transactions.unshift(localTx);
   ls("omni-tx", transactions);
 
-  // STEP 2: Render immediately — dashboard, ledger, balances all update NOW
+  // STEP 2: Render immediately
   renderAll();
+
+  // Pause polling for 30 seconds so it doesn't overwrite before Supabase confirms
+  lastPRPaymentTime = Date.now();
 
   // STEP 3: Save to Supabase (await to confirm)
   // Log what we're about to save for debugging
@@ -3923,7 +3972,24 @@ async function createPRLedgerEntry(pr, transferId, payMethod){
         if(tx){ tx.id = realId; }
         ls("omni-tx", transactions);
       }
-      // Render again with confirmed data
+      // Reload transactions from Supabase to get confirmed state
+      try{
+        const txRes=await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?select=*&order=date.desc,created_at.desc&limit=200',
+          {headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE'}});
+        if(txRes.ok){
+          const fresh=await txRes.json();
+          if(Array.isArray(fresh)&&fresh.length>0){
+            transactions=fresh.map(t=>({
+              id:t.id, date:t.date, co:t.company_id,
+              divCode:t.div_code, divName:t.div_name,
+              type:t.type, amt:parseFloat(t.amt)||0,
+              amtUsd:t.amt_usd?parseFloat(t.amt_usd):null,
+              ref:t.ref, note:t.note||''
+            }));
+            ls('omni-tx',transactions);
+          }
+        }
+      }catch(ex){console.warn('Post-payment reload failed:',ex.message);}
       renderAll();
     } else {
       const errTxt = await res.text();
