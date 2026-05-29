@@ -857,7 +857,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     <div id="prManpowerRow" style="display:none;margin-bottom:10px">
       <div class="ff"><label>Labour Category</label>
         <select id="prManpowerCat">
-          <option>Non-Skilled</option><option>Subcontract (International)</option>
+          <option>Skilled</option><option>Non-Skilled</option><option>Subcontract (International)</option>
         </select>
       </div>
     </div>
@@ -2999,8 +2999,10 @@ function renderPRList(){
     const canAct=next!=='complete'&&next!=='prepared'&&prCanAct(pr,next);
     const typeTag=pr.request_type?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--border2);color:var(--muted);font-weight:600">${pr.request_type}</span>`:''
     const partialAmt=parseFloat(pr.partial_amount||0)
-    const pendingAmt=prNextStep(pr)==='paid'&&partialAmt>0?pr.net_payable-partialAmt:prNextStep(pr)==='paid'&&!pr.paid_by?pr.net_payable:0
-    const pendingTag=pendingAmt>0?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#fee2e2;color:#991b1b;font-weight:700">⏳ Pending: ${fmt(pendingAmt)}</span>`:'';
+    // Pending = verified but not paid, OR partial payment done with remainder pending
+    const isPending=(prNextStep(pr)==='paid')||(prNextStep(pr)==='complete'&&partialAmt>0&&partialAmt<pr.net_payable)
+    const pendingAmt=isPending?(partialAmt>0&&partialAmt<pr.net_payable?pr.net_payable-partialAmt:pr.net_payable):0
+    const pendingTag=pendingAmt>0?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#fef3c7;color:#92400e;font-weight:700">⏳ Pending: ${fmt(pendingAmt)}</span>`:'';
     const subTag=pr.sub_project?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#dbeafe;color:#1e40af;font-weight:600">${pr.sub_project}</span>`:'';
     return `<div class="pr-card">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
@@ -3099,8 +3101,8 @@ function viewPR(id){
       <div class="pr-total-row"><span style="font-weight:700">Grand Total</span><span style="font-weight:800;color:var(--teal-dark)">${fmt(pr.grand_total)}</span></div>
       ${withholdRow}
       <div class="pr-total-row" style="border-top:1px solid var(--border);margin-top:4px;padding-top:6px"><span style="font-weight:800">Net Payable</span><span style="font-weight:800;font-size:16px;color:var(--teal-dark)">${fmt(pr.net_payable)}</span></div>
-      ${partialPaid>0?`<div class="pr-total-row" style="background:#fef3c7;padding:4px 8px;border-radius:6px;margin-top:4px"><span style="color:#92400e;font-weight:700">Partial Paid</span><span style="color:#92400e;font-weight:800">${fmt(partialPaid)}</span></div>`:''}
-      ${partialPaid>0?`<div class="pr-total-row" style="background:#fee2e2;padding:4px 8px;border-radius:6px"><span style="color:#991b1b;font-weight:700">Still Pending</span><span style="color:#991b1b;font-weight:800">${fmt(pendingAmt)}</span></div>`:''}
+      ${partialPaid>0?`<div class="pr-total-row" style="background:#d1fae5;padding:4px 8px;border-radius:6px;margin-top:4px"><span style="color:#065f46;font-weight:700">✓ Partial Paid</span><span style="color:#065f46;font-weight:800">${fmt(partialPaid)}</span></div>`:''}
+      ${(partialPaid>0||prNextStep(pr)==='paid')?`<div class="pr-total-row" style="background:#fef3c7;padding:4px 8px;border-radius:6px;border:1px solid #fde68a"><span style="color:#92400e;font-weight:700">⏳ Pending Payment</span><span style="color:#92400e;font-weight:800">${fmt(partialPaid>0?pendingAmt:pr.net_payable)}</span></div>`:''}
     </div>
 
     ${pr.note?`<div style="background:var(--bg);border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:10px"><strong>Note:</strong> ${pr.note}</div>`:''}
@@ -3341,6 +3343,26 @@ async function actOnPR(id){
       // Step 5: Show success
       showFlash('✓ Paid — ledger updated.','prFlash','prFlashMsg');
 
+      // Step 6: Mark outstanding payable as collected
+      try{
+        const res2=await fetch(
+          'https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/outstanding?project=like.*PR-PENDING*&company_id=eq.'+pr.company_id+'&status=neq.collected',
+          {headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE'}}
+        );
+        if(res2.ok){
+          const ops=await res2.json();
+          for(const op of (ops||[])){
+            if((op.project||'').includes(pr.project.slice(0,20))){
+              await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/outstanding?id=eq.'+op.id,{
+                method:'PATCH',
+                headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Content-Type':'application/json','Prefer':'return=representation'},
+                body:JSON.stringify({status:'collected',paid:op.amt})
+              });
+            }
+          }
+        }
+      }catch(e){console.warn('OP update failed:',e.message);}
+
       // Step 6: Notify preparer
       pushNotif(pr.prepared_by,'info',
         '✓ Payment Complete: '+pr.project,
@@ -3365,28 +3387,38 @@ async function actOnPR(id){
       await fetch(PR_SB+'/payment_requests?id=eq.'+id,{method:'PATCH',headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(upd)});
       closePRDetail(); await loadPayRequests(); renderPRList();
       showFlash('✓ Verified'+(partialAmt>0?' — partial amount: '+fmt(partialAmt):''),'prFlash','prFlashMsg');
-    // If partial payment — add remainder to Outstanding Payables
-    if(partialAmt>0 && partialAmt<pr.net_payable){
-      const pending=pr.net_payable-partialAmt;
-      try{
+    // Link to Outstanding Payables
+    try{
+      const divCode=(upd.division||pr.division||'').split('.')[0].trim();
+      if(partialAmt>0 && partialAmt<pr.net_payable){
+        // Partial: add remainder as outstanding payable
+        const pending=pr.net_payable-partialAmt;
         await fetch(SUPA_URL+'/outstanding',{
           method:'POST',
           headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
           body:JSON.stringify({
-            co:pr.company_id,
             company_id:pr.company_id,
-            div:pr.division,
+            div_code:divCode,
             client:pr.client||pr.project,
-            project:pr.project+' (PR Pending)',
-            amt:pending,
-            paid:0,
-            status:'pending',
-            type:'payable',
-            note:'Pending PR payment after partial verification. PR ref: '+pr.project
+            project:'[PR-PENDING] '+pr.project,
+            amt:pending, paid:0, status:'pending',
+            note:'Pending balance after partial payment. Full amount: '+fmt(pr.net_payable)+' Paid: '+fmt(partialAmt)
           })
         });
-      }catch(e){console.warn('Outstanding payable create failed:',e.message);}
-    }
+        // Also add to local payables array for immediate display
+        payables.push({
+          id:'pr-'+Date.now(), co:pr.company_id, div:pr.division,
+          supplier:pr.client||pr.project,
+          desc:'[PR Pending] '+pr.project,
+          amt:Math.round(pending), paid:0, status:'unpaid',
+          due:'', note:'Pending from PR partial payment'
+        });
+        ls('omni-payables', payables);
+      } else {
+        // Full payment verified — ensure no pending payable remains
+        // (will be cleaned up when marked paid)
+      }
+    }catch(e){console.warn('Outstanding payable create failed:',e.message);}
     }catch(e){alert('Failed: '+e.message);}
     return;
   }
