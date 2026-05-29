@@ -1069,16 +1069,37 @@ function startRealtime(){
   if(!authToken) return;
   // Supabase realtime via REST polling (simple, no extra deps needed)
   // Poll every 8 seconds to keep data fresh across devices
+  let lastPRPaymentTime = 0;
   setInterval(async ()=>{
-    if(!isOnline || !authToken) return;
+    if(!authToken) return;
+    // Skip poll for 10 seconds after PR payment to protect local state
+    if(Date.now() - lastPRPaymentTime < 10000) return;
     try {
-      const fresh = await apiCall('GET', '/transactions');
-      if(JSON.stringify(fresh) !== JSON.stringify(transactions)){
-        transactions = fresh;
+      const res = await fetch(
+        "https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?select=*&order=date.desc,created_at.desc",
+        {headers:{"apikey":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE"}}
+      );
+      if(!res.ok) return;
+      const fresh = await res.json();
+      if(!Array.isArray(fresh)) return;
+      const mapped = fresh.map(t=>({
+        id:t.id, date:t.date, co:t.company_id,
+        divCode:t.div_code, divName:t.div_name,
+        type:t.type, amt:parseFloat(t.amt)||0,
+        amtUsd:t.amt_usd?parseFloat(t.amt_usd):null,
+        ref:t.ref, note:t.note||''
+      }));
+      // Check if anything changed (count or IDs or amounts)
+      const sig = t => String(t.id)+':'+t.amt;
+      if(mapped.length !== transactions.length ||
+         mapped.map(sig).join() !== transactions.map(sig).join()){
+        transactions = mapped;
+        ls('omni-tx', transactions);
         renderAll();
+        showSync('ok','Synced ✓');
       }
-    } catch(e){}
-  }, 8000);
+    } catch(e){ console.warn('Poll:', e.message); }
+  }, 5000);
 }
 
 // ── USER DEFINITIONS ──
@@ -3171,18 +3192,36 @@ async function actOnPR(id){
     if(!confirm('Confirm payment of '+fmt(pr.net_payable)+' has been PAID?')) return;
     const tid=tel.value.trim(), pm=mel?mel.value:'Bank Transfer', cmt=cel?cel.value.trim():'';
     try{
-      await fetch(PR_SB+'/payment_requests?id=eq.'+id,{method:'PATCH',headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({paid_by:currentUser.username,paid_at:new Date().toISOString(),status:'paid',transfer_id:tid,pay_method:pm,paid_comment:cmt})});
-      await createPRLedgerEntry(pr,tid,pm);
-      closePRDetail(); await loadPayRequests(); renderPRList();
-      showFlash('✓ Paid — transaction added to ledger.','prFlash','prFlashMsg');
-      // Notify preparer payment is complete
+      // Step 1: Mark PR as paid in Supabase
+      await fetch(PR_SB+'/payment_requests?id=eq.'+id,{
+        method:'PATCH',
+        headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
+        body:JSON.stringify({paid_by:currentUser.username,paid_at:new Date().toISOString(),status:'paid',transfer_id:tid,pay_method:pm,paid_comment:cmt})
+      });
+
+      // Step 2: Create ledger transaction (saves to Supabase + updates local array + calls renderAll)
+      lastPRPaymentTime = Date.now();
+      await createPRLedgerEntry(pr, tid, pm);
+
+      // Step 3: Close modal
+      closePRDetail();
+
+      // Step 4: Reload PR list only (NOT transactions — already updated above)
+      await loadPayRequests();
+      renderPRList();
+
+      // Step 5: Show success
+      showFlash('✓ Paid — ledger updated.','prFlash','prFlashMsg');
+
+      // Step 6: Notify preparer
       pushNotif(pr.prepared_by,'info',
         '✓ Payment Complete: '+pr.project,
         'Your payment request of '+fmt(pr.net_payable)+' has been paid. Transfer: '+tid,
         pr.id
       );
       loadNotifs();
-    }catch(e){alert('Failed: '+e.message);}
+
+    }catch(e){alert('Payment failed: '+e.message);}
     return;
   }
 
@@ -3228,76 +3267,91 @@ async function actOnPR(id){
 
 
 async function createPRLedgerEntry(pr, transferId, payMethod){
+  // Parse amount: partial if set, else full net payable
   const paidAmt = parseFloat(pr.partial_amount||0) > 0
     ? parseFloat(pr.partial_amount)
     : parseFloat(pr.net_payable||0);
 
-  const parts = (pr.division||'').split('.');
-  const divCode = parts[0].trim();
-  const divName = parts.length > 1 ? parts.slice(1).join('.').trim() : parts[0].trim();
-  const coId = pr.company_id || '';
+  // Parse division string: "ME1. Construction" -> code="ME1", name="Construction"
+  const rawDiv = (pr.division||"");
+  const dotIdx = rawDiv.indexOf(".");
+  const divCode = dotIdx > -1 ? rawDiv.slice(0, dotIdx).trim() : rawDiv.trim();
+  const divName = dotIdx > -1 ? rawDiv.slice(dotIdx+1).trim() : rawDiv.trim();
+  const coId = pr.company_id || "";
   const today = new Date().toISOString().slice(0,10);
 
-  const ref = (pr.request_type||'Payment') + ': ' + pr.project
-    + (pr.sub_project ? ' [' + pr.sub_project + ']' : '')
-    + (transferId ? ' | TRF:' + transferId : '');
-  const note = 'PR Payment: ' + payMethod
-    + (transferId ? ' Ref:' + transferId : '')
-    + (parseFloat(pr.partial_amount||0)>0 ? ' (Partial)' : '');
+  const ref = (pr.request_type||"Payment") + ": " + pr.project
+    + (pr.sub_project ? " [" + pr.sub_project + "]" : "")
+    + (transferId ? " | TRF:" + transferId : "");
+  const txNote = "PR Payment: " + payMethod
+    + (transferId ? " Ref:" + transferId : "")
+    + (parseFloat(pr.partial_amount||0)>0 ? " (Partial)" : "");
 
+  // STEP 1: Add to local transactions array IMMEDIATELY
+  // This ensures renderAll() sees the new outflow right away
+  const tempId = "pr-" + Date.now();
+  const localTx = {
+    id: tempId,
+    date: today,
+    co: coId,
+    divCode: divCode,
+    divName: divName,
+    type: "out",
+    amt: paidAmt,
+    amtUsd: null,
+    ref: ref,
+    note: txNote
+  };
+  transactions.unshift(localTx);
+  ls("omni-tx", transactions);
+
+  // STEP 2: Render immediately — dashboard, ledger, balances all update NOW
+  renderAll();
+
+  // STEP 3: Save to Supabase in background (async, non-blocking)
   const hdrs = {
-    apikey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
-    Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
-    'Content-Type': 'application/json',
-    Prefer: 'return=representation'
+    "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE",
+    "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE",
+    "Content-Type": "application/json",
+    "Prefer": "return=representation"
   };
 
-  // Save to Supabase
-  let savedId = null;
   try {
-    const res = await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions', {
-      method: 'POST',
+    const res = await fetch("https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions", {
+      method: "POST",
       headers: hdrs,
       body: JSON.stringify({
         company_id: coId,
         div_code: divCode,
         div_name: divName,
         date: today,
-        type: 'out',
+        type: "out",
         amt: paidAmt,
         amt_usd: null,
         ref: ref,
-        note: note,
-        created_by: currentUser ? currentUser.username : 'finance'
+        note: txNote,
+        created_by: currentUser ? currentUser.username : "finance"
       })
     });
+
     if(res.ok){
       const saved = await res.json();
-      savedId = (Array.isArray(saved) ? saved[0]?.id : saved?.id) || null;
+      const realId = (Array.isArray(saved) ? saved[0]?.id : saved?.id) || null;
+      if(realId){
+        // Replace temp ID with real Supabase ID in local array
+        const tx = transactions.find(t => t.id === tempId);
+        if(tx){ tx.id = realId; }
+        ls("omni-tx", transactions);
+      }
     } else {
-      console.error('PR ledger error:', res.status, await res.text());
+      const errTxt = await res.text();
+      console.error("PR ledger Supabase error:", res.status, errTxt);
+      // Transaction still in local array — will sync on next poll
     }
-  } catch(e){ console.error('PR ledger failed:', e.message); }
-
-  // Add to local transactions immediately
-  const localTx = {
-    id: savedId || ('pr-' + Date.now()),
-    date: today,
-    co: coId,
-    divCode: divCode,
-    divName: divName,
-    type: 'out',
-    amt: paidAmt,
-    amtUsd: null,
-    ref: ref,
-    note: note
-  };
-  transactions.unshift(localTx);
-  ls('omni-tx', transactions);
-
-  // Re-render everything immediately
-  renderAll();
-  console.log('PR paid: divCode=', divCode, 'amt=', paidAmt, 'tx count=', transactions.length);
+  } catch(e){
+    console.error("PR ledger fetch error:", e.message);
+    // Transaction still in local array
+  }
 }
 
 // ══════════════════════════════════════
