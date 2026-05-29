@@ -2928,25 +2928,36 @@ function addPRItem(it){
 }
 
 async function loadCompanies(){
-  // Always fetch fresh from Supabase — picks up any new divisions/subdivisions
   try{
-    const res=await fetch(
-      'https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/companies?select=*,divisions(*)',
-      {headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE'}}
-    );
-    if(res.ok){
-      const fresh=await res.json();
-      if(Array.isArray(fresh)&&fresh.length>0){
-        companies=fresh;
+    const hdr={'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE'};
+    // Fetch companies and divisions separately then merge
+    const [coRes,divRes]=await Promise.all([
+      fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/companies?select=*',{headers:hdr}),
+      fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/divisions?select=*&order=code',{headers:hdr})
+    ]);
+    if(coRes.ok&&divRes.ok){
+      const coData=await coRes.json();
+      const divData=await divRes.json();
+      if(Array.isArray(coData)&&coData.length>0){
+        // Merge: attach divisions array to each company
+        companies=coData.map(co=>({
+          ...co,
+          divisions:(Array.isArray(divData)?divData.filter(d=>d.company_id===co.id):[])
+        }));
         ls('omni-companies',companies);
+        console.log('loadCompanies: loaded',companies.length,'companies',companies.map(co=>co.id+':'+co.divisions.length+'divs'));
         return companies;
       }
     }
   }catch(e){console.warn('loadCompanies failed:',e.message);}
-  // Fallback: use cached companies
+  // Fallback: cached data
   const cached=ls('omni-companies');
-  if(cached&&cached.length>0){companies=cached;return companies;}
-  // Last resort: use current companies array
+  if(cached&&Array.isArray(cached)&&cached.length>0){
+    companies=cached;
+    console.log('loadCompanies: using cache',companies.length,'companies');
+    return companies;
+  }
+  console.warn('loadCompanies: no data available');
   return companies;
 }
 
@@ -2960,22 +2971,20 @@ async function openNewPR(){
   document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active'));
   const mb=document.getElementById('prTypeBtn-Material'); if(mb) mb.classList.add('active');
   document.getElementById('prManpowerRow').style.display='none';
-  // Load fresh companies from Supabase (picks up any new additions)
-  await loadCompanies();
+  // Load fresh companies+divisions from Supabase
+  const freshCos=await loadCompanies();
 
   // Populate company — filter by user's company
   const coSel=document.getElementById('prCo'); coSel.innerHTML='';
   const userCo=currentUser&&currentUser.company?currentUser.company:null;
-  const visCos=companies.filter(co=>!userCo||co.id.toUpperCase().startsWith(userCo));
+  const visCos=freshCos.filter(co=>!userCo||co.id.toUpperCase().startsWith(userCo));
   if(visCos.length){
     visCos.forEach(co=>{const o=document.createElement('option');o.value=co.id;o.textContent=co.name;coSel.appendChild(o);});
-  }else{
-    // Fallback if companies not loaded
-    const fallback=userCo==='WE'
-      ?[{id:'WE',name:'Wanofi Engineering Plc'}]
-      :[{id:'ME',name:'Matisan Engineering Plc'}];
-    if(!userCo){[{id:'WE',name:'Wanofi Engineering Plc'},{id:'ME',name:'Matisan Engineering Plc'}].forEach(co=>{const o=document.createElement('option');o.value=co.id;o.textContent=co.name;coSel.appendChild(o);});}
-    else fallback.forEach(co=>{const o=document.createElement('option');o.value=co.id;o.textContent=co.name;coSel.appendChild(o);});
+  } else {
+    // Emergency fallback if Supabase unreachable
+    [{id:'WE',name:'Wanofi Engineering Plc'},{id:'ME',name:'Matisan Engineering Plc'}]
+      .filter(co=>!userCo||co.id.startsWith(userCo))
+      .forEach(co=>{const o=document.createElement('option');o.value=co.id;o.textContent=co.name;coSel.appendChild(o);});
   }
   updatePRDiv();
   const vatEl=document.querySelector('input[name="vatMode"][value="exclusive"]');
@@ -3377,7 +3386,7 @@ async function requestPaymentPR(id){
 
   closePRDetail();
   // Load fresh companies/divisions from Supabase — picks up any future additions
-  await loadCompanies();
+  const freshReqCos=await loadCompanies();
 
   // Reset form state
   currentPRType=pr.request_type||'Material';
@@ -3392,7 +3401,7 @@ async function requestPaymentPR(id){
   // Use hardcoded fallback + companies array
   const coSel=document.getElementById('prCo');
   coSel.innerHTML='';
-  const coList=companies; // Always fresh from loadCompanies() above
+  const coList=freshReqCos; // Always fresh from loadCompanies() above
   const userCo=currentUser&&currentUser.company?currentUser.company:null;
   coList.filter(co=>!userCo||co.id.toUpperCase().startsWith(userCo)).forEach(co=>{
     const o=document.createElement('option');
