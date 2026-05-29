@@ -2887,14 +2887,56 @@ function handleSlipUpload(input){
   reader.readAsDataURL(file);
 }
 
-function viewAttachment(dataUrl, name){
-  const win = window.open();
-  if(dataUrl.startsWith('data:image')){
-    win.document.write('<html><body style="margin:0;background:#000"><img src="'+dataUrl+'" style="max-width:100%;height:auto"></body></html>');
-  } else {
-    win.document.write('<html><body style="margin:0"><embed src="'+dataUrl+'" width="100%" height="100%" type="application/pdf"></body></html>');
+function openPRAttachment(jsonStrOrEl){
+  // Safely open an attachment stored as JSON string or from data-att element
+  try{
+    const jsonStr = typeof jsonStrOrEl==='string' ? jsonStrOrEl :
+                    (jsonStrOrEl&&jsonStrOrEl.dataset ? jsonStrOrEl.dataset.att : null);
+    if(!jsonStr){alert('No attachment data found.');return;}
+    const att = JSON.parse(jsonStr);
+    if(att && att.data) viewAttachment(att.data, att.name||'Attachment');
+    else alert('Attachment data not found.');
+  }catch(e){
+    console.error('openPRAttachment error:',e);
+    alert('Could not open attachment.');
   }
-  win.document.title = name||'Attachment';
+}
+
+function viewAttachment(dataUrl, name){
+  if(!dataUrl){alert('No attachment available.');return;}
+  // Use a modal viewer — works on mobile and avoids popup blockers
+  let viewer=document.getElementById('attachmentViewer');
+  if(!viewer){
+    viewer=document.createElement('div');
+    viewer.id='attachmentViewer';
+    viewer.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.92);z-index:99999;display:flex;flex-direction:column';
+    viewer.innerHTML=`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#0f172a;flex-shrink:0">
+        <span id="attViewerName" style="color:#fff;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%"></span>
+        <div style="display:flex;gap:8px">
+          <a id="attViewerDl" download style="font-size:12px;padding:5px 12px;background:#0ea87a;color:#fff;border-radius:6px;text-decoration:none;font-weight:600">⬇ Download</a>
+          <button onclick="document.getElementById('attachmentViewer').style.display='none'" style="font-size:13px;padding:5px 12px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700">✕ Close</button>
+        </div>
+      </div>
+      <div id="attViewerBody" style="flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:8px"></div>`;
+    document.body.appendChild(viewer);
+  }
+  document.getElementById('attViewerName').textContent=name||'Attachment';
+  const dlLink=document.getElementById('attViewerDl');
+  dlLink.href=dataUrl; dlLink.download=name||'attachment';
+  const body=document.getElementById('attViewerBody');
+  if(dataUrl.startsWith('data:image')){
+    body.innerHTML=`<img src="${dataUrl}" style="max-width:100%;max-height:calc(100vh - 60px);object-fit:contain;border-radius:4px">`;
+  } else if(dataUrl.includes('pdf')||dataUrl.startsWith('data:application/pdf')){
+    body.innerHTML=`<iframe src="${dataUrl}" style="width:100%;height:calc(100vh - 70px);border:none;border-radius:4px"></iframe>`;
+  } else {
+    body.innerHTML=`<div style="color:#fff;text-align:center;padding:20px">
+      <div style="font-size:40px;margin-bottom:12px">📄</div>
+      <div style="font-size:15px;margin-bottom:16px">${name||'File'}</div>
+      <a href="${dataUrl}" download="${name||'file'}" style="padding:10px 20px;background:#0ea87a;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">⬇ Download File</a>
+    </div>`;
+  }
+  viewer.style.display='flex';
 }
 
 function resetPRAttachments(){
@@ -3065,6 +3107,19 @@ async function savePR(){
   const mpCat=document.getElementById('prManpowerCat')?.value||'';
   const items=getPRItems();
   if(!project||!date||!items.length){alert('Please fill in date, project and at least one item.');return;}
+  // Pre-payment invoice is required
+  if(!prAttachments.pre_invoice){
+    // Highlight the upload zone
+    const zone=document.getElementById('preInvZone');
+    if(zone){
+      zone.style.borderColor='var(--red)';
+      zone.style.background='var(--red-light)';
+      setTimeout(()=>{zone.style.borderColor='';zone.style.background='';},3000);
+      zone.scrollIntoView({behavior:'smooth',block:'center'});
+    }
+    alert('⚠ Pre-Payment Invoice is required.\nPlease upload the invoice before submitting.');
+    return;
+  }
   let sub=0; items.forEach(i=>sub+=i.to_be_paid);
   let vat=0,grand=0,wh=0,net=0;
   if(vatMode==='exclusive'){vat=sub*0.15;grand=sub+vat;wh=grand*0.03;net=grand-wh;}
@@ -3401,9 +3456,15 @@ function viewPR(id){
     <div style="background:var(--bg);border-radius:10px;padding:10px 14px;margin-bottom:10px">
       <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Attachments</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${pr.pre_invoice?`<button onclick="viewAttachment(JSON.parse(pr.pre_invoice).data,JSON.parse(pr.pre_invoice).name)" class="btn-secondary" style="font-size:11px;padding:5px 10px">📄 Pre-Payment Invoice</button>`:''}
-        ${pr.post_invoice?`<button onclick="viewAttachment(JSON.parse(pr.post_invoice).data,JSON.parse(pr.post_invoice).name)" class="btn-secondary" style="font-size:11px;padding:5px 10px">📄 Post-Payment Invoice</button>`:''}
-        ${pr.transfer_slip?`<button onclick="viewAttachment(JSON.parse(pr.transfer_slip).data,JSON.parse(pr.transfer_slip).name)" class="btn-secondary" style="font-size:11px;padding:5px 10px;background:var(--teal-light);color:var(--teal-dark)">🧾 Transfer Slip</button>`:''}
+        ${(()=>{window._vprAtt=window._vprAtt||{};
+          try{if(pr.pre_invoice){window._vprAtt.pre=JSON.parse(pr.pre_invoice);}}catch(e){}
+          try{if(pr.post_invoice){window._vprAtt.post=JSON.parse(pr.post_invoice);}}catch(e){}
+          try{if(pr.transfer_slip){window._vprAtt.slip=JSON.parse(pr.transfer_slip);}}catch(e){}
+          return '';
+        })()}
+        ${pr.pre_invoice?`<button onclick="viewAttachment(window._vprAtt.pre.data,window._vprAtt.pre.name)" class="btn-secondary" style="font-size:11px;padding:5px 12px">📄 Pre-Payment Invoice</button>`:''}
+        ${pr.post_invoice?`<button onclick="viewAttachment(window._vprAtt.post.data,window._vprAtt.post.name)" class="btn-secondary" style="font-size:11px;padding:5px 12px">📄 Post-Payment Invoice</button>`:''}
+        ${pr.transfer_slip?`<button onclick="viewAttachment(window._vprAtt.slip.data,window._vprAtt.slip.name)" class="btn-secondary" style="font-size:11px;padding:5px 12px;background:var(--teal-light);color:var(--teal-dark)">🧾 Transfer Slip</button>`:''}
       </div>
     </div>`:''}
     <div class="btn-row" style="margin-top:14px;flex-wrap:wrap">
@@ -3509,15 +3570,11 @@ function requestPaymentPR(id){
     refHtml='<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:9px;padding:10px 14px;margin-bottom:10px">';
     refHtml+='<div style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:6px">📎 Original PR Attachments (for reference)</div>';
     refHtml+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
-    if(pr.pre_invoice){
-      try{const a=JSON.parse(pr.pre_invoice);refHtml+=`<button onclick="viewAttachment('${a.data}','${a.name}')" class="btn-secondary" style="font-size:11px;padding:4px 10px">📄 Pre-Invoice: ${a.name}</button>`;}catch(e){}
-    }
-    if(pr.post_invoice){
-      try{const a=JSON.parse(pr.post_invoice);refHtml+=`<button onclick="viewAttachment('${a.data}','${a.name}')" class="btn-secondary" style="font-size:11px;padding:4px 10px">📄 Post-Invoice: ${a.name}</button>`;}catch(e){}
-    }
-    if(pr.transfer_slip){
-      try{const a=JSON.parse(pr.transfer_slip);refHtml+=`<button onclick="viewAttachment('${a.data}','${a.name}')" class="btn-secondary" style="font-size:11px;padding:4px 10px;background:var(--teal-light);color:var(--teal-dark)">🧾 Transfer Slip: ${a.name}</button>`;}catch(e){}
-    }
+    // Store attachments in window cache for easy reference
+    window._prAttCache = {};
+    if(pr.pre_invoice){try{const a=JSON.parse(pr.pre_invoice);window._prAttCache.pre=a;refHtml+='<button onclick="viewAttachment(window._prAttCache.pre.data,window._prAttCache.pre.name)" class="btn-secondary" style="font-size:11px;padding:4px 10px">📄 Pre-Invoice: '+a.name+'</button>';}catch(e){}}
+    if(pr.post_invoice){try{const a=JSON.parse(pr.post_invoice);window._prAttCache.post=a;refHtml+='<button onclick="viewAttachment(window._prAttCache.post.data,window._prAttCache.post.name)" class="btn-secondary" style="font-size:11px;padding:4px 10px">📄 Post-Invoice: '+a.name+'</button>';}catch(e){}}
+    if(pr.transfer_slip){try{const a=JSON.parse(pr.transfer_slip);window._prAttCache.slip=a;refHtml+='<button onclick="viewAttachment(window._prAttCache.slip.data,window._prAttCache.slip.name)" class="btn-secondary" style="font-size:11px;padding:4px 10px;background:var(--teal-light);color:var(--teal-dark)">🧾 Transfer Slip: '+a.name+'</button>';}catch(e){}}
     refHtml+='</div></div>';
   }
   // Insert reference attachments before the invoice upload section
