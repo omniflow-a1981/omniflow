@@ -3078,7 +3078,48 @@ function renderPRList(){
   if(prFilter==='done')    list=list.filter(pr=>prNextStep(pr)==='complete');
   if(prFilter==='pending') list=getPendingPRs();
   if(!list.length){el.innerHTML='<div class="empty-state">No payment requests found.</div>';return;}
-  el.innerHTML=list.map(pr=>{
+
+  // Show summary header when in pending filter
+  let headerHtml='';
+  if(prFilter==='pending'){
+    const byCompany={};
+    list.forEach(pr=>{
+      const co=pr.company_id||'?';
+      if(!byCompany[co]) byCompany[co]={total:0,count:0,divs:{}};
+      const partial=parseFloat(pr.partial_amount||0);
+      const amt=partial>0&&partial<pr.net_payable?pr.net_payable-partial:pr.net_payable;
+      byCompany[co].total+=amt;
+      byCompany[co].count++;
+      const divKey=(pr.division||'').split('.')[0].trim()+(pr.sub_project?'/'+pr.sub_project:'');
+      byCompany[co].divs[divKey]=(byCompany[co].divs[divKey]||0)+amt;
+    });
+    const grandTotal=list.reduce((s,pr)=>{
+      const partial=parseFloat(pr.partial_amount||0);
+      return s+(partial>0&&partial<pr.net_payable?pr.net_payable-partial:pr.net_payable);
+    },0);
+    headerHtml=`<div style="background:linear-gradient(135deg,#78350f,#92400e);border-radius:12px;padding:14px 18px;margin-bottom:16px;color:#fff">
+      <div style="font-family:'DM Serif Display',serif;font-size:16px;margin-bottom:10px">⏳ Pending Payments Summary</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px">
+        <div><div style="font-size:10px;opacity:.6;text-transform:uppercase;letter-spacing:.5px">Total Pending</div><div style="font-family:'DM Serif Display',serif;font-size:22px">${fmt(grandTotal)}</div></div>
+        <div><div style="font-size:10px;opacity:.6;text-transform:uppercase;letter-spacing:.5px">Requests</div><div style="font-family:'DM Serif Display',serif;font-size:22px">${list.length}</div></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${Object.entries(byCompany).map(([co,data])=>`
+          <div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;min-width:160px">
+            <div style="font-size:11px;font-weight:700;margin-bottom:6px">${co==='WE'?'Wanofi Engineering':'Matisan Engineering'}</div>
+            <div style="font-size:12px;font-weight:800">${fmt(data.total)}</div>
+            <div style="font-size:10px;opacity:.7;margin-top:2px">${data.count} request(s)</div>
+            <div style="margin-top:6px;border-top:1px solid rgba(255,255,255,.15);padding-top:5px">
+              ${Object.entries(data.divs).map(([div,amt])=>`
+                <div style="display:flex;justify-content:space-between;font-size:10px;opacity:.8;margin-bottom:1px">
+                  <span>${div}</span><span>${fmt(amt)}</span>
+                </div>`).join('')}
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }
+  el.innerHTML=headerHtml+list.map(pr=>{
     const st=prStatusInfo(pr), next=prNextStep(pr);
     const canAct=next!=='complete'&&next!=='prepared'&&prCanAct(pr,next);
     const typeTag=pr.request_type?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--border2);color:var(--muted);font-weight:600">${pr.request_type}</span>`:''
@@ -3097,12 +3138,27 @@ function renderPRList(){
             ${typeTag}${subTag}${pendingTag}
             ${canAct?'<span style="background:var(--red-light);color:var(--red);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">● ACTION NEEDED</span>':''}
           </div>
-          <div style="font-size:11px;color:var(--muted)">${pr.division} · ${pr.company_id} · ${pr.request_date} · Net: <strong>${fmt(pr.net_payable)}</strong></div>
-          <div style="font-size:11px;color:var(--muted)">Client: ${pr.client||'—'} · By: ${prDispName(pr.prepared_by)}</div>
+          <div style="font-size:11px;color:var(--muted)">
+            <strong>${pr.company_id}</strong> · ${pr.division}${pr.sub_project?' · <span style="color:#1e40af;font-weight:700">'+pr.sub_project+'</span>':''}
+          </div>
+          <div style="font-size:11px;color:var(--muted)">${pr.request_date} · Net Payable: <strong>${fmt(pr.net_payable)}</strong>${partialAmt>0?' · <span style="color:#92400e">Partial Paid: '+fmt(partialAmt)+'</span>':''}</div>
+          <div style="font-size:11px;color:var(--muted)">Client: ${pr.client||'—'} · Prepared by: ${prDispName(pr.prepared_by)}</div>
+          ${prFilter==='pending'?`
+          <div style="margin-top:6px;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:12px">
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px">
+              <div><span style="color:var(--muted);font-size:10px">COMPANY</span><br><strong>${pr.company_id==='WE'?'Wanofi Engineering':'Matisan Engineering'}</strong></div>
+              <div><span style="color:var(--muted);font-size:10px">DIVISION</span><br><strong>${pr.division}</strong></div>
+              ${pr.sub_project?`<div><span style="color:var(--muted);font-size:10px">SITE</span><br><strong style="color:#1e40af">${pr.sub_project}</strong></div>`:''}
+              <div><span style="color:var(--muted);font-size:10px">TYPE</span><br><strong>${pr.request_type||'Material'}</strong></div>
+              <div><span style="color:var(--muted);font-size:10px">VERIFIED BY</span><br><strong>${prDispName(pr.verified_by||'—')}</strong></div>
+              <div><span style="color:var(--muted);font-size:10px">PENDING AMOUNT</span><br><strong style="color:#92400e;font-size:13px">${fmt(pendingAmt>0?pendingAmt:pr.net_payable)}</strong></div>
+            </div>
+          </div>`:``}
         </div>
         <div style="display:flex;gap:6px">
           <button onclick="viewPR('${pr.id}')" class="btn-secondary" style="font-size:11px;padding:6px 12px">View</button>
           ${canAct?`<button onclick="actOnPR('${pr.id}')" class="btn-primary" style="font-size:11px;padding:6px 14px;background:linear-gradient(135deg,#f59e0b,#d97706)">${next.charAt(0).toUpperCase()+next.slice(1)} ✓</button>`:''}
+          ${prFilter==='pending'&&next==='paid'?`<button onclick="requestPaymentPR('${pr.id}')" class="btn-secondary" style="font-size:11px;padding:6px 12px;border-color:#f59e0b;color:#92400e;font-weight:700">📢 Request Payment</button>`:''}
         </div>
       </div>
       <div class="workflow-steps">
@@ -3280,6 +3336,38 @@ function viewPR(id){
       <button onclick="closePRDetail()" class="btn-secondary">Close</button>
     </div>`;
   document.getElementById('prDetailModal').classList.add('open');
+}
+
+function requestPaymentPR(id){
+  const pr=payRequests.find(x=>x.id===id);
+  if(!pr) return;
+  // Build a clear summary message
+  const rawDiv=(pr.division||'');
+  const divCode=rawDiv.split('.')[0].trim();
+  const partial=parseFloat(pr.partial_amount||0);
+  const pendingAmt=partial>0&&partial<pr.net_payable?pr.net_payable-partial:pr.net_payable;
+  const summary=`${pr.company_id} · ${pr.division}${pr.sub_project?' · '+pr.sub_project:''}
+Project: ${pr.project}
+Client: ${pr.client||'—'}
+Pending Amount: ${fmt(pendingAmt)}
+Request Type: ${pr.request_type||'Material'}
+Verified by: ${prDispName(pr.verified_by||'—')}`;
+
+  if(!confirm('Send payment reminder to Finance?\n\n'+summary)) return;
+
+  // Notify all finance users and admins
+  USER_DEFS.filter(u=>u.username==='finance'||u.role==='admin').forEach(u=>{
+    pushNotif(u.username,'warning',
+      '📢 Payment Requested: '+pr.project,
+      prDispName(currentUser.username)+' is requesting payment of '+fmt(pendingAmt)+
+      ' for '+pr.project+' ('+pr.company_id+' · '+divCode+
+      (pr.sub_project?' · '+pr.sub_project:'')+
+      '). Please process at your earliest convenience.',
+      id
+    );
+  });
+  loadNotifs();
+  showFlash('📢 Payment reminder sent to Finance.','prFlash','prFlashMsg');
 }
 
 async function cancelPR(id){
