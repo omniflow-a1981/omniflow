@@ -807,6 +807,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     <button class="dfb-mode" id="prf-mine" onclick="filterPR('mine',this)">Mine</button>
     <button class="dfb-mode" id="prf-action" onclick="filterPR('action',this)">Needs My Action <span class="alert-dot" id="prActionDot" style="display:none"></span></button>
     <button class="dfb-mode" id="prf-done" onclick="filterPR('done',this)">Completed</button>
+    <button class="dfb-mode" id="prf-pending" onclick="filterPR('pending',this)">
+      ⏳ Pending Payments <span id="prPendingCount" style="background:var(--amber);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:3px">0</span>
+    </button>
   </div>
   <div id="prList"></div>
 </div>
@@ -1791,10 +1794,15 @@ async function addTx(){
 
   try {
     showSync('syncing','Saving...');
-    const saved = await apiCall('POST', '/transactions', payload);
-    if(!saved.queued){
-      // Map cloud response back to local format
-      const tx = {id:saved.id||Date.now(), date, co, divCode, divName:divInfo?divInfo.name:'',
+    // Direct Supabase POST for transactions
+    const txRes = await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions',{
+      method:'POST',
+      headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify(payload)
+    });
+    const saved = txRes.ok ? (await txRes.json())[0] : null;
+    if(saved && saved.id){
+      const tx = {id:saved.id, date, co, divCode, divName:divInfo?divInfo.name:'',
         type:txType, amt:finalAmt, amtUsd:amtUsd||null, ref, note:note||''};
       transactions.unshift(tx);
       ls('omni-tx', transactions);
@@ -1826,7 +1834,7 @@ function setType(t){txType=t;document.getElementById('btnIn').classList.toggle('
 async function deleteTx(id){
   if(isLimitedUser()){const tx=transactions.find(t=>t.id===id);if(!tx||!canEditTx(tx)){alert('You can only delete transactions from today or yesterday.');return;}}
   if(!confirm('Delete this transaction?'))return;
-  try{ await apiCall('DELETE','/transactions/'+id); }catch(e){}
+  try{ await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?id=eq.'+id,{method:'DELETE',headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE'}}); }catch(e){}
   transactions=transactions.filter(t=>t.id!==id);
   ls('omni-tx',transactions);
   renderAll();
@@ -1874,9 +1882,10 @@ async function saveEdit(){
   tx.note=document.getElementById('editNote').value;
   ls('omni-tx',transactions);
   try{
-    await apiCall('PATCH','/transactions/'+id,{
-      date:tx.date, company_id:tx.co, div_code:tx.divCode, div_name:tx.divName,
-      type:tx.type, amt:tx.amt, amt_usd:tx.amtUsd||null, ref:tx.ref, note:tx.note
+    await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?id=eq.'+id,{
+      method:'PATCH',
+      headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify({date:tx.date,company_id:tx.co,div_code:tx.divCode,div_name:tx.divName,type:tx.type,amt:tx.amt,amt_usd:tx.amtUsd||null,ref:tx.ref,note:tx.note})
     });
     showSync('ok','Updated in cloud ✓');
   }catch(e){ showSync('error','Saved locally — sync pending'); }
@@ -2554,79 +2563,136 @@ function deletePay(id){
 
 function renderPayables(){
   if(!document.getElementById('payKpis')) return;
-  const total=payables.reduce((s,p)=>s+p.amt,0);
-  const paid=payables.reduce((s,p)=>s+p.paid,0);
+
+  // Build PR pending items per company/division
+  const allPendingPRs = (typeof getPendingPRs === 'function') ? getPendingPRs() : [];
+  const prPendingItems = allPendingPRs.map(pr=>{
+    const partial=parseFloat(pr.partial_amount||0);
+    const pendingAmt=partial>0&&partial<pr.net_payable ? pr.net_payable-partial : pr.net_payable;
+    const rawDiv=(pr.division||'');
+    const dotIdx=rawDiv.indexOf('.');
+    const divCode=dotIdx>-1?rawDiv.slice(0,dotIdx).trim():rawDiv.trim();
+    return {
+      id:'pr-'+pr.id, co:pr.company_id, divCode:divCode,
+      div:pr.division, supplier:pr.client||pr.project,
+      desc:'[⏳ PR] '+pr.project+(pr.sub_project?' ['+pr.sub_project+']':''),
+      amt:Math.round(pendingAmt), paid:0, status:'unpaid',
+      due:'', note:'Pending PR payment. Ref: '+pr.project,
+      isPR:true, prId:pr.id,
+      vatMode:pr.vat_mode, reqType:pr.request_type,
+      verifiedBy:pr.verified_by||'—'
+    };
+  });
+
+  const allPayables=[...payables, ...prPendingItems];
+  const total=allPayables.reduce((s,p)=>s+(p.amt||0),0);
+  const paid=payables.reduce((s,p)=>s+(p.paid||0),0);
   const remaining=total-paid;
   const overdue=payables.filter(p=>p.due&&p.due<new Date().toISOString().slice(0,10)&&p.status!=='paid').length;
+  const prPendingTotal=prPendingItems.reduce((s,p)=>s+(p.amt||0),0);
 
+  // KPIs
   document.getElementById('payKpis').innerHTML=`
     <div class="out-kpi"><div class="ok-label">Total Payables</div><div class="ok-val">${fmt(total)}</div></div>
     <div class="out-kpi"><div class="ok-label">Paid so far</div><div class="ok-val" style="color:var(--teal-dark)">${fmt(paid)}</div></div>
     <div class="out-kpi"><div class="ok-label">Still Owed</div><div class="ok-val">${fmt(remaining)}</div></div>
     <div class="out-kpi"><div class="ok-label">Overdue Items</div><div class="ok-val" style="color:var(--red)">${overdue}</div></div>
+    ${prPendingItems.length?`<div class="out-kpi" style="background:var(--amber-light);border:1.5px solid #fde68a"><div class="ok-label" style="color:#92400e">⏳ PR Pending Payments</div><div class="ok-val" style="color:#92400e">${fmt(prPendingTotal)}</div><div style="font-size:10px;color:#92400e">${prPendingItems.length} request(s)</div></div>`:''}
   `;
 
-  // Priority bar — highest remaining unpaid first
-  const sorted=[...payables].filter(p=>p.status!=='paid').sort((a,b)=>(b.amt-b.paid)-(a.amt-a.paid));
-  const rnks=['r1','r2','r3','r4'];
-  const today=new Date().toISOString().slice(0,10);
-  document.getElementById('payPriorityBar').innerHTML=sorted.length===0
-    ?'<div style="color:var(--muted2);font-size:13px;padding:8px 0">All payables settled!</div>'
-    :sorted.map((p,i)=>{
-      const rem=p.amt-p.paid;
-      const isOverdue=p.due&&p.due<today;
-      return`<div class="pi">
-        <div class="pi-rank ${rnks[Math.min(i,3)]}">${i+1}</div>
-        <div class="pi-info">
-          <div class="pi-name">${p.supplier} — ${p.desc}</div>
-          <div class="pi-sub">${p.div} · ${p.co}${p.due?' · Due: '+p.due:''}${isOverdue?' ⚠ OVERDUE':''}</div>
-        </div>
-        <span class="badge ${p.status==='unpaid'?'pending':p.status==='partial'?'partial':'collected'}" style="margin-right:8px">${p.status}</span>
-        <div class="pi-amt" style="color:${isOverdue?'var(--red)':'var(--ink)'}">${fmt(rem)}</div>
-      </div>`;
-    }).join('');
+  // Priority bar (top items)
+  const sorted=[...allPayables].filter(p=>p.status!=='paid').sort((a,b)=>(b.amt-b.paid)-(a.amt-a.paid));
+  const rnks=['r1','r2','r3','r4','r5'];
+  const payListEl=document.getElementById('payList');
+  if(!payListEl) return;
+  payListEl.innerHTML='';
 
-  // Group by company cards
-  const grid=document.getElementById('payGrid'); grid.innerHTML='';
+  // Group by company, then division
+  const grid=document.getElementById('payGrid');
+  if(grid) grid.innerHTML='';
+  const targetEl=grid||payListEl;
+
   companies.forEach(co=>{
-    const items=payables.filter(p=>p.co===co.id);
-    const t=items.reduce((s,p)=>s+p.amt,0);
+    const coItems=allPayables.filter(p=>p.co===co.id);
+    if(!coItems.length) return;
+    const coTotal=coItems.reduce((s,p)=>s+(p.amt||0),0);
+    const coPaid=coItems.filter(p=>!p.isPR).reduce((s,p)=>s+(p.paid||0),0);
+    const coPRpending=coItems.filter(p=>p.isPR).reduce((s,p)=>s+(p.amt||0),0);
     const badgeStyle=getCoPillClass(co.color);
-    let html=`<div class="out-card" style="margin-bottom:14px">
-      <div class="out-co-badge" style="${badgeStyle}">${co.name}</div>
-      <div class="out-total">${fmt(t)}</div>`;
-    if(!items.length){ html+='<div style="color:var(--muted2);font-size:13px">No payables.</div>'; }
-    else { html+=items.map(p=>{
-      const rem=p.amt-p.paid;
-      const isOverdue=p.due&&p.due<today;
-      return`<div class="out-item">
-        <div>
-          <div class="oi-name">${p.supplier}</div>
-          <div class="oi-proj">${p.desc} · ${p.div}</div>
-          ${p.due?`<div class="oi-proj" style="color:${isOverdue?'var(--red)':'var(--muted)'}">Due: ${p.due}${isOverdue?' ⚠ Overdue':''}</div>`:''}
-          ${p.paid>0?`<div class="oi-paid">Paid: ${fmt(p.paid)}</div>`:''}
-          ${p.note?`<div class="oi-proj">${p.note}</div>`:''}
+
+    let html=`<div class="out-card" style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="co-pill" style="${badgeStyle}">${co.name}</span>
+          <span style="font-size:12px;color:var(--muted)">${coItems.length} item(s)</span>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-          <div class="oi-amt">${fmt(p.amt)}</div>
-          <span class="badge ${p.status==='unpaid'?'pending':p.status==='partial'?'partial':'collected'}">${p.status}</span>
-          <div style="display:flex;gap:4px;margin-top:2px">
-            <select onchange="updatePayStatus(${p.id},this.value)" style="font-size:10px;padding:2px 4px;border:1px solid var(--border);border-radius:5px;background:var(--surface)">
-              <option value="unpaid" ${p.status==='unpaid'?'selected':''}>Unpaid</option>
-              <option value="partial" ${p.status==='partial'?'selected':''}>Partial</option>
-              <option value="paid" ${p.status==='paid'?'selected':''}>Paid</option>
-            </select>
-            <button class="del-btn" onclick="deletePay(${p.id})" title="Delete">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
-            </button>
-          </div>
-          ${p.status==='partial'?`<input type="number" placeholder="Amount paid" value="${p.paid}" onchange="updatePayPaid(${p.id},this.value)" style="width:110px;font-size:10px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;margin-top:2px">`:''}
+        <div style="display:flex;gap:12px;font-size:12px">
+          <span>Total: <strong>${fmt(coTotal)}</strong></span>
+          ${coPRpending>0?`<span style="color:#92400e;font-weight:700">⏳ PR Pending: ${fmt(coPRpending)}</span>`:''}
         </div>
       </div>`;
-    }).join('');}
+
+    // Group by division within company
+    const divCodes=[...new Set(coItems.map(p=>p.divCode||p.div||''))];
+    divCodes.forEach(divKey=>{
+      const divItems=coItems.filter(p=>(p.divCode||p.div||'')=== divKey);
+      const divTotal=divItems.reduce((s,p)=>s+(p.amt||0),0);
+      const divName=divKey||'General';
+
+      html+=`<div style="margin-bottom:12px;background:var(--bg);border-radius:10px;padding:10px 14px;border:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-size:12px;font-weight:700;color:var(--ink2)">${divKey} — ${divName}</div>
+          <div style="font-size:11px;color:var(--muted)">Total: ${fmt(divTotal)}</div>
+        </div>`;
+
+      divItems.forEach(p=>{
+        const balance=p.amt-(p.paid||0);
+        html+=`<div class="oi-row" style="display:flex;align-items:flex-start;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border2);flex-wrap:wrap;gap:6px">
+          <div style="flex:1;min-width:0">
+            <div class="oi-name">${p.isPR?'⏳ ':''}<strong>${p.supplier}</strong></div>
+            <div class="oi-proj">${p.desc}</div>
+            ${p.isPR?`<div style="font-size:10px;color:var(--amber);font-weight:700;margin-top:2px">
+              PR Pending · Verified by: ${p.verifiedBy} · 
+              <a href="#" onclick="viewPR('${p.prId}');return false" style="color:var(--teal-dark)">View Request ↗</a>
+            </div>`:''}
+            ${p.due&&!p.isPR?`<div class="oi-proj">Due: ${p.due}</div>`:''}
+            ${p.note&&!p.isPR?`<div class="oi-proj" style="font-style:italic">${p.note}</div>`:''}
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:13px;font-weight:800;color:${p.isPR?'#92400e':balance>0?'var(--red)':'var(--teal-dark)'}">${fmt(balance)}</div>
+            ${!p.isPR&&p.paid>0?`<div style="font-size:10px;color:var(--teal-dark)">Paid: ${fmt(p.paid)}</div>`:''}
+            ${!p.isPR?`<div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end">
+              <select onchange="updatePayStatus('${p.id}',this.value)" style="font-size:10px;padding:2px 5px;border:1px solid var(--border);border-radius:5px;background:var(--surface)">
+                <option ${p.status==='pending'?'selected':''} value="pending">Pending</option>
+                <option ${p.status==='partial'?'selected':''} value="partial">Partial</option>
+                <option ${p.status==='paid'?'selected':''} value="paid">Paid</option>
+              </select>
+              <button onclick="deletePayable('${p.id}')" style="font-size:10px;padding:2px 6px;border:1px solid var(--border);border-radius:5px;background:none;cursor:pointer;color:var(--red)">✕</button>
+            </div>`:''}
+          </div>
+        </div>`;
+      });
+
+      html+='</div>';
+    });
+
     html+='</div>';
-    grid.innerHTML+=html;
+    targetEl.innerHTML+=html;
   });
+}
+
+async function updatePayStatus(id,val){
+  const p=payables.find(x=>x.id===id||String(x.id)===String(id));
+  if(p){p.status=val;ls('omni-payables',payables);
+    try{await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/outstanding?id=eq.'+id,{method:'PATCH',headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({status:val})});}catch(e){}
+    renderPayables();renderDashboard();}
+}
+async function deletePayable(id){
+  if(!confirm('Delete this payable item?'))return;
+  payables=payables.filter(p=>String(p.id)!==String(id));
+  ls('omni-payables',payables);
+  try{await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/outstanding?id=eq.'+id,{method:'DELETE',headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE'}});}catch(e){}
+  renderPayables();renderDashboard();
 }
 
 // ══════════════════════════════════════
@@ -2984,15 +3050,33 @@ function checkPRAlerts(){
     if(need.length&&!ex){const d=document.createElement('span');d.className='alert-dot';d.style.marginLeft='6px';nav.appendChild(d);}
     else if(!need.length&&ex) ex.remove();
   }
+  updatePendingBadge();
 }
 function filterPR(f,el){prFilter=f;document.querySelectorAll('#pgPayReq .dfb-mode').forEach(b=>b.classList.remove('on'));el.classList.add('on');renderPRList();}
+function getPendingPRs(){
+  return payRequests.filter(pr=>{
+    if(!prVisible(pr)) return false;
+    const next=prNextStep(pr);
+    const partial=parseFloat(pr.partial_amount||0);
+    // Pending = verified (awaiting payment) OR partially paid with balance remaining
+    return next==='paid' || (next==='complete' && partial>0 && partial<pr.net_payable);
+  });
+}
+function updatePendingBadge(){
+  const count=getPendingPRs().length;
+  const badge=document.getElementById('prPendingCount');
+  if(badge) badge.textContent=count;
+  if(count>0&&badge) badge.style.display='inline';
+  else if(badge) badge.style.display='none';
+}
 
 function renderPRList(){
   const el=document.getElementById('prList'); if(!el) return;
   let list=payRequests.filter(pr=>prVisible(pr));
-  if(prFilter==='mine') list=list.filter(pr=>pr.prepared_by===currentUser.username);
-  if(prFilter==='action') list=list.filter(pr=>{const n=prNextStep(pr);return n!=='complete'&&n!=='prepared'&&prCanAct(pr,n);});
-  if(prFilter==='done') list=list.filter(pr=>prNextStep(pr)==='complete');
+  if(prFilter==='mine')    list=list.filter(pr=>pr.prepared_by===currentUser.username);
+  if(prFilter==='action')  list=list.filter(pr=>{const n=prNextStep(pr);return n!=='complete'&&n!=='prepared'&&prCanAct(pr,n);});
+  if(prFilter==='done')    list=list.filter(pr=>prNextStep(pr)==='complete');
+  if(prFilter==='pending') list=getPendingPRs();
   if(!list.length){el.innerHTML='<div class="empty-state">No payment requests found.</div>';return;}
   el.innerHTML=list.map(pr=>{
     const st=prStatusInfo(pr), next=prNextStep(pr);
@@ -3490,7 +3574,9 @@ async function createPRLedgerEntry(pr, transferId, payMethod){
   // STEP 2: Render immediately — dashboard, ledger, balances all update NOW
   renderAll();
 
-  // STEP 3: Save to Supabase in background (async, non-blocking)
+  // STEP 3: Save to Supabase (await to confirm)
+  // Log what we're about to save for debugging
+  console.log('PR Ledger: Saving transaction', {coId, divCode, divName, paidAmt, ref});
   const hdrs = {
     "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE",
     "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE",
@@ -3519,16 +3605,20 @@ async function createPRLedgerEntry(pr, transferId, payMethod){
     if(res.ok){
       const saved = await res.json();
       const realId = (Array.isArray(saved) ? saved[0]?.id : saved?.id) || null;
+      console.log('PR Ledger: Supabase confirmed, realId=', realId);
       if(realId){
-        // Replace temp ID with real Supabase ID in local array
         const tx = transactions.find(t => t.id === tempId);
         if(tx){ tx.id = realId; }
         ls("omni-tx", transactions);
       }
+      // Render again with confirmed data
+      renderAll();
     } else {
       const errTxt = await res.text();
       console.error("PR ledger Supabase error:", res.status, errTxt);
-      // Transaction still in local array — will sync on next poll
+      // Transaction still in local array from STEP 1
+      // Force render again just in case
+      renderAll();
     }
   } catch(e){
     console.error("PR ledger fetch error:", e.message);
