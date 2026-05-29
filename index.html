@@ -3228,118 +3228,76 @@ async function actOnPR(id){
 
 
 async function createPRLedgerEntry(pr, transferId, payMethod){
-  // ── Amount: partial if set, else full net payable ──
   const paidAmt = parseFloat(pr.partial_amount||0) > 0
     ? parseFloat(pr.partial_amount)
     : parseFloat(pr.net_payable||0);
 
-  // ── Extract division code: "ME1. Construction" → "ME1" ──
-  const rawDiv = (pr.division||'');
-  const divCode = rawDiv.split('.')[0].trim();
-  const divName = rawDiv.includes('.')?rawDiv.split('.').slice(1).join('.').trim():rawDiv;
+  const parts = (pr.division||'').split('.');
+  const divCode = parts[0].trim();
+  const divName = parts.length > 1 ? parts.slice(1).join('.').trim() : parts[0].trim();
   const coId = pr.company_id || '';
   const today = new Date().toISOString().slice(0,10);
 
   const ref = (pr.request_type||'Payment') + ': ' + pr.project
     + (pr.sub_project ? ' [' + pr.sub_project + ']' : '')
     + (transferId ? ' | TRF:' + transferId : '');
-
-  const note = 'PR Payment — ' + payMethod
-    + (transferId ? ' — Ref: ' + transferId : '')
-    + (parseFloat(pr.partial_amount||0)>0 ? ' (Partial: '+fmt(paidAmt)+')' : '');
+  const note = 'PR Payment: ' + payMethod
+    + (transferId ? ' Ref:' + transferId : '')
+    + (parseFloat(pr.partial_amount||0)>0 ? ' (Partial)' : '');
 
   const hdrs = {
-    'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
-    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
+    apikey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
+    Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
     'Content-Type': 'application/json',
-    'Prefer': 'return=representation'
+    Prefer: 'return=representation'
   };
 
-  // ── Check for existing grouped transaction with same Transfer ID + division ──
-  let grouped = false;
-  if(transferId){
-    try{
-      const qUrl = 'https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?div_code=eq.' + encodeURIComponent(divCode)
-        + '&type=eq.out'
-        + '&ref=like.*' + encodeURIComponent('TRF:' + transferId) + '*'
-        + '&select=id,amt,ref';
-      const chk = await fetch(qUrl, {headers:hdrs});
-      if(chk.ok){
-        const rows = await chk.json();
-        if(Array.isArray(rows) && rows.length > 0){
-          // Found existing — update its amount (group this payment in)
-          const row = rows[0];
-          const newAmt = parseFloat(row.amt||0) + paidAmt;
-          const newNote = (row.ref||ref) + ' + ' + fmt(paidAmt);
-          await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?id=eq.' + row.id, {
-            method: 'PATCH', headers: hdrs,
-            body: JSON.stringify({amt: newAmt, note: newNote})
-          });
-          // Update in local array too
-          const lt = transactions.find(t => t.id === row.id || String(t.id) === String(row.id));
-          if(lt){ lt.amt = newAmt; lt.note = newNote; }
-          grouped = true;
-          console.log('PR: Grouped payment under existing TRF:', transferId, 'new total:', newAmt);
-        }
-      }
-    } catch(e){ console.warn('PR grouping check failed:', e.message); }
-  }
-
-  if(!grouped){
-    // ── Create new outflow transaction ──
-    const payload = {
-      company_id: coId,
-      div_code: divCode,
-      div_name: divName || rawDiv,
-      date: today,
-      type: 'out',
-      amt: paidAmt,
-      amt_usd: null,
-      ref: ref,
-      note: note,
-      created_by: currentUser ? currentUser.username : 'finance'
-    };
-
-    try{
-      const res = await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions', {
-        method: 'POST', headers: hdrs,
-        body: JSON.stringify(payload)
-      });
-
-      if(res.ok){
-        const saved = await res.json();
-        const newId = (Array.isArray(saved) ? saved[0]?.id : saved?.id) || ('pr-' + Date.now());
-
-        // ── Add to LOCAL transactions array so dashboard updates immediately ──
-        const localTx = {
-          id: newId,
-          date: today,
-          co: coId,
-          divCode: divCode,
-          divName: divName || rawDiv,
-          type: 'out',
-          amt: paidAmt,
-          amtUsd: null,
-          ref: ref,
-          note: note
-        };
-
-        // Remove any temp version and add real one at front
-        transactions = [localTx, ...transactions.filter(t => String(t.id) !== String(newId))];
-        ls('omni-tx', transactions);
-
-        console.log('PR: New outflow transaction created — div:', divCode, 'amt:', paidAmt);
-      } else {
-        const errText = await res.text();
-        console.error('PR ledger POST failed:', res.status, errText);
-      }
-    } catch(e){
-      console.error('PR ledger entry failed:', e.message);
+  // Save to Supabase
+  let savedId = null;
+  try {
+    const res = await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions', {
+      method: 'POST',
+      headers: hdrs,
+      body: JSON.stringify({
+        company_id: coId,
+        div_code: divCode,
+        div_name: divName,
+        date: today,
+        type: 'out',
+        amt: paidAmt,
+        amt_usd: null,
+        ref: ref,
+        note: note,
+        created_by: currentUser ? currentUser.username : 'finance'
+      })
+    });
+    if(res.ok){
+      const saved = await res.json();
+      savedId = (Array.isArray(saved) ? saved[0]?.id : saved?.id) || null;
+    } else {
+      console.error('PR ledger error:', res.status, await res.text());
     }
-  }
+  } catch(e){ console.error('PR ledger failed:', e.message); }
 
-  // ── Refresh all views so Dashboard, Balances, OMNI-NAC all update ──
+  // Add to local transactions immediately
+  const localTx = {
+    id: savedId || ('pr-' + Date.now()),
+    date: today,
+    co: coId,
+    divCode: divCode,
+    divName: divName,
+    type: 'out',
+    amt: paidAmt,
+    amtUsd: null,
+    ref: ref,
+    note: note
+  };
+  transactions.unshift(localTx);
+  ls('omni-tx', transactions);
+
+  // Re-render everything immediately
   renderAll();
+  console.log('PR paid: divCode=', divCode, 'amt=', paidAmt, 'tx count=', transactions.length);
 }
 
 // ══════════════════════════════════════
