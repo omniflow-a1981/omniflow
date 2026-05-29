@@ -2821,8 +2821,7 @@ function updatePRDiv(){
   const coId=document.getElementById('prCo').value;
   const divSel=document.getElementById('prDiv'); divSel.innerHTML='';
   const coObj=companies.find(x=>x.id===coId);
-  const fallback={WE:[{code:'WE1',name:'Design'},{code:'WE2',name:'Supervision'},{code:'WE3',name:'Others'}],ME:[{code:'ME1',name:'Construction'},{code:'ME2',name:'Export'},{code:'ME3',name:'Import'}]};
-  const divs=coObj?coObj.divisions:(fallback[coId]||[]);
+  const divs=coObj?coObj.divisions:[];
   divs.forEach(d=>{const o=document.createElement('option');o.value=d.code+'. '+d.name;o.textContent=d.code+'. '+d.name;divSel.appendChild(o);});
   updatePRSub();
 }
@@ -2928,7 +2927,30 @@ function addPRItem(it){
   tbody.appendChild(row); calcPRTotals();
 }
 
-function openNewPR(){
+async function loadCompanies(){
+  // Always fetch fresh from Supabase — picks up any new divisions/subdivisions
+  try{
+    const res=await fetch(
+      'https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/companies?select=*,divisions(*)',
+      {headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE'}}
+    );
+    if(res.ok){
+      const fresh=await res.json();
+      if(Array.isArray(fresh)&&fresh.length>0){
+        companies=fresh;
+        ls('omni-companies',companies);
+        return companies;
+      }
+    }
+  }catch(e){console.warn('loadCompanies failed:',e.message);}
+  // Fallback: use cached companies
+  const cached=ls('omni-companies');
+  if(cached&&cached.length>0){companies=cached;return companies;}
+  // Last resort: use current companies array
+  return companies;
+}
+
+async function openNewPR(){
   document.getElementById('prEditId').value='';
   document.getElementById('prItemsBody').innerHTML='';
   document.getElementById('prDate').value=new Date().toISOString().slice(0,10);
@@ -2938,6 +2960,9 @@ function openNewPR(){
   document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active'));
   const mb=document.getElementById('prTypeBtn-Material'); if(mb) mb.classList.add('active');
   document.getElementById('prManpowerRow').style.display='none';
+  // Load fresh companies from Supabase (picks up any new additions)
+  await loadCompanies();
+
   // Populate company — filter by user's company
   const coSel=document.getElementById('prCo'); coSel.innerHTML='';
   const userCo=currentUser&&currentUser.company?currentUser.company:null;
@@ -3339,7 +3364,7 @@ function viewPR(id){
   document.getElementById('prDetailModal').classList.add('open');
 }
 
-function requestPaymentPR(id){
+async function requestPaymentPR(id){
   const pr=payRequests.find(x=>x.id===id);
   if(!pr) return;
 
@@ -3351,6 +3376,8 @@ function requestPaymentPR(id){
   if(!confirm('Create a new payment request for the pending balance of '+fmt(pendingAmt)+'?\n\nGoes through full workflow: Prepared → Checked → Approved → Verified → Paid')) return;
 
   closePRDetail();
+  // Load fresh companies/divisions from Supabase — picks up any future additions
+  await loadCompanies();
 
   // Reset form state
   currentPRType=pr.request_type||'Material';
@@ -3365,10 +3392,7 @@ function requestPaymentPR(id){
   // Use hardcoded fallback + companies array
   const coSel=document.getElementById('prCo');
   coSel.innerHTML='';
-  const coList=companies.length>0 ? companies : [
-    {id:'WE',name:'Wanofi Engineering Plc',divisions:[{code:'WE1',name:'Design'},{code:'WE2',name:'Supervision'},{code:'WE3',name:'Others'}]},
-    {id:'ME',name:'Matisan Engineering Plc',divisions:[{code:'ME1',name:'Construction'},{code:'ME2',name:'Export'},{code:'ME3',name:'Import'}]}
-  ];
+  const coList=companies; // Always fresh from loadCompanies() above
   const userCo=currentUser&&currentUser.company?currentUser.company:null;
   coList.filter(co=>!userCo||co.id.toUpperCase().startsWith(userCo)).forEach(co=>{
     const o=document.createElement('option');
@@ -3382,11 +3406,7 @@ function requestPaymentPR(id){
   divSel.innerHTML='';
   const prCoId=pr.company_id||coSel.value;
   const coObj=coList.find(co=>co.id===prCoId);
-  const fallbackDivs={
-    WE:[{code:'WE1',name:'Design'},{code:'WE2',name:'Supervision'},{code:'WE3',name:'Others'}],
-    ME:[{code:'ME1',name:'Construction'},{code:'ME2',name:'Export'},{code:'ME3',name:'Import'}]
-  };
-  const divs=coObj?coObj.divisions:(fallbackDivs[prCoId]||[]);
+  const divs=coObj?coObj.divisions:[];
   const prDivCode=(pr.division||'').split('.')[0].trim();
   divs.forEach(d=>{
     const o=document.createElement('option');
