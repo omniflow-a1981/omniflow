@@ -1632,6 +1632,59 @@ function getCoPillClass(color){
   if(color==='purple')return'background:var(--purple-light);color:#5b21b6';
   return'background:var(--amber-light);color:#92400e';
 }
+function normCoId(id){
+  // Normalise company id to 'WE' or 'ME'
+  if(!id) return '';
+  if(id==='Wanofi'||id==='WE') return 'WE';
+  if(id==='Matisan'||id==='ME') return 'ME';
+  return id;
+}
+
+function getPRPendingPayables(){
+  // Convert verified-but-unpaid PRs and partial-paid PRs
+  // into payable objects for Outstanding Payables page
+  return payRequests
+    .filter(pr => {
+      if(pr.status==='cancelled') return false;
+      const next = prNextStep(pr);
+      const partial = parseFloat(pr.partial_amount||0);
+      // Pending = verified awaiting payment, OR partially paid with balance
+      return next==='paid' ||
+             (next==='complete' && partial>0 && partial<parseFloat(pr.net_payable||0));
+    })
+    .map(pr => {
+      const coId    = normCoId(pr.company_id);
+      const rawDiv  = pr.division || '';
+      const dot     = rawDiv.indexOf('.');
+      const divCode = dot>-1 ? rawDiv.slice(0,dot).trim() : rawDiv.trim();
+      const divName = dot>-1 ? rawDiv.slice(dot+1).trim() : rawDiv.trim();
+      const partial = parseFloat(pr.partial_amount||0);
+      const net     = parseFloat(pr.net_payable||0);
+      const pendingAmt = (partial>0 && partial<net) ? net-partial : net;
+      const sub     = pr.sub_project ? ' ['+pr.sub_project+']' : '';
+      return {
+        id        : 'pr-pend-'+pr.id,
+        co        : coId,
+        divCode   : divCode,
+        divName   : divName,
+        div       : rawDiv,
+        subProject: pr.sub_project||'',
+        supplier  : pr.client || pr.project,
+        desc      : '⏳ PR: '+pr.project+sub,
+        amt       : Math.round(pendingAmt),
+        paid      : partial>0 ? Math.round(partial) : 0,
+        status    : 'unpaid',
+        due       : '',
+        note      : 'Verified by: '+(pr.verified_by||'—')
+                  + (partial>0?' | Partial paid: '+fmt(partial):''),
+        isPR      : true,
+        prId      : pr.id,
+        reqType   : pr.request_type||'',
+        verifiedBy: pr.verified_by||'—'
+      };
+    });
+}
+
 function getPRTransactions(){
   // Convert all paid payment requests into outflow transactions
   // so they appear in ledger/dashboard automatically
@@ -2613,121 +2666,161 @@ function deletePay(id){
 function renderPayables(){
   if(!document.getElementById('payKpis')) return;
 
-  // Build PR pending items per company/division
-  const allPendingPRs = (typeof getPendingPRs === 'function') ? getPendingPRs() : [];
-  const prPendingItems = allPendingPRs.map(pr=>{
-    const partial=parseFloat(pr.partial_amount||0);
-    const pendingAmt=partial>0&&partial<pr.net_payable ? pr.net_payable-partial : pr.net_payable;
-    const rawDiv=(pr.division||'');
-    const dotIdx=rawDiv.indexOf('.');
-    const divCode=dotIdx>-1?rawDiv.slice(0,dotIdx).trim():rawDiv.trim();
-    return {
-      id:'pr-'+pr.id, co:pr.company_id, divCode:divCode,
-      div:pr.division, supplier:pr.client||pr.project,
-      desc:'[⏳ PR] '+pr.project+(pr.sub_project?' ['+pr.sub_project+']':''),
-      amt:Math.round(pendingAmt), paid:0, status:'unpaid',
-      due:'', note:'Pending PR payment. Ref: '+pr.project,
-      isPR:true, prId:pr.id,
-      vatMode:pr.vat_mode, reqType:pr.request_type,
-      verifiedBy:pr.verified_by||'—'
-    };
-  });
+  // ── Build combined payables: manual + PR pending ──
+  const prPending = getPRPendingPayables();
+  const allPay = [
+    ...payables.map(p=>({...p, co: normCoId(p.co||p.company_id||'')})),
+    ...prPending
+  ];
 
-  const allPayables=[...payables, ...prPendingItems];
-  const total=allPayables.reduce((s,p)=>s+(p.amt||0),0);
-  const paid=payables.reduce((s,p)=>s+(p.paid||0),0);
-  const remaining=total-paid;
-  const overdue=payables.filter(p=>p.due&&p.due<new Date().toISOString().slice(0,10)&&p.status!=='paid').length;
-  const prPendingTotal=prPendingItems.reduce((s,p)=>s+(p.amt||0),0);
+  const grandTotal   = allPay.reduce((s,p)=>s+(p.amt||0),0);
+  const grandPaid    = payables.reduce((s,p)=>s+(p.paid||0),0);
+  const prTotal      = prPending.reduce((s,p)=>s+(p.amt||0),0);
+  const overdue      = payables.filter(p=>p.due&&p.due<new Date().toISOString().slice(0,10)&&p.status!=='paid').length;
 
-  // KPIs
+  // ── KPI Cards ──
   document.getElementById('payKpis').innerHTML=`
-    <div class="out-kpi"><div class="ok-label">Total Payables</div><div class="ok-val">${fmt(total)}</div></div>
-    <div class="out-kpi"><div class="ok-label">Paid so far</div><div class="ok-val" style="color:var(--teal-dark)">${fmt(paid)}</div></div>
-    <div class="out-kpi"><div class="ok-label">Still Owed</div><div class="ok-val">${fmt(remaining)}</div></div>
-    <div class="out-kpi"><div class="ok-label">Overdue Items</div><div class="ok-val" style="color:var(--red)">${overdue}</div></div>
-    ${prPendingItems.length?`<div class="out-kpi" style="background:var(--amber-light);border:1.5px solid #fde68a"><div class="ok-label" style="color:#92400e">⏳ PR Pending Payments</div><div class="ok-val" style="color:#92400e">${fmt(prPendingTotal)}</div><div style="font-size:10px;color:#92400e">${prPendingItems.length} request(s)</div></div>`:''}
+    <div class="out-kpi">
+      <div class="ok-label">Total Payables</div>
+      <div class="ok-val">${fmt(grandTotal)}</div>
+    </div>
+    <div class="out-kpi">
+      <div class="ok-label">Paid so far</div>
+      <div class="ok-val" style="color:var(--teal-dark)">${fmt(grandPaid)}</div>
+    </div>
+    <div class="out-kpi">
+      <div class="ok-label">Still Owed</div>
+      <div class="ok-val" style="color:var(--red)">${fmt(grandTotal-grandPaid)}</div>
+    </div>
+    ${overdue?`<div class="out-kpi"><div class="ok-label">Overdue</div><div class="ok-val" style="color:var(--red)">${overdue}</div></div>`:''}
+    ${prPending.length?`
+    <div class="out-kpi" style="background:var(--amber-light);border:1.5px solid #fde68a">
+      <div class="ok-label" style="color:#92400e">⏳ PR Pending</div>
+      <div class="ok-val" style="color:#92400e">${fmt(prTotal)}</div>
+      <div style="font-size:10px;color:#92400e">${prPending.length} request(s)</div>
+    </div>`:''}
   `;
 
-  // Priority bar (top items)
-  const sorted=[...allPayables].filter(p=>p.status!=='paid').sort((a,b)=>(b.amt-b.paid)-(a.amt-a.paid));
-  const rnks=['r1','r2','r3','r4','r5'];
-  const payListEl=document.getElementById('payList');
-  if(!payListEl) return;
-  payListEl.innerHTML='';
+  // ── Group by Company → Division → Subdivision ──
+  const grid = document.getElementById('payGrid') || document.getElementById('payList');
+  if(!grid) return;
+  grid.innerHTML = '';
 
-  // Group by company, then division
-  const grid=document.getElementById('payGrid');
-  if(grid) grid.innerHTML='';
-  const targetEl=grid||payListEl;
+  // Get all company IDs that have payables
+  const coIds = [...new Set(allPay.map(p=>p.co))].filter(Boolean);
 
-  companies.forEach(co=>{
-    const coItems=allPayables.filter(p=>p.co===co.id);
+  // Use DEFAULT_COMPANIES for display order and names
+  const allCos = getCompaniesForPR();
+
+  // Also include any coIds not in allCos
+  const orderedCos = [
+    ...allCos.filter(co => coIds.includes(co.id)),
+    ...coIds.filter(id => !allCos.find(co=>co.id===id)).map(id=>({id,name:id,divisions:[]}))
+  ];
+
+  if(!orderedCos.length){
+    grid.innerHTML='<div class="empty-state">No outstanding payables.</div>';
+    return;
+  }
+
+  orderedCos.forEach(co => {
+    const coItems = allPay.filter(p=>p.co===co.id);
     if(!coItems.length) return;
-    const coTotal=coItems.reduce((s,p)=>s+(p.amt||0),0);
-    const coPaid=coItems.filter(p=>!p.isPR).reduce((s,p)=>s+(p.paid||0),0);
-    const coPRpending=coItems.filter(p=>p.isPR).reduce((s,p)=>s+(p.amt||0),0);
-    const badgeStyle=getCoPillClass(co.color);
 
-    let html=`<div class="out-card" style="margin-bottom:20px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="co-pill" style="${badgeStyle}">${co.name}</span>
-          <span style="font-size:12px;color:var(--muted)">${coItems.length} item(s)</span>
-        </div>
-        <div style="display:flex;gap:12px;font-size:12px">
-          <span>Total: <strong>${fmt(coTotal)}</strong></span>
-          ${coPRpending>0?`<span style="color:#92400e;font-weight:700">⏳ PR Pending: ${fmt(coPRpending)}</span>`:''}
+    const coTotal    = coItems.reduce((s,p)=>s+(p.amt||0),0);
+    const coPRTotal  = coItems.filter(p=>p.isPR).reduce((s,p)=>s+(p.amt||0),0);
+    const coManTotal = coItems.filter(p=>!p.isPR).reduce((s,p)=>s+(p.amt||0),0);
+    const coColor    = co.id==='WE' ? 'var(--teal-dark)' : '#5b21b6';
+
+    let html = `<div style="background:var(--surface);border-radius:14px;border:1px solid var(--border);margin-bottom:20px;box-shadow:var(--shadow);overflow:hidden">
+      <!-- Company Header -->
+      <div style="background:linear-gradient(135deg,var(--ink2),var(--ink));padding:12px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div style="font-family:'DM Serif Display',serif;font-size:17px;color:#fff">${co.name}</div>
+        <div style="display:flex;gap:16px;font-size:12px;color:rgba(255,255,255,.8)">
+          <span>Total: <strong style="color:#fff">${fmt(coTotal)}</strong></span>
+          ${coPRTotal>0?`<span style="color:#fde68a">⏳ PR Pending: <strong>${fmt(coPRTotal)}</strong></span>`:''}
+          ${coManTotal>0?`<span>Other: <strong>${fmt(coManTotal)}</strong></span>`:''}
         </div>
       </div>`;
 
-    // Group by division within company
-    const divCodes=[...new Set(coItems.map(p=>p.divCode||p.div||''))];
-    divCodes.forEach(divKey=>{
-      const divItems=coItems.filter(p=>(p.divCode||p.div||'')=== divKey);
-      const divTotal=divItems.reduce((s,p)=>s+(p.amt||0),0);
-      const divName=divKey||'General';
+    // ── Group by Division ──
+    const divCodes = [...new Set(coItems.map(p=>p.divCode||'General'))];
+    divCodes.forEach(divCode => {
+      const divItems = coItems.filter(p=>(p.divCode||'General')===divCode);
+      const divTotal = divItems.reduce((s,p)=>s+(p.amt||0),0);
+      const divName  = divItems[0]?.divName || divItems[0]?.div || divCode;
 
-      html+=`<div style="margin-bottom:12px;background:var(--bg);border-radius:10px;padding:10px 14px;border:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <div style="font-size:12px;font-weight:700;color:var(--ink2)">${divKey} — ${divName}</div>
-          <div style="font-size:11px;color:var(--muted)">Total: ${fmt(divTotal)}</div>
+      html += `<div style="margin:0;border-top:1px solid var(--border)">
+        <!-- Division Header -->
+        <div style="background:var(--bg);padding:9px 18px;display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:13px;font-weight:700;color:${coColor}">${divCode} — ${divName}</div>
+          <div style="font-size:12px;color:var(--muted)">Total: ${fmt(divTotal)}</div>
         </div>`;
 
-      divItems.forEach(p=>{
-        const balance=p.amt-(p.paid||0);
-        html+=`<div class="oi-row" style="display:flex;align-items:flex-start;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border2);flex-wrap:wrap;gap:6px">
-          <div style="flex:1;min-width:0">
-            <div class="oi-name">${p.isPR?'⏳ ':''}<strong>${p.supplier}</strong></div>
-            <div class="oi-proj">${p.desc}</div>
-            ${p.isPR?`<div style="font-size:10px;color:var(--amber);font-weight:700;margin-top:2px">
-              PR Pending · Verified by: ${p.verifiedBy} · 
-              <a href="#" onclick="viewPR('${p.prId}');return false" style="color:var(--teal-dark)">View Request ↗</a>
-            </div>`:''}
-            ${p.due&&!p.isPR?`<div class="oi-proj">Due: ${p.due}</div>`:''}
-            ${p.note&&!p.isPR?`<div class="oi-proj" style="font-style:italic">${p.note}</div>`:''}
-          </div>
-          <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:13px;font-weight:800;color:${p.isPR?'#92400e':balance>0?'var(--red)':'var(--teal-dark)'}">${fmt(balance)}</div>
-            ${!p.isPR&&p.paid>0?`<div style="font-size:10px;color:var(--teal-dark)">Paid: ${fmt(p.paid)}</div>`:''}
-            ${!p.isPR?`<div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end">
-              <select onchange="updatePayStatus('${p.id}',this.value)" style="font-size:10px;padding:2px 5px;border:1px solid var(--border);border-radius:5px;background:var(--surface)">
-                <option ${p.status==='pending'?'selected':''} value="pending">Pending</option>
-                <option ${p.status==='partial'?'selected':''} value="partial">Partial</option>
-                <option ${p.status==='paid'?'selected':''} value="paid">Paid</option>
-              </select>
-              <button onclick="deletePayable('${p.id}')" style="font-size:10px;padding:2px 6px;border:1px solid var(--border);border-radius:5px;background:none;cursor:pointer;color:var(--red)">✕</button>
-            </div>`:''}
-          </div>
-        </div>`;
+      // ── Group by Subdivision within division ──
+      const subs = [...new Set(divItems.map(p=>p.subProject||''))];
+      subs.forEach(sub => {
+        const subItems = divItems.filter(p=>(p.subProject||'')===sub);
+        if(!subItems.length) return;
+        const subTotal = subItems.reduce((s,p)=>s+(p.amt||0),0);
+
+        if(sub){
+          html += `<div style="background:var(--surface);padding:6px 18px 0 28px">
+            <div style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:4px">📍 ${sub} — ${fmt(subTotal)}</div>`;
+        } else {
+          html += `<div style="padding:0 18px 0 18px">`;
+        }
+
+        subItems.forEach(p => {
+          const balance = p.amt - (p.paid||0);
+          html += `<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border2);flex-wrap:wrap;gap:6px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:700;color:var(--ink2)">
+                ${p.isPR?'<span style="font-size:10px;background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 6px;font-weight:700;margin-right:5px">⏳ PR</span>':''}
+                ${p.supplier}
+              </div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">${p.desc}</div>
+              ${p.isPR?`
+              <div style="font-size:10px;color:var(--muted2);margin-top:3px">
+                Type: ${p.reqType||'—'} · Verified by: ${p.verifiedBy}
+                ${p.paid>0?` · Partial paid: ${fmt(p.paid)}`:''}
+              </div>
+              <div style="margin-top:4px">
+                <a href="#" onclick="viewPR('${p.prId}');return false" style="font-size:11px;color:var(--teal-dark);font-weight:600;text-decoration:none">View Request ↗</a>
+                <span style="margin:0 6px;color:var(--border)">|</span>
+                <a href="#" onclick="requestPaymentPR('${p.prId}');return false" style="font-size:11px;color:#92400e;font-weight:600;text-decoration:none">📢 Request Payment</a>
+              </div>`:`
+              ${p.due?`<div style="font-size:10px;color:var(--muted2);margin-top:2px">Due: ${p.due}</div>`:''}
+              ${p.note?`<div style="font-size:10px;color:var(--muted2);font-style:italic">${p.note}</div>`:''}`}
+            </div>
+            <div style="text-align:right;flex-shrink:0;min-width:100px">
+              <div style="font-size:14px;font-weight:800;color:${p.isPR?'#92400e':balance>0?'var(--red)':'var(--teal-dark)'}">${fmt(balance)}</div>
+              ${p.isPR&&p.paid>0?`<div style="font-size:10px;color:var(--teal-dark)">Paid: ${fmt(p.paid)}</div>`:''}
+              ${!p.isPR?`
+              <div style="display:flex;gap:4px;margin-top:5px;justify-content:flex-end">
+                <select onchange="updatePayStatus('${p.id}',this.value)" style="font-size:10px;padding:2px 5px;border:1px solid var(--border);border-radius:5px;background:var(--surface)">
+                  <option ${p.status==='pending'?'selected':''} value="pending">Pending</option>
+                  <option ${p.status==='partial'?'selected':''} value="partial">Partial</option>
+                  <option ${p.status==='paid'?'selected':''} value="paid">Paid</option>
+                </select>
+                <button onclick="deletePayable('${p.id}')" style="font-size:10px;padding:2px 6px;border:1px solid var(--border);border-radius:5px;background:none;cursor:pointer;color:var(--red)">✕</button>
+              </div>`:''}
+            </div>
+          </div>`;
+        });
+        html += '</div>';
       });
 
-      html+='</div>';
+      html += '</div>'; // end division
     });
 
-    html+='</div>';
-    targetEl.innerHTML+=html;
+    html += '</div>'; // end company card
+    grid.innerHTML += html;
   });
+
+  if(!orderedCos.length || !allPay.length){
+    grid.innerHTML='<div class="empty-state">No outstanding payables.</div>';
+  }
 }
 
 async function updatePayStatus(id,val){
