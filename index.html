@@ -1632,8 +1632,53 @@ function getCoPillClass(color){
   if(color==='purple')return'background:var(--purple-light);color:#5b21b6';
   return'background:var(--amber-light);color:#92400e';
 }
+function getPRTransactions(){
+  // Convert all paid payment requests into outflow transactions
+  // so they appear in ledger/dashboard automatically
+  return payRequests
+    .filter(pr => pr.status === 'paid' && pr.paid_by)
+    .map(pr => {
+      const coIdRaw = pr.company_id || '';
+      const coId    = coIdRaw === 'Wanofi' ? 'WE'
+                    : coIdRaw === 'Matisan' ? 'ME'
+                    : coIdRaw;
+      const rawDiv  = pr.division || '';
+      const dot     = rawDiv.indexOf('.');
+      const divCode = dot > -1 ? rawDiv.slice(0, dot).trim() : rawDiv.trim();
+      const divName = dot > -1 ? rawDiv.slice(dot+1).trim() : rawDiv.trim();
+      const sub     = pr.sub_project ? ' [' + pr.sub_project + ']' : '';
+      const partial = parseFloat(pr.partial_amount||0);
+      const net     = parseFloat(pr.net_payable||0);
+      const amt     = (partial > 0 && partial < net) ? partial : net;
+      const paidDate = pr.paid_at ? pr.paid_at.slice(0,10) : new Date().toISOString().slice(0,10);
+      return {
+        id      : 'pr-' + pr.id,
+        date    : paidDate,
+        co      : coId,
+        divCode : divCode,
+        divName : divName,
+        type    : 'out',
+        amt     : amt,
+        amtUsd  : null,
+        ref     : (pr.request_type||'Payment') + ': ' + pr.project + sub
+                + (pr.transfer_id ? ' | TRF:' + pr.transfer_id : ''),
+        note    : 'PR Payment — ' + (pr.pay_method||'') + sub,
+        isPR    : true
+      };
+    });
+}
+
+function getMergedTransactions(){
+  // Merge manual transactions + PR transactions, deduplicate by id
+  const prTxs = getPRTransactions();
+  const manualIds = new Set(transactions.map(t => String(t.id)));
+  // Only add PR transactions not already in manual transactions
+  const newPRTxs = prTxs.filter(t => !manualIds.has(String(t.id)));
+  return [...transactions, ...newPRTxs];
+}
+
 function divStats(code, txList){
-  const src=txList||transactions;
+  const src=txList||getMergedTransactions();
   const usdDiv=USD_DIVS.includes(code);
   // Pure ETB transactions: have no amtUsd field (or amtUsd is 0/null)
   const etbOnlyIn=src.filter(t=>t.divCode===code&&t.type==='in'&&!t.amtUsd).reduce((s,t)=>s+(t.amt||0),0);
@@ -1906,7 +1951,8 @@ function renderAll(){renderDashboard();renderLedger();renderBalances();renderOut
 // DASHBOARD
 // ══════════════════════════════════════
 function renderDashboard(){
-  const filtered=filterByPeriod(transactions,dashPeriod,'dfbFrom','dfbTo');
+  const allTx=getMergedTransactions();
+  const filtered=filterByPeriod(allTx,dashPeriod,'dfbFrom','dfbTo');
   // ETB totals — only pure ETB transactions (for USD divs: ETB-only txs)
   const totIn=filtered.filter(t=>t.type==='in'&&!t.amtUsd).reduce((s,t)=>s+(t.amt||0),0);
   const totOut=filtered.filter(t=>t.type==='out'&&!t.amtUsd).reduce((s,t)=>s+(t.amt||0),0);
@@ -2051,7 +2097,7 @@ function renderDashboard(){
 // LEDGER
 // ══════════════════════════════════════
 function renderLedger(){
-  let filtered=filterByPeriod([...transactions],ledgerPeriod,'ldfbFrom','ldfbTo');
+  let filtered=filterByPeriod([...getMergedTransactions()],ledgerPeriod,'ldfbFrom','ldfbTo');
   const co=document.getElementById('fltCo').value;
   const div=document.getElementById('fltDiv').value;
   const type=document.getElementById('fltType').value;
