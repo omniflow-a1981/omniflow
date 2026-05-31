@@ -1435,13 +1435,16 @@ function doSignOut(){
   document.getElementById('loginPass').value='';
 }
 
-function showApp(){
+async function showApp(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appLayout').style.display='flex';
   initApp();
   applyAccessLevel();
   resetInactivityTimer();
-  setTimeout(()=>{loadPayRequests();loadNotifs();}, 800);
+  // Load PRs immediately and wait - then renderAll with complete data
+  await loadPayRequests();
+  loadNotifs();
+  renderAll();
 }
 function applyAccessLevel(){
   const allNavItems=document.querySelectorAll('.nav-item');
@@ -1719,14 +1722,18 @@ function getPRTransactions(){
 }
 
 function getMergedTransactions(){
-  // Merge manual transactions + PR transactions, deduplicate by id
-  // PR transactions always included - they are the source of truth for PR payments
+  // Always merge: manual transactions + ALL paid PR transactions
+  // PR transactions are derived directly from payRequests (always accurate)
   const prTxs = getPRTransactions();
-  const manualIds = new Set(transactions.map(t => String(t.id)));
-  const newPRTxs = prTxs.filter(t => !manualIds.has(String(t.id)));
-  const merged = [...transactions, ...newPRTxs];
-  // Sort by date descending
-  merged.sort((a,b)=>b.date.localeCompare(a.date));
+  // Exclude manual transactions that are PR duplicates (have 'pr-' prefix id)
+  const cleanManual = transactions.filter(t => !String(t.id).startsWith('pr-'));
+  // All PR transactions from payRequests
+  const merged = [...cleanManual, ...prTxs];
+  // Sort by date descending  
+  merged.sort((a,b) => {
+    if(b.date !== a.date) return b.date.localeCompare(a.date);
+    return String(b.id).localeCompare(String(a.id));
+  });
   return merged;
 }
 
@@ -3445,8 +3452,7 @@ async function loadPayRequests(){
     if(!Array.isArray(payRequests)) payRequests=[];
     checkPRAlerts();
     if(document.getElementById('pgPayReq')?.classList.contains('active')) renderPRList();
-    // Re-render everything now that payRequests is loaded
-    // This makes getMergedTransactions() include PR payments in ledger/dashboard
+    // Re-render with complete data including PR transactions
     renderAll();
   }catch(e){console.warn('PR load:',e.message);}
 }
