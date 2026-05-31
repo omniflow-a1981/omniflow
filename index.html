@@ -3306,6 +3306,8 @@ async function loadPayRequests(){
     if(!Array.isArray(payRequests)) payRequests=[];
     checkPRAlerts();
     if(document.getElementById('pgPayReq')?.classList.contains('active')) renderPRList();
+    // Auto-sync any paid PRs that are missing from ledger
+    syncPaidPRsToLedger();
   }catch(e){console.warn('PR load:',e.message);}
 }
 
@@ -4269,6 +4271,89 @@ function prCanActUser(userDef, pr, step){
   if(step==='paid')     return u==='finance'||r==='admin';
   if(step==='prepared') return pr.prepared_by===u; // notify preparer on reverse
   return false;
+}
+
+// ══════════════════════════════════════
+// PR LEDGER SYNC
+// ══════════════════════════════════════
+async function syncPaidPRsToLedger(){
+  // Get all paid PRs
+  const paidPRs = payRequests.filter(pr => pr.status === 'paid' && pr.paid_by);
+  if(!paidPRs.length) return;
+
+  const HDRS = {
+    'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
+    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation'
+  };
+
+  let synced = 0;
+  for(const pr of paidPRs){
+    // Check if transaction already exists for this PR
+    const tid = pr.transfer_id || '';
+    const partial = parseFloat(pr.partial_amount||0);
+    const net = parseFloat(pr.net_payable||0);
+    const paidAmt = (partial > 0 && partial < net) ? partial : net;
+    
+    const coIdRaw = pr.company_id || '';
+    const coId = coIdRaw === 'Wanofi' ? 'WE' : coIdRaw === 'Matisan' ? 'ME' : coIdRaw;
+    const rawDiv = pr.division || '';
+    const dot = rawDiv.indexOf('.');
+    const divCode = dot > -1 ? rawDiv.slice(0, dot).trim() : rawDiv.trim();
+    const divName = dot > -1 ? rawDiv.slice(dot+1).trim() : rawDiv.trim();
+    const sub = pr.sub_project ? ' [' + pr.sub_project + ']' : '';
+    const ref = (pr.request_type||'Payment') + ': ' + pr.project + sub + (tid ? ' | TRF:' + tid : '');
+
+    // Check if already in local transactions array
+    const exists = transactions.some(t =>
+      t.type === 'out' &&
+      t.co === coId &&
+      t.divCode === divCode &&
+      (t.ref === ref || (tid && t.ref && t.ref.includes(tid)))
+    );
+
+    if(!exists){
+      // Not in ledger — save to Supabase
+      try{
+        const paidDate = pr.paid_at ? pr.paid_at.slice(0,10) : new Date().toISOString().slice(0,10);
+        const res = await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions', {
+          method: 'POST',
+          headers: HDRS,
+          body: JSON.stringify({
+            company_id: coId,
+            div_code: divCode,
+            div_name: divName,
+            date: paidDate,
+            type: 'out',
+            amt: paidAmt,
+            amt_usd: null,
+            ref: ref,
+            note: 'PR Payment — ' + (pr.pay_method||'') + (tid ? ' Ref:' + tid : '') + sub,
+            created_by: pr.paid_by || 'finance'
+          })
+        });
+        if(res.ok){
+          const saved = await res.json();
+          const savedId = (Array.isArray(saved) ? saved[0]?.id : saved?.id) || ('pr-sync-' + Date.now());
+          transactions.unshift({
+            id: savedId, date: paidDate,
+            co: coId, divCode: divCode, divName: divName,
+            type: 'out', amt: paidAmt, amtUsd: null,
+            ref: ref, note: 'PR Payment' + sub
+          });
+          synced++;
+          console.log('[Sync] Added PR payment to ledger:', ref);
+        }
+      }catch(e){ console.warn('[Sync] Failed for PR:', pr.project, e.message); }
+    }
+  }
+
+  if(synced > 0){
+    ls('omni-tx', transactions);
+    renderAll();
+    console.log('[Sync] Synced', synced, 'PR payments to ledger');
+  }
 }
 
 // ══════════════════════════════════════
