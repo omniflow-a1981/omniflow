@@ -2947,19 +2947,48 @@ function handleSlipUpload(input){
 }
 
 function updateSlipSummary(){
-  const lbl=document.getElementById('slipLabel');
-  if(!lbl) return;
-  const slips=prAttachments.transfer_slip||[];
-  if(!slips.length){
-    lbl.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="color:#166534"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><div style="font-size:11px;color:#166534;margin-top:3px">Upload transfer slip or receipt (multiple allowed)</div>';
-    return;
+  const slips = prAttachments.transfer_slip||[];
+  const zone = document.getElementById('slipZone');
+  if(zone) zone.classList.toggle('has-file', slips.length>0);
+
+  // Update label (new PR modal slip zone)
+  const lbl = document.getElementById('slipLabel');
+  if(lbl){
+    if(!slips.length){
+      lbl.innerHTML = `<div style="text-align:center;padding:4px 0">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:#166534"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div style="font-size:12px;color:#166534;margin-top:4px;font-weight:600">Click to upload transfer slip(s)</div>
+        <div style="font-size:10px;color:#166534;opacity:.7;margin-top:2px">Bank receipt, cheque copy, mobile screenshot — multiple allowed</div>
+      </div>`;
+    } else {
+      lbl.innerHTML = '<div style="width:100%;padding:4px 0">' + slips.map((s,i)=>`
+        <div style="display:flex;align-items:center;gap:6px;padding:4px 6px;background:rgba(255,255,255,.5);border-radius:6px;margin-bottom:3px">
+          <span style="font-size:14px">🧾</span>
+          <span style="color:#166534;font-weight:600;font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer"
+            onclick="viewAttachment(prAttachments.transfer_slip[${i}].data,prAttachments.transfer_slip[${i}].name)">${s.name}</span>
+          <button onclick="event.stopPropagation();prAttachments.transfer_slip.splice(${i},1);updateSlipSummary()"
+            style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px;line-height:1;padding:0">×</button>
+        </div>`).join('') + '</div>';
+    }
   }
-  lbl.innerHTML='<div style="width:100%">'+slips.map((s,i)=>`
-    <div style="display:flex;align-items:center;gap:6px;padding:3px 0">
-      <span style="font-size:13px">🧾</span>
-      <span style="color:var(--teal-dark);font-weight:600;font-size:11px;flex:1;cursor:pointer" onclick="viewAttachment(prAttachments.transfer_slip[${i}].data,prAttachments.transfer_slip[${i}].name)">${s.name}</span>
-      <button onclick="prAttachments.transfer_slip.splice(${i},1);updateSlipSummary()" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:15px;line-height:1">×</button>
-    </div>`).join('')+'</div>';
+
+  // Also update slipSummaryView in viewPR paid section
+  const view = document.getElementById('slipSummaryView');
+  if(view){
+    if(!slips.length){
+      view.innerHTML = '<div style="font-size:11px;color:var(--red);font-weight:600;padding:4px 0">⚠ No transfer slip uploaded — payment will be blocked</div>';
+    } else {
+      view.innerHTML = slips.map((s,i)=>`
+        <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;margin-bottom:3px;cursor:pointer"
+          onclick="viewAttachment(prAttachments.transfer_slip[${i}].data,prAttachments.transfer_slip[${i}].name)">
+          <span style="font-size:13px">🧾</span>
+          <span style="color:#166534;font-weight:600;font-size:11px;flex:1">${s.name}</span>
+          <span style="font-size:10px;color:#166534;opacity:.6">click to view</span>
+          <button onclick="event.stopPropagation();prAttachments.transfer_slip.splice(${i},1);updateSlipSummary()"
+            style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px;line-height:1;padding:0">×</button>
+        </div>`).join('');
+    }
+  }
 }
 
 function openPRAttachment(jsonStrOrEl){
@@ -3485,13 +3514,15 @@ function viewPR(id){
       </div>
       <div style="margin-top:8px">
         <div style="font-size:11px;font-weight:700;color:#166534;margin-bottom:5px">Transfer Slip / Receipt</div>
-        <label class="upload-zone" id="slipZone" style="display:block;border-color:#86efac">
+        <label class="upload-zone" id="slipZone" style="display:block;border-color:#86efac;cursor:pointer" onclick="document.getElementById('slipFile').click()">
           <input type="file" id="slipFile" accept="image/*,.pdf" multiple style="display:none" onchange="handleSlipUpload(this)">
-          <div id="slipLabel">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="color:#166534"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <div style="font-size:11px;color:#166534;margin-top:3px">Upload transfer slip or receipt</div>
+          <div id="slipLabel" style="text-align:center;padding:4px 0">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:#166534"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <div style="font-size:12px;color:#166534;margin-top:4px;font-weight:600">Click to upload transfer slip(s) <span style="color:var(--red)">*</span></div>
+            <div style="font-size:10px;color:#166534;opacity:.7;margin-top:2px">Bank receipt, cheque copy, mobile screenshot — multiple files allowed</div>
           </div>
         </label>
+        <div id="slipSummaryView" style="margin-top:6px"></div>
       </div>
     </div>`:''}
 
@@ -3575,6 +3606,11 @@ function viewPR(id){
       <button onclick="closePRDetail()" class="btn-secondary">Close</button>
     </div>`;
   document.getElementById('prDetailModal').classList.add('open');
+  // If paid section shown, init slip summary display
+  if(prNextStep(pr)==='paid' && prCanAct(pr,'paid')){
+    prAttachments.transfer_slip = [];
+    setTimeout(updateSlipSummary, 50);
+  }
 }
 
 function requestPaymentPR(id){
@@ -3820,6 +3856,20 @@ async function actOnPR(id){
       alert('⚠ Payment blocked.\n\nAt least one invoice (Pre-Payment or Post-Payment) must be attached to this request before payment can be processed.\n\nPlease ask the preparer to upload the invoice first.');
       return;
     }
+    // Require transfer slip to be uploaded in this session
+    const hasSlip = prAttachments.transfer_slip && prAttachments.transfer_slip.length > 0;
+    if(!hasSlip){
+      // Highlight slip zone
+      const slipZoneEl = document.getElementById('slipZone');
+      if(slipZoneEl){
+        slipZoneEl.style.borderColor = 'var(--red)';
+        slipZoneEl.style.background = 'var(--red-light)';
+        setTimeout(()=>{ slipZoneEl.style.borderColor=''; slipZoneEl.style.background=''; }, 3000);
+        slipZoneEl.scrollIntoView({behavior:'smooth', block:'center'});
+      }
+      alert('⚠ Transfer Slip Required.\n\nPlease upload the transfer slip or receipt before marking this payment as paid.\n\nMultiple files allowed (bank receipt, cheque copy, etc.)');
+      return;
+    }
     if(!confirm('Confirm payment of '+fmt(pr.net_payable)+' has been PAID?')) return;
     const tid=tel.value.trim(), pm=mel?mel.value:'Bank Transfer', cmt=cel?cel.value.trim():'';
     try{
@@ -3950,115 +4000,124 @@ async function actOnPR(id){
 
 
 async function createPRLedgerEntry(pr, transferId, payMethod){
-  // Parse amount: partial if set, else full net payable
-  const paidAmt = parseFloat(pr.partial_amount||0) > 0
+  // ── Amount ──
+  const paidAmt = parseFloat(pr.partial_amount||0) > 0 && parseFloat(pr.partial_amount||0) < parseFloat(pr.net_payable||0)
     ? parseFloat(pr.partial_amount)
     : parseFloat(pr.net_payable||0);
 
-  // Parse division string: "ME1. Construction" -> code="ME1", name="Construction"
-  const rawDiv = (pr.division||"");
-  const dotIdx = rawDiv.indexOf(".");
+  // ── Company ID — use same format as regular transactions ──
+  // Regular txns use co.id which is 'WE' or 'ME' from DEFAULT_COMPANIES
+  const rawCoId = pr.company_id || '';
+  const coId = rawCoId === 'Wanofi' ? 'WE'
+              : rawCoId === 'Matisan' ? 'ME'
+              : rawCoId; // already 'WE' or 'ME'
+
+  // ── Division — parse "ME1. Construction" → code="ME1", name="Construction" ──
+  const rawDiv = (pr.division || '');
+  const dotIdx = rawDiv.indexOf('.');
   const divCode = dotIdx > -1 ? rawDiv.slice(0, dotIdx).trim() : rawDiv.trim();
   const divName = dotIdx > -1 ? rawDiv.slice(dotIdx+1).trim() : rawDiv.trim();
-  const coId = pr.company_id || "";
-  const today = new Date().toISOString().slice(0,10);
 
-  const ref = (pr.request_type||"Payment") + ": " + pr.project
-    + (pr.sub_project ? " [" + pr.sub_project + "]" : "")
-    + (transferId ? " | TRF:" + transferId : "");
-  const txNote = "PR Payment: " + payMethod
-    + (transferId ? " Ref:" + transferId : "")
-    + (parseFloat(pr.partial_amount||0)>0 ? " (Partial)" : "");
+  // ── Reference — includes subdivision prominently ──
+  const subTag = pr.sub_project ? ' [' + pr.sub_project + ']' : '';
+  const typeTag = pr.request_type || 'Payment';
+  const ref = typeTag + ': ' + pr.project + subTag
+    + (transferId ? ' | TRF:' + transferId : '');
+  const txNote = 'PR Payment via ' + payMethod
+    + (transferId ? ' | Ref: ' + transferId : '')
+    + (parseFloat(pr.partial_amount||0) > 0 ? ' (Partial)' : '')
+    + subTag;
 
-  // STEP 1: Add to local transactions array IMMEDIATELY
-  const tempId = "pr-" + Date.now();
+  const today = new Date().toISOString().slice(0, 10);
+
+  console.log('PR Ledger Entry:', { coId, divCode, divName, paidAmt, ref });
+
+  // ── STEP 1: Add to local transactions array immediately ──
+  const tempId = 'pr-' + Date.now();
   const localTx = {
-    id: tempId,
-    date: today,
-    co: coId,
-    divCode: divCode,
-    divName: divName,
-    type: "out",
-    amt: paidAmt,
-    amtUsd: null,
-    ref: ref,
-    note: txNote
+    id: tempId, date: today,
+    co: coId, divCode: divCode, divName: divName,
+    type: 'out', amt: paidAmt, amtUsd: null,
+    ref: ref, note: txNote
   };
   transactions.unshift(localTx);
-  ls("omni-tx", transactions);
+  ls('omni-tx', transactions);
 
-  // STEP 2: Render immediately
+  // ── STEP 2: Render immediately — all views update now ──
   renderAll();
 
-  // Pause polling for 30 seconds so it doesn't overwrite before Supabase confirms
+  // ── STEP 3: Pause polling so it doesn't overwrite ──
   lastPRPaymentTime = Date.now();
 
-  // STEP 3: Save to Supabase (await to confirm)
-  // Log what we're about to save for debugging
-  console.log('PR Ledger: Saving transaction', {coId, divCode, divName, paidAmt, ref});
+  // ── STEP 4: Save to Supabase ──
   const hdrs = {
-    "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE",
-    "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE",
-    "Content-Type": "application/json",
-    "Prefer": "return=representation"
+    'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
+    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation'
   };
 
   try {
-    const res = await fetch("https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions", {
-      method: "POST",
+    const res = await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions', {
+      method: 'POST',
       headers: hdrs,
       body: JSON.stringify({
         company_id: coId,
         div_code: divCode,
         div_name: divName,
         date: today,
-        type: "out",
+        type: 'out',
         amt: paidAmt,
         amt_usd: null,
         ref: ref,
         note: txNote,
-        created_by: currentUser ? currentUser.username : "finance"
+        created_by: currentUser ? currentUser.username : 'finance'
       })
     });
 
     if(res.ok){
       const saved = await res.json();
       const realId = (Array.isArray(saved) ? saved[0]?.id : saved?.id) || null;
-      console.log('PR Ledger: Supabase confirmed, realId=', realId);
+      console.log('PR Ledger: Supabase saved, id=', realId, 'co=', coId, 'div=', divCode);
+
+      // Replace temp ID with real ID
       if(realId){
         const tx = transactions.find(t => t.id === tempId);
-        if(tx){ tx.id = realId; }
-        ls("omni-tx", transactions);
+        if(tx) tx.id = realId;
+        ls('omni-tx', transactions);
       }
-      // Reload transactions from Supabase to get confirmed state
-      try{
-        const txRes=await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?select=*&order=date.desc,created_at.desc&limit=200',
-          {headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE'}});
-        if(txRes.ok){
-          const fresh=await txRes.json();
-          if(Array.isArray(fresh)&&fresh.length>0){
-            transactions=fresh.map(t=>({
-              id:t.id, date:t.date, co:t.company_id,
-              divCode:t.div_code, divName:t.div_name,
-              type:t.type, amt:parseFloat(t.amt)||0,
-              amtUsd:t.amt_usd?parseFloat(t.amt_usd):null,
-              ref:t.ref, note:t.note||''
-            }));
-            ls('omni-tx',transactions);
+
+      // ── STEP 5: Reload all transactions from Supabase to confirm ──
+      setTimeout(async () => {
+        try {
+          const fresh = await fetch(
+            'https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?select=*&order=date.desc,created_at.desc',
+            {headers: hdrs}
+          );
+          if(fresh.ok){
+            const data = await fresh.json();
+            if(Array.isArray(data) && data.length > 0){
+              transactions = data.map(t => ({
+                id: t.id, date: t.date, co: t.company_id,
+                divCode: t.div_code, divName: t.div_name,
+                type: t.type, amt: parseFloat(t.amt)||0,
+                amtUsd: t.amt_usd ? parseFloat(t.amt_usd) : null,
+                ref: t.ref, note: t.note || ''
+              }));
+              ls('omni-tx', transactions);
+              renderAll();
+              console.log('PR Ledger: Fresh reload complete,', transactions.length, 'transactions');
+            }
           }
-        }
-      }catch(ex){console.warn('Post-payment reload failed:',ex.message);}
-      renderAll();
+        } catch(ex) { console.warn('PR fresh reload failed:', ex.message); }
+      }, 2000);
+
     } else {
-      const errTxt = await res.text();
-      console.error("PR ledger Supabase error:", res.status, errTxt);
-      // Transaction still in local array from STEP 1
-      // Force render again just in case
-      renderAll();
+      const errText = await res.text();
+      console.error('PR Ledger Supabase error:', res.status, errText);
     }
-  } catch(e){
-    console.error("PR ledger fetch error:", e.message);
-    // Transaction still in local array
+  } catch(e) {
+    console.error('PR Ledger fetch error:', e.message);
   }
 }
 
