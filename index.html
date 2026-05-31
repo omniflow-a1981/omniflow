@@ -1691,10 +1691,7 @@ function getPRTransactions(){
   return payRequests
     .filter(pr => pr.status === 'paid' && pr.paid_by)
     .map(pr => {
-      const coIdRaw = pr.company_id || '';
-      const coId    = coIdRaw === 'Wanofi' ? 'WE'
-                    : coIdRaw === 'Matisan' ? 'ME'
-                    : coIdRaw;
+      const coId = normCoId(pr.company_id||'');
       const rawDiv  = pr.division || '';
       const dot     = rawDiv.indexOf('.');
       const divCode = dot > -1 ? rawDiv.slice(0, dot).trim() : rawDiv.trim();
@@ -1723,11 +1720,14 @@ function getPRTransactions(){
 
 function getMergedTransactions(){
   // Merge manual transactions + PR transactions, deduplicate by id
+  // PR transactions always included - they are the source of truth for PR payments
   const prTxs = getPRTransactions();
   const manualIds = new Set(transactions.map(t => String(t.id)));
-  // Only add PR transactions not already in manual transactions
   const newPRTxs = prTxs.filter(t => !manualIds.has(String(t.id)));
-  return [...transactions, ...newPRTxs];
+  const merged = [...transactions, ...newPRTxs];
+  // Sort by date descending
+  merged.sort((a,b)=>b.date.localeCompare(a.date));
+  return merged;
 }
 
 function divStats(code, txList){
@@ -3445,8 +3445,9 @@ async function loadPayRequests(){
     if(!Array.isArray(payRequests)) payRequests=[];
     checkPRAlerts();
     if(document.getElementById('pgPayReq')?.classList.contains('active')) renderPRList();
-    // Auto-sync any paid PRs that are missing from ledger
-    syncPaidPRsToLedger();
+    // Re-render everything now that payRequests is loaded
+    // This makes getMergedTransactions() include PR payments in ledger/dashboard
+    renderAll();
   }catch(e){console.warn('PR load:',e.message);}
 }
 
