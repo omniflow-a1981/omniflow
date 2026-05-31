@@ -913,7 +913,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       </div>
       <!-- Upload zone — shared, type changes what gets stored -->
       <label class="upload-zone" id="preInvZone" style="display:block">
-        <input type="file" id="invFileInput" accept="image/*,.pdf" style="display:none" onchange="handleInvUpload(this)">
+        <input type="file" id="invFileInput" accept="image/*,.pdf" multiple style="display:none" onchange="handleInvUpload(this)">
         <div id="preInvLabel" style="text-align:center;padding:4px 0">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--muted2)"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           <div style="font-size:12px;color:var(--muted);margin-top:4px">Click to upload invoice</div>
@@ -2859,7 +2859,7 @@ function calcPRRow(el){
 }
 
 // File attachments stored as base64 in prAttachments object
-let prAttachments = {pre_invoice:null, post_invoice:null, transfer_slip:null};
+let prAttachments = {pre_invoice:[], post_invoice:[], transfer_slip:[]};
 
 let currentInvType = 'pre'; // Track which type is selected
 
@@ -2878,60 +2878,88 @@ function setInvType(type, btn){
 }
 
 function handleInvUpload(input){
-  const file = input.files[0]; if(!file) return;
+  const files = Array.from(input.files);
+  if(!files.length) return;
   const type = currentInvType;
-  const reader = new FileReader();
-  reader.onload = function(e){
-    const att = {name:file.name, data:e.target.result, type:file.type};
-    if(type==='pre') prAttachments.pre_invoice = att;
-    else prAttachments.post_invoice = att;
-    // Reset file input so same file can be re-selected
-    input.value='';
-    updateInvSummary();
-    // Visual feedback on zone
-    const zone = document.getElementById('preInvZone');
-    if(zone){ zone.classList.add('has-file'); }
-  };
-  reader.readAsDataURL(file);
+  let loaded = 0;
+  files.forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = function(e){
+      const att = {name:file.name, data:e.target.result, type:file.type};
+      if(type==='pre') prAttachments.pre_invoice.push(att);
+      else prAttachments.post_invoice.push(att);
+      loaded++;
+      if(loaded===files.length){
+        input.value='';
+        updateInvSummary();
+        const zone=document.getElementById('preInvZone');
+        if(zone) zone.classList.add('has-file');
+      }
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 function updateInvSummary(){
   const summary = document.getElementById('invSummary');
   if(!summary) return;
   const items = [];
-  if(prAttachments.pre_invoice){
-    items.push(`<div class="upload-thumb" style="cursor:pointer" onclick="viewAttachment(prAttachments.pre_invoice.data,prAttachments.pre_invoice.name)">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
-      <span style="color:var(--teal-dark);font-weight:600">📄 Pre: ${prAttachments.pre_invoice.name}</span>
-      <button onclick="event.stopPropagation();prAttachments.pre_invoice=null;updateInvSummary()" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px;margin-left:4px">×</button>
+  // Pre-invoice files
+  (prAttachments.pre_invoice||[]).forEach((att,i)=>{
+    items.push(`<div class="upload-thumb" style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:5px 10px;margin:2px 0" onclick="viewAttachment(prAttachments.pre_invoice[${i}].data,prAttachments.pre_invoice[${i}].name)">
+      <span style="font-size:13px">📄</span>
+      <span style="color:var(--teal-dark);font-weight:600;font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Pre: ${att.name}</span>
+      <button onclick="event.stopPropagation();prAttachments.pre_invoice.splice(${i},1);updateInvSummary()" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px;line-height:1;padding:0 2px">×</button>
     </div>`);
-  }
-  if(prAttachments.post_invoice){
-    items.push(`<div class="upload-thumb" style="cursor:pointer" onclick="viewAttachment(prAttachments.post_invoice.data,prAttachments.post_invoice.name)">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
-      <span style="color:var(--teal-dark);font-weight:600">📋 Post: ${prAttachments.post_invoice.name}</span>
-      <button onclick="event.stopPropagation();prAttachments.post_invoice=null;updateInvSummary()" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px;margin-left:4px">×</button>
+  });
+  // Post-invoice files
+  (prAttachments.post_invoice||[]).forEach((att,i)=>{
+    items.push(`<div class="upload-thumb" style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:5px 10px;margin:2px 0" onclick="viewAttachment(prAttachments.post_invoice[${i}].data,prAttachments.post_invoice[${i}].name)">
+      <span style="font-size:13px">📋</span>
+      <span style="color:var(--teal-dark);font-weight:600;font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Post: ${att.name}</span>
+      <button onclick="event.stopPropagation();prAttachments.post_invoice.splice(${i},1);updateInvSummary()" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px;line-height:1;padding:0 2px">×</button>
     </div>`);
-  }
-  summary.innerHTML = items.join('') || '';
-  // Update zone state
-  const zone = document.getElementById('preInvZone');
-  if(zone){
-    zone.classList.toggle('has-file', !!(prAttachments.pre_invoice||prAttachments.post_invoice));
-  }
+  });
+  summary.innerHTML = items.join('') ||
+    '<div style="font-size:11px;color:var(--muted2);padding:4px 0">No files attached yet</div>';
+  const total=(prAttachments.pre_invoice||[]).length+(prAttachments.post_invoice||[]).length;
+  const zone=document.getElementById('preInvZone');
+  if(zone) zone.classList.toggle('has-file', total>0);
 }
 
 function handleSlipUpload(input){
-  const file = input.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e){
-    prAttachments.transfer_slip = {name:file.name, data:e.target.result, type:file.type};
-    const lbl = document.getElementById('slipLabel');
-    if(lbl) lbl.innerHTML = '<div class="upload-thumb"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg><span style="color:var(--teal-dark);font-weight:600">'+file.name+'</span></div>';
-    const z = document.getElementById('slipZone');
-    if(z) z.classList.add('has-file');
-  };
-  reader.readAsDataURL(file);
+  const files = Array.from(input.files); if(!files.length) return;
+  let loaded=0;
+  files.forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = function(e){
+      prAttachments.transfer_slip.push({name:file.name, data:e.target.result, type:file.type});
+      loaded++;
+      if(loaded===files.length){
+        input.value='';
+        updateSlipSummary();
+        const z=document.getElementById('slipZone');
+        if(z) z.classList.add('has-file');
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function updateSlipSummary(){
+  const lbl=document.getElementById('slipLabel');
+  if(!lbl) return;
+  const slips=prAttachments.transfer_slip||[];
+  if(!slips.length){
+    lbl.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="color:#166534"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><div style="font-size:11px;color:#166534;margin-top:3px">Upload transfer slip or receipt (multiple allowed)</div>';
+    return;
+  }
+  lbl.innerHTML='<div style="width:100%">'+slips.map((s,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;padding:3px 0">
+      <span style="font-size:13px">🧾</span>
+      <span style="color:var(--teal-dark);font-weight:600;font-size:11px;flex:1;cursor:pointer" onclick="viewAttachment(prAttachments.transfer_slip[${i}].data,prAttachments.transfer_slip[${i}].name)">${s.name}</span>
+      <button onclick="prAttachments.transfer_slip.splice(${i},1);updateSlipSummary()" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:15px;line-height:1">×</button>
+    </div>`).join('')+'</div>';
 }
 
 function openPRAttachment(jsonStrOrEl){
@@ -2987,7 +3015,8 @@ function viewAttachment(dataUrl, name){
 }
 
 function resetPRAttachments(){
-  prAttachments = {pre_invoice:null, post_invoice:null, transfer_slip:null};
+  prAttachments = {pre_invoice:[], post_invoice:[], transfer_slip:[]};
+  currentInvType = 'pre';
 }
 
 function removePRRow(btn){
@@ -3156,7 +3185,9 @@ async function savePR(){
   if(!project||!date||!items.length){alert('Please fill in date, project and at least one item.');return;}
   // Pre-payment invoice required ONLY when pre-payment type is selected
   // Post-payment invoice is optional (collected after payment)
-  if(!prAttachments.pre_invoice && !prAttachments.post_invoice){
+  const hasPreInv = prAttachments.pre_invoice && prAttachments.pre_invoice.length > 0;
+  const hasPostInv = prAttachments.post_invoice && prAttachments.post_invoice.length > 0;
+  if(!hasPreInv && !hasPostInv){
     // Neither attached — check which type was selected
     if(currentInvType==='pre'){
       const zone=document.getElementById('preInvZone');
@@ -3170,7 +3201,7 @@ async function savePR(){
       return;
     }
     // Post-payment selected — allow submission without invoice
-  } else if(currentInvType==='pre' && !prAttachments.pre_invoice){
+  } else if(currentInvType==='pre' && !hasPreInv){
     // Pre selected but only post attached — warn but allow
     if(!confirm('You have selected Pre-Payment Invoice but uploaded a Post-Payment Invoice.\nSubmit anyway?')) return;
   }
@@ -3187,8 +3218,8 @@ async function savePR(){
     sub_total:sub,vat,grand_total:grand,withholding:wh,net_payable:net,
     vat_mode:vatMode,request_type:prType,sub_project:subCode,manpower_category:mpCat,
     prepared_by:currentUser.username,prepared_at:new Date().toISOString(),status:'pending',rejected:false,reject_comment:null,
-    pre_invoice:prAttachments.pre_invoice?JSON.stringify(prAttachments.pre_invoice):null,
-    post_invoice:prAttachments.post_invoice?JSON.stringify(prAttachments.post_invoice):null
+    pre_invoice:(prAttachments.pre_invoice&&prAttachments.pre_invoice.length)?JSON.stringify(prAttachments.pre_invoice):null,
+    post_invoice:(prAttachments.post_invoice&&prAttachments.post_invoice.length)?JSON.stringify(prAttachments.post_invoice):null
   };
   try{
     const eid=document.getElementById('prEditId').value;
@@ -3455,7 +3486,7 @@ function viewPR(id){
       <div style="margin-top:8px">
         <div style="font-size:11px;font-weight:700;color:#166534;margin-bottom:5px">Transfer Slip / Receipt</div>
         <label class="upload-zone" id="slipZone" style="display:block;border-color:#86efac">
-          <input type="file" id="slipFile" accept="image/*,.pdf" style="display:none" onchange="handleSlipUpload(this)">
+          <input type="file" id="slipFile" accept="image/*,.pdf" multiple style="display:none" onchange="handleSlipUpload(this)">
           <div id="slipLabel">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="color:#166534"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             <div style="font-size:11px;color:#166534;margin-top:3px">Upload transfer slip or receipt</div>
@@ -3509,16 +3540,29 @@ function viewPR(id){
     ${pr.pre_invoice||pr.post_invoice||pr.transfer_slip?`
     <div style="background:var(--bg);border-radius:10px;padding:10px 14px;margin-bottom:10px">
       <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Attachments</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${(()=>{window._vprAtt=window._vprAtt||{};
-          try{if(pr.pre_invoice){window._vprAtt.pre=JSON.parse(pr.pre_invoice);}}catch(e){}
-          try{if(pr.post_invoice){window._vprAtt.post=JSON.parse(pr.post_invoice);}}catch(e){}
-          try{if(pr.transfer_slip){window._vprAtt.slip=JSON.parse(pr.transfer_slip);}}catch(e){}
-          return '';
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${(()=>{
+          let btns='';
+          // Pre-invoice files (array or single object)
+          try{
+            const pre=JSON.parse(pr.pre_invoice||'null');
+            const arr=Array.isArray(pre)?pre:(pre?[pre]:[]);
+            arr.forEach((a,i)=>{btns+=`<button onclick="viewAttachment('${a.data.replace(/'/g,"\\'")}','${a.name}')" class="btn-secondary" style="font-size:11px;padding:4px 10px">📄 Pre-Invoice ${arr.length>1?i+1:''}: ${a.name}</button>`;});
+          }catch(e){}
+          // Post-invoice files
+          try{
+            const post=JSON.parse(pr.post_invoice||'null');
+            const arr=Array.isArray(post)?post:(post?[post]:[]);
+            arr.forEach((a,i)=>{btns+=`<button onclick="viewAttachment('${a.data.replace(/'/g,"\\'")}','${a.name}')" class="btn-secondary" style="font-size:11px;padding:4px 10px">📋 Post-Invoice ${arr.length>1?i+1:''}: ${a.name}</button>`;});
+          }catch(e){}
+          // Transfer slip files
+          try{
+            const slip=JSON.parse(pr.transfer_slip||'null');
+            const arr=Array.isArray(slip)?slip:(slip?[slip]:[]);
+            arr.forEach((a,i)=>{btns+=`<button onclick="viewAttachment('${a.data.replace(/'/g,"\\'")}','${a.name}')" class="btn-secondary" style="font-size:11px;padding:4px 10px;background:var(--teal-light);color:var(--teal-dark)">🧾 Slip ${arr.length>1?i+1:''}: ${a.name}</button>`;});
+          }catch(e){}
+          return btns||'<span style="font-size:11px;color:var(--muted2)">No attachments</span>';
         })()}
-        ${pr.pre_invoice?`<button onclick="viewAttachment(window._vprAtt.pre.data,window._vprAtt.pre.name)" class="btn-secondary" style="font-size:11px;padding:5px 12px">📄 Pre-Payment Invoice</button>`:''}
-        ${pr.post_invoice?`<button onclick="viewAttachment(window._vprAtt.post.data,window._vprAtt.post.name)" class="btn-secondary" style="font-size:11px;padding:5px 12px">📄 Post-Payment Invoice</button>`:''}
-        ${pr.transfer_slip?`<button onclick="viewAttachment(window._vprAtt.slip.data,window._vprAtt.slip.name)" class="btn-secondary" style="font-size:11px;padding:5px 12px;background:var(--teal-light);color:var(--teal-dark)">🧾 Transfer Slip</button>`:''}
       </div>
     </div>`:''}
     <div class="btn-row" style="margin-top:14px;flex-wrap:wrap">
@@ -3769,6 +3813,13 @@ async function actOnPR(id){
     const mel=document.getElementById('prPayMethod');
     const cel=document.getElementById('prPaidComment');
     if(!tel||!tel.value.trim()){alert('Please enter the Cheque/Transfer Number before marking as paid.');return;}
+    // Require at least one invoice (pre or post) to be attached
+    const hasInv = (pr.pre_invoice && pr.pre_invoice!=='null') ||
+                   (pr.post_invoice && pr.post_invoice!=='null');
+    if(!hasInv){
+      alert('⚠ Payment blocked.\n\nAt least one invoice (Pre-Payment or Post-Payment) must be attached to this request before payment can be processed.\n\nPlease ask the preparer to upload the invoice first.');
+      return;
+    }
     if(!confirm('Confirm payment of '+fmt(pr.net_payable)+' has been PAID?')) return;
     const tid=tel.value.trim(), pm=mel?mel.value:'Bank Transfer', cmt=cel?cel.value.trim():'';
     try{
@@ -3776,7 +3827,7 @@ async function actOnPR(id){
       await fetch(PR_SB+'/payment_requests?id=eq.'+id,{
         method:'PATCH',
         headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
-        body:JSON.stringify({paid_by:currentUser.username,paid_at:new Date().toISOString(),status:'paid',transfer_id:tid,pay_method:pm,paid_comment:cmt,transfer_slip:prAttachments.transfer_slip?JSON.stringify(prAttachments.transfer_slip):null})
+        body:JSON.stringify({paid_by:currentUser.username,paid_at:new Date().toISOString(),status:'paid',transfer_id:tid,pay_method:pm,paid_comment:cmt,transfer_slip:(prAttachments.transfer_slip&&prAttachments.transfer_slip.length)?JSON.stringify(prAttachments.transfer_slip):null})
       });
 
       // Step 2: Create ledger transaction (saves to Supabase + updates local array + calls renderAll)
