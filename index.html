@@ -1675,11 +1675,13 @@ function getPRPendingPayables(){
         supplier  : pr.client || pr.project,
         desc      : '⏳ PR: '+pr.project+sub,
         amt       : Math.round(pendingAmt),
-        paid      : partial>0 ? Math.round(partial) : 0,
+        paid      : 0,
+        alreadyPaid: Math.round(partial),
         status    : 'unpaid',
         due       : '',
-        note      : 'Verified by: '+(pr.verified_by||'—')
-                  + (partial>0?' | Partial paid: '+fmt(partial):''),
+        note      : (partial>0?'Already paid: '+fmt(partial)+' | ':'')
+                  + 'Remaining: '+fmt(pendingAmt)
+                  + ' | Verified by: '+(pr.verified_by||'—'),
         isPR      : true,
         prId      : pr.id,
         reqType   : pr.request_type||'',
@@ -2810,7 +2812,7 @@ function renderPayables(){
             </div>
             <div style="text-align:right;flex-shrink:0;min-width:100px">
               <div style="font-size:14px;font-weight:800;color:${p.isPR?'#92400e':balance>0?'var(--red)':'var(--teal-dark)'}">${fmt(balance)}</div>
-              ${p.isPR&&p.paid>0?`<div style="font-size:10px;color:var(--teal-dark)">Paid: ${fmt(p.paid)}</div>`:''}
+              ${p.isPR&&p.alreadyPaid>0?`<div style="font-size:10px;color:var(--teal-dark)">Already paid: ${fmt(p.alreadyPaid)}</div>`:''}
               ${!p.isPR?`
               <div style="display:flex;gap:4px;margin-top:5px;justify-content:flex-end">
                 <select onchange="updatePayStatus('${p.id}',this.value)" style="font-size:10px;padding:2px 5px;border:1px solid var(--border);border-radius:5px;background:var(--surface)">
