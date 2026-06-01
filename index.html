@@ -2699,31 +2699,46 @@ function renderPayables(){
     ...prPending
   ];
 
-  const grandTotal   = allPay.reduce((s,p)=>s+(p.amt||0),0);
-  const grandPaid    = payables.reduce((s,p)=>s+(p.paid||0),0);
-  const prTotal      = prPending.reduce((s,p)=>s+(p.amt||0),0);
-  const overdue      = payables.filter(p=>p.due&&p.due<new Date().toISOString().slice(0,10)&&p.status!=='paid').length;
+  // ── Manual payables stats (separate from PR) ──
+  const manualPayables   = payables.map(p=>({...p, co: normCoId(p.co||p.company_id||'')}));
+  const manualTotal      = manualPayables.filter(p=>p.status!=='paid').reduce((s,p)=>s+(p.amt||0),0);
+  const manualPaid       = manualPayables.reduce((s,p)=>s+(p.paid||0),0);
+  const manualStillOwed  = manualTotal - manualPaid;
+
+  // ── PR pending stats ──
+  const prTotal          = prPending.reduce((s,p)=>s+(p.amt||0),0);
+  const prAlreadyPaid    = prPending.reduce((s,p)=>s+(p.alreadyPaid||0),0);
+
+  // ── Combined totals ──
+  const grandTotal       = manualTotal + prTotal;
+  const grandPaid        = manualPaid + prAlreadyPaid;
+  const grandOwed        = grandTotal - grandPaid;
+
+  const overdue          = payables.filter(p=>p.due&&p.due<new Date().toISOString().slice(0,10)&&p.status!=='paid').length;
 
   // ── KPI Cards ──
   document.getElementById('payKpis').innerHTML=`
     <div class="out-kpi">
       <div class="ok-label">Total Payables</div>
       <div class="ok-val">${fmt(grandTotal)}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">Manual: ${fmt(manualTotal)} · PR: ${fmt(prTotal)}</div>
     </div>
     <div class="out-kpi">
       <div class="ok-label">Paid so far</div>
       <div class="ok-val" style="color:var(--teal-dark)">${fmt(grandPaid)}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">Manual: ${fmt(manualPaid)} · PR partial: ${fmt(prAlreadyPaid)}</div>
     </div>
     <div class="out-kpi">
       <div class="ok-label">Still Owed</div>
-      <div class="ok-val" style="color:var(--red)">${fmt(grandTotal-grandPaid)}</div>
+      <div class="ok-val" style="color:var(--red)">${fmt(grandOwed)}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">Manual: ${fmt(manualStillOwed)} · PR: ${fmt(prTotal)}</div>
     </div>
     ${overdue?`<div class="out-kpi"><div class="ok-label">Overdue</div><div class="ok-val" style="color:var(--red)">${overdue}</div></div>`:''}
     ${prPending.length?`
     <div class="out-kpi" style="background:var(--amber-light);border:1.5px solid #fde68a">
-      <div class="ok-label" style="color:#92400e">⏳ PR Pending</div>
+      <div class="ok-label" style="color:#92400e">⏳ PR Pending Payment</div>
       <div class="ok-val" style="color:#92400e">${fmt(prTotal)}</div>
-      <div style="font-size:10px;color:#92400e">${prPending.length} request(s)</div>
+      <div style="font-size:10px;color:#92400e">${prPending.length} request(s) · verified, awaiting Finance</div>
     </div>`:''}
   `;
 
