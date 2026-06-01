@@ -455,7 +455,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     </button>
     <button class="btab" id="bt-Ledger" onclick="navMob('Ledger',this)" aria-label="Ledger">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-      <span class="btab-label">Ledger</span>
+      <span class="btab-label">Payments</span>
     </button>
     <button class="btab" id="bt-Balances" onclick="navMob('Balances',this)" aria-label="Balances">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
@@ -516,7 +516,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Add Transaction
   </a>
   <a class="nav-item" href="#" onclick="nav('Ledger',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Ledger
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Payment Ledger
   </a>
   <div class="sb-sec">Finance</div>
   <a class="nav-item" href="#" onclick="nav('Balances',this)">
@@ -600,7 +600,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 
 <!-- ════ ADD TRANSACTION ════ -->
 <div id="pgEntry" class="page">
-  <div class="page-header"><div><div class="page-title">Add <em>Transaction</em></div><div class="page-subtitle">Saved permanently · supports ETB and USD</div></div></div>
+  <div class="page-header"><div><div class="page-title">Add <em>Transaction</em></div><div class="page-subtitle">Manual inflows/outflows for balances &amp; dashboard — not shown in Payment Ledger</div></div></div>
   <div class="flash-bar" id="flash"><span id="flashMsg"></span></div>
   <div class="form-card">
     <div class="type-toggle">
@@ -636,7 +636,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 <!-- ════ LEDGER ════ -->
 <div id="pgLedger" class="page">
   <div class="page-header">
-    <div><div class="page-title">Transaction <em>Ledger</em></div><div class="page-subtitle" id="ledgerCount">All entries</div></div>
+    <div><div class="page-title">Payment <em>Ledger</em></div><div class="page-subtitle" id="ledgerCount">Confirmed PR payments</div></div>
     <div class="btn-row">
       <button class="btn-secondary" onclick="copyCSV()">Export CSV</button>
       <button class="btn-danger" onclick="if(confirm('Clear ALL transactions?'))clearAll()">Clear all</button>
@@ -1724,23 +1724,28 @@ function getPRTransactions(){
 }
 
 function getMergedTransactions(){
+  // Ledger shows ONLY transactions where Finance confirmed payment on a Payment Request.
+  // Manual "Add Transaction" entries are excluded from the ledger.
+  // (Manual transactions[] are still used for dashboard KPIs and balances.)
   const prTxs = getPRTransactions();
-  
-  // Build a set of PR refs to detect duplicates saved to Supabase
+  const sorted = [...prTxs].sort((a,b) => b.date !== a.date
+    ? b.date.localeCompare(a.date)
+    : String(b.id).localeCompare(String(a.id))
+  );
+  return sorted;
+}
+
+// getAllTransactionsForStats: manual + PR — used only for dashboard/balance calculations
+function getAllTransactionsForStats(){
+  const prTxs = getPRTransactions();
   const prRefs = new Set(prTxs.map(t => t.ref));
-  
-  // Remove from manual transactions:
-  // 1. Any with 'pr-' prefix id (old PR ledger saves)
-  // 2. Any whose ref AND note BOTH match a PR (Supabase-saved duplicates only)
   const cleanManual = transactions.filter(t => {
     if(String(t.id).startsWith('pr-')) return false;
-    // Only suppress if ref matches a PR AND note indicates it was auto-saved by PR sync
     if(t.ref && prRefs.has(t.ref) && t.note && t.note.startsWith('PR Payment')) return false;
     return true;
   });
-  
   const merged = [...cleanManual, ...prTxs];
-  merged.sort((a,b) => b.date !== a.date 
+  merged.sort((a,b) => b.date !== a.date
     ? b.date.localeCompare(a.date)
     : String(b.id).localeCompare(String(a.id))
   );
@@ -1748,7 +1753,7 @@ function getMergedTransactions(){
 }
 
 function divStats(code, txList){
-  const src=txList||getMergedTransactions();
+  const src=txList||getAllTransactionsForStats();
   const usdDiv=USD_DIVS.includes(code);
   // Pure ETB transactions: have no amtUsd field (or amtUsd is 0/null)
   const etbOnlyIn=src.filter(t=>t.divCode===code&&t.type==='in'&&!t.amtUsd).reduce((s,t)=>s+(t.amt||0),0);
@@ -2021,7 +2026,7 @@ function renderAll(){renderDashboard();renderLedger();renderBalances();renderOut
 // DASHBOARD
 // ══════════════════════════════════════
 function renderDashboard(){
-  const allTx=getMergedTransactions();
+  const allTx=getAllTransactionsForStats();
   const filtered=filterByPeriod(allTx,dashPeriod,'dfbFrom','dfbTo');
   // ETB totals — only pure ETB transactions (for USD divs: ETB-only txs)
   const totIn=filtered.filter(t=>t.type==='in'&&!t.amtUsd).reduce((s,t)=>s+(t.amt||0),0);
@@ -2177,10 +2182,10 @@ function renderLedger(){
     if(type&&t.type!==type)return false;
     return true;
   });
-  const allMerged=getMergedTransactions();
-  document.getElementById('ledgerCount').textContent=filtered.length+' of '+allMerged.length+' transactions';
+  const allPR=getMergedTransactions();
+  document.getElementById('ledgerCount').textContent=filtered.length+' of '+allPR.length+' paid requests';
   const body=document.getElementById('ledgerBody');
-  if(!filtered.length){body.innerHTML='<div class="empty-state">'+(allMerged.length===0?'No transactions yet. Start adding!':'No transactions match these filters.')+'</div>';return}
+  if(!filtered.length){body.innerHTML='<div class="empty-state">'+(allPR.length===0?'No confirmed payments yet. Payments appear here after Finance marks a request as paid.':'No entries match these filters.')+'</div>';return}
   body.innerHTML=filtered.map(tx=>`<div class="l-row">
     <span style="color:var(--muted);font-size:11px">${tx.date}</span>
     <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${tx.ref}${tx.note?' — '+tx.note:''}">${tx.ref}</span>
@@ -2190,8 +2195,11 @@ function renderLedger(){
     <span style="color:var(--red);font-weight:700;font-size:12px">${tx.type==='out'?fmt(tx.amt):'—'}</span>
     <span style="color:var(--red);font-size:11px;opacity:.8">${tx.type==='out'&&tx.amtUsd?fmtUsd(tx.amtUsd):'—'}</span>
     <div class="action-btns">
-      <button class="edit-btn" onclick="openEditModal(${tx.id})" title="Edit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-      <button class="del-btn" onclick="deleteTx(${tx.id})" title="Delete"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+      ${tx.isPR
+        ? `<span style="font-size:10px;font-weight:700;color:var(--teal-dark);background:var(--teal-light);padding:2px 8px;border-radius:10px;white-space:nowrap">✓ PR</span>`
+        : `<button class="edit-btn" onclick="openEditModal(${tx.id})" title="Edit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+           <button class="del-btn" onclick="deleteTx(${tx.id})" title="Delete"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>`
+      }
     </div>
   </div>`).join('');
 }
@@ -2860,7 +2868,7 @@ async function deletePayable(id){
 // ══════════════════════════════════════
 function copyCSV(){
   const exportTxs=getMergedTransactions();
-  if(!exportTxs.length){alert('No transactions to export.');return}
+  if(!exportTxs.length){alert('No confirmed PR payments to export yet.');return}
   const h='Date,Company,Division Code,Division Name,Type,Amount (ETB),Amount (USD),Reference,Note';
   const r=exportTxs.map(t=>`${t.date},${t.co},${t.divCode},${t.divName},${t.type==='in'?'Inflow':'Outflow'},${t.amt},${t.amtUsd||''},"${t.ref}","${t.note||''}"`);
   navigator.clipboard.writeText([h,...r].join('\n')).then(()=>showFlash('✓ Copied! Paste into your Excel Transactions sheet.')).catch(()=>alert('Copy failed.'));
@@ -4346,7 +4354,7 @@ function prCanActUser(userDef, pr, step){
 // ══════════════════════════════════════
 // PR LEDGER SYNC
 // ══════════════════════════════════════
-async function syncPaidPRsToLedger(){
+async function syncPaidPRsToLedger_DISABLED(){
   // Get all paid PRs
   const paidPRs = payRequests.filter(pr => pr.status === 'paid' && pr.paid_by);
   if(!paidPRs.length) return;
