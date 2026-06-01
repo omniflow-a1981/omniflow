@@ -1438,12 +1438,26 @@ function doSignOut(){
 async function showApp(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appLayout').style.display='flex';
-  initApp();
+
+  // Block any intermediate renderAll calls until all data is fully loaded
+  window._omniInitialLoad = true;
+
+  // ── IMPORTANT: await initApp so cloud transactions/balances are loaded
+  // before ANYTHING renders. This prevents stale cache flash on sign-in.
+  await initApp();
+
+  // Load PRs — guarded from triggering renderAll during load
+  await loadPayRequests();
+
+  // All data loaded — clear flag then do ONE clean render
+  window._omniInitialLoad = false;
+
+  // Apply access levels AFTER data is loaded
   applyAccessLevel();
   resetInactivityTimer();
-  // Load PRs immediately and wait - then renderAll with complete data
-  await loadPayRequests();
   loadNotifs();
+
+  // Single authoritative renderAll — all data guaranteed fresh from cloud
   renderAll();
 }
 function applyAccessLevel(){
@@ -1492,8 +1506,13 @@ function applyAccessLevel(){
     // Sign out always visible
     const soNav=document.getElementById('signoutNav');
     if(soNav) soNav.style.display='flex';
-    nav('Dashboard',document.querySelector('.nav-item'));
-    document.querySelector('.nav-item').classList.add('active');
+    // Just set active state — full renderAll fires in showApp after data loads
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    const dashPage = document.getElementById('pgDashboard');
+    if(dashPage) dashPage.classList.add('active');
+    const firstNav = document.querySelector('.nav-item');
+    if(firstNav) firstNav.classList.add('active');
   }
 }
 
@@ -1557,6 +1576,12 @@ async function initApp(){
     }
 
     payables = ls('omni-payables')||[];
+
+    // ── Cache update: write fresh cloud data to localStorage so offline fallback is fresh
+    ls('omni-tx', transactions);
+    ls('omni-bal', balances);
+    ls('omni-out', outstandings);
+    ls('omni-companies', companies);
     showSync('ok','Data loaded ✓');
   } catch(e){
     console.warn('Cloud load failed, using local cache:', e);
@@ -1570,7 +1595,7 @@ async function initApp(){
 
   populateCoSelects();
   updateDivs();
-  renderAll();
+  // renderAll() intentionally removed here — called once by showApp after ALL data loads
   startRealtime();
   updateOnlineBadge();
   showMobileUI();
@@ -3484,12 +3509,12 @@ async function loadPayRequests(){
     const res=await fetch(PR_SB+'/payment_requests?select=*&order=created_at.desc',
       {headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON}});
     if(!res.ok) return;
-    payRequests=await res.json();
-    if(!Array.isArray(payRequests)) payRequests=[];
+    const raw=await res.json();
+    payRequests=Array.isArray(raw)?raw:[];
     checkPRAlerts();
     if(document.getElementById('pgPayReq')?.classList.contains('active')) renderPRList();
-    // Re-render with complete data including PR transactions
-    renderAll();
+    // Re-render only when not in initial load (showApp calls renderAll once after everything)
+    if(!window._omniInitialLoad) renderAll();
   }catch(e){console.warn('PR load:',e.message);}
 }
 
