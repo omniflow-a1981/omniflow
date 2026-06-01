@@ -717,28 +717,32 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 <!-- ════ COMPANIES ════ -->
 <div id="pgCompanies" class="page">
   <div class="page-header">
-    <div><div class="page-title">Companies & <em>Divisions</em></div><div class="page-subtitle">Add companies and manage divisions</div></div>
+    <div><div class="page-title">Companies & <em>Divisions</em></div><div class="page-subtitle">Add companies · divisions · subdivisions — used across all payment requests</div></div>
     <button class="btn-primary" onclick="showAddCoForm()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Company</button>
   </div>
   <div class="flash-bar" id="coFlash"><span id="coFlashMsg"></span></div>
-  <div class="card add-out-form" id="addCoForm">
-    <div class="card-title">New company</div>
+
+  <!-- Add Company Form -->
+  <div class="card add-out-form" id="addCoForm" style="margin-bottom:20px">
+    <div class="card-title" style="margin-bottom:16px">New Company</div>
     <div class="fr fr3">
       <div class="ff"><label>Company name</label><input type="text" id="coName" placeholder="e.g. Sunrise Trading Plc"></div>
       <div class="ff"><label>Short code</label><input type="text" id="coCode" placeholder="e.g. SR" maxlength="4"></div>
       <div class="ff"><label>Color theme</label>
         <select id="coColor">
-          <option value="teal">Teal (default)</option>
+          <option value="teal">Teal</option>
           <option value="blue">Blue</option>
           <option value="purple">Purple</option>
           <option value="amber">Amber</option>
+          <option value="red">Red</option>
         </select>
       </div>
     </div>
-    <div class="ff" style="margin-bottom:12px"><label>First division name</label><input type="text" id="coDiv1" placeholder="e.g. Construction"></div>
+    <div class="ff" style="margin-bottom:14px"><label>First division name</label><input type="text" id="coDiv1" placeholder="e.g. Construction"></div>
     <div class="btn-row"><button class="btn-primary" onclick="addCompany()">Create Company</button><button class="btn-secondary" onclick="hideAddCoForm()">Cancel</button></div>
   </div>
-  <div class="co-mgmt-grid" id="coMgmtGrid"></div>
+
+  <div id="coMgmtGrid"></div>
 </div>
 
 <!-- ════ OUTSTANDING PAYABLES ════ -->
@@ -1194,9 +1198,9 @@ const DEFAULT_COMPANIES = [
     code:'WE',
     color:'teal',
     divisions:[
-      {code:'WE1',name:'Design'},
-      {code:'WE2',name:'Supervision'},
-      {code:'WE3',name:'Others'}
+      {code:'WE1',name:'Design',subdivisions:[]},
+      {code:'WE2',name:'Supervision',subdivisions:[]},
+      {code:'WE3',name:'Others',subdivisions:[]}
     ]
   },
   {
@@ -1205,9 +1209,18 @@ const DEFAULT_COMPANIES = [
     code:'ME',
     color:'blue',
     divisions:[
-      {code:'ME1',name:'Construction'},
-      {code:'ME2',name:'Export'},
-      {code:'ME3',name:'Import'}
+      {code:'ME1',name:'Construction',subdivisions:[
+        {code:'ME1-S1',name:'Head Office',client:'Matisan Engineering Plc'},
+        {code:'ME1-S2',name:'G+4 Mixed Use Building',client:'Haji Abdulkadir Aliyye'},
+        {code:'ME1-S3',name:'Warehouse, Weigh Bridge & Guard House',client:'Almaz Yirba'},
+        {code:'ME1-S4',name:'G+2+T Residential Building',client:"W/rt Rosa Mamuye"},
+        {code:'ME1-S5',name:'Factory Building, Fence & Guard House',client:'Fenaol Coffee Trading PLC'},
+        {code:'ME1-S6',name:'B+G+5 Multi-purpose Hall',client:'ECWC'},
+        {code:'ME1-S7',name:'Factory Expansion Building',client:'Lampros Trading PLC'},
+        {code:'ME1-S8',name:'BHS Civil Works',client:'CGCOC'}
+      ]},
+      {code:'ME2',name:'Export',subdivisions:[]},
+      {code:'ME3',name:'Import',subdivisions:[]}
     ]
   }
 ];
@@ -1564,13 +1577,20 @@ async function initApp(){
     })) : ls('omni-out')||JSON.parse(JSON.stringify(DEFAULT_OUT));
 
     if(Array.isArray(coData) && coData.length){
-      companies = coData.map(co=>({
-        id: co.id==='Wanofi'?'WE':co.id==='Matisan'?'ME':co.id,
-        name: co.name, code: co.code||co.id, color: co.color,
-        divisions: (co.divisions||[]).map(d=>({
-          code: d.code, name: d.name, isUsd: d.is_usd_div
-        }))
-      }));
+      companies = coData.map(co=>{
+        const normId = co.id==='Wanofi'?'WE':co.id==='Matisan'?'ME':co.id;
+        const defCo = DEFAULT_COMPANIES.find(d=>d.id===normId||d.code===normId);
+        return {
+          id: normId, name: co.name, code: co.code||co.id, color: co.color,
+          divisions: (co.divisions||[]).map(d=>{
+            const defDiv = defCo ? defCo.divisions.find(dd=>dd.code===d.code) : null;
+            const cloudSubs = d.subdivisions||[];
+            // Use cloud subs if they exist, otherwise fall back to defaults
+            const subs = cloudSubs.length ? cloudSubs : (defDiv ? defDiv.subdivisions||[] : []);
+            return { code: d.code, name: d.name, isUsd: d.is_usd_div, subdivisions: subs };
+          })
+        };
+      });
     } else {
       companies = ls('omni-companies')||JSON.parse(JSON.stringify(DEFAULT_COMPANIES));
     }
@@ -2471,17 +2491,20 @@ function renderOutstanding(){
 function showAddCoForm(){document.getElementById('addCoForm').classList.add('vis')}
 function hideAddCoForm(){document.getElementById('addCoForm').classList.remove('vis')}
 
+// ═══════════════════════════════════════════
+// COMPANIES · DIVISIONS · SUBDIVISIONS
+// ═══════════════════════════════════════════
+
 function addCompany(){
-  const name=document.getElementById('coName').value.trim();
-  const code=document.getElementById('coCode').value.trim().toUpperCase();
-  const color=document.getElementById('coColor').value;
-  const div1=document.getElementById('coDiv1').value.trim();
-  if(!name||!code||!div1){alert('Please fill in company name, code, and first division.');return}
-  if(companies.find(c=>c.id===name||c.code===code)){alert('A company with this name or code already exists.');return}
-  const divCode=code+'1';
-  companies.push({id:name,name,code,color,divisions:[{code:divCode,name:div1}]});
+  const name  = document.getElementById('coName').value.trim();
+  const code  = document.getElementById('coCode').value.trim().toUpperCase();
+  const color = document.getElementById('coColor').value;
+  const div1  = document.getElementById('coDiv1').value.trim();
+  if(!name||!code||!div1){alert('Please fill in company name, code, and first division.');return;}
+  if(companies.find(c=>c.id===name||c.code===code)){alert('A company with this name or code already exists.');return;}
+  companies.push({id:name, name, code, color, divisions:[{code:code+'1', name:div1, subdivisions:[]}]});
   ls('omni-companies',companies);
-  document.getElementById('coName').value='';document.getElementById('coCode').value='';document.getElementById('coDiv1').value='';
+  ['coName','coCode','coDiv1'].forEach(id=>document.getElementById(id).value='');
   hideAddCoForm();
   populateCoSelects();
   renderCompanies();
@@ -2490,33 +2513,97 @@ function addCompany(){
 
 function addDivision(coId){
   const input=document.getElementById('divInput_'+coId);
-  if(!input)return;
+  if(!input) return;
   const name=input.value.trim();
-  if(!name){alert('Please enter a division name.');return}
+  if(!name){alert('Please enter a division name.');return;}
   const co=companies.find(c=>c.id===coId);
-  if(!co)return;
+  if(!co) return;
   const num=co.divisions.length+1;
   const divCode=co.code+num;
-  co.divisions.push({code:divCode,name});
+  co.divisions.push({code:divCode, name, subdivisions:[]});
   ls('omni-companies',companies);
   input.value='';
   populateCoSelects();
   renderCompanies();
-  showFlash('✓ Division '+divCode+' added to '+co.name,'coFlash','coFlashMsg');
+  showFlash('✓ Division '+divCode+' — '+name+' added','coFlash','coFlashMsg');
+}
+
+function renameDivision(coId, divCode){
+  const co=companies.find(c=>c.id===coId);
+  if(!co) return;
+  const div=co.divisions.find(d=>d.code===divCode);
+  if(!div) return;
+  const newName=prompt('Rename division '+divCode+':', div.name);
+  if(!newName||!newName.trim()) return;
+  div.name=newName.trim();
+  ls('omni-companies',companies);
+  populateCoSelects();
+  renderCompanies();
+  showFlash('✓ Division renamed to '+div.name,'coFlash','coFlashMsg');
 }
 
 function deleteDivision(coId,divCode){
-  if(!confirm('Delete division '+divCode+'? Any transactions for this division will be kept but may not display correctly.'))return;
+  if(!confirm('Delete division '+divCode+'? Existing transactions will be kept.')) return;
   const co=companies.find(c=>c.id===coId);
-  if(!co)return;
+  if(!co) return;
   co.divisions=co.divisions.filter(d=>d.code!==divCode);
   ls('omni-companies',companies);
   populateCoSelects();
   renderCompanies();
 }
 
+function addSubdivision(coId, divCode){
+  const input=document.getElementById('subInput_'+coId+'_'+divCode);
+  if(!input) return;
+  const name=input.value.trim();
+  if(!name){alert('Please enter a subdivision name.');return;}
+  const co=companies.find(c=>c.id===coId);
+  if(!co) return;
+  const div=co.divisions.find(d=>d.code===divCode);
+  if(!div) return;
+  if(!div.subdivisions) div.subdivisions=[];
+  // Check for duplicate
+  if(div.subdivisions.find(s=>s.name.toLowerCase()===name.toLowerCase())){
+    alert('A subdivision with this name already exists.');return;
+  }
+  const subCode=divCode+'-S'+(div.subdivisions.length+1);
+  div.subdivisions.push({code:subCode, name});
+  ls('omni-companies',companies);
+  input.value='';
+  populateCoSelects();
+  renderCompanies();
+  showFlash('✓ Subdivision "'+name+'" added to '+divCode,'coFlash','coFlashMsg');
+}
+
+function renameSubdivision(coId, divCode, subCode){
+  const co=companies.find(c=>c.id===coId);
+  if(!co) return;
+  const div=co.divisions.find(d=>d.code===divCode);
+  if(!div||!div.subdivisions) return;
+  const sub=div.subdivisions.find(s=>s.code===subCode);
+  if(!sub) return;
+  const newName=prompt('Rename subdivision:', sub.name);
+  if(!newName||!newName.trim()) return;
+  sub.name=newName.trim();
+  ls('omni-companies',companies);
+  renderCompanies();
+  showFlash('✓ Subdivision renamed','coFlash','coFlashMsg');
+}
+
+function deleteSubdivision(coId, divCode, subCode){
+  if(!confirm('Delete subdivision '+subCode+'?')) return;
+  const co=companies.find(c=>c.id===coId);
+  if(!co) return;
+  const div=co.divisions.find(d=>d.code===divCode);
+  if(!div||!div.subdivisions) return;
+  div.subdivisions=div.subdivisions.filter(s=>s.code!==subCode);
+  ls('omni-companies',companies);
+  populateCoSelects();
+  renderCompanies();
+}
+
 function deleteCompany(coId){
-  if(!confirm('Delete this company and all its divisions? Transaction data will be kept.'))return;
+  if(!confirm('Delete this company and all its divisions/subdivisions? Transaction data will be kept.')) return;
   companies=companies.filter(c=>c.id!==coId);
   ls('omni-companies',companies);
   populateCoSelects();
@@ -2524,25 +2611,86 @@ function deleteCompany(coId){
   renderAll();
 }
 
+function getCoPillColor(color){
+  const map={teal:'#0ea87a',blue:'#2563eb',purple:'#8b5cf6',amber:'#f59e0b',red:'#ef4444'};
+  return map[color]||'#0ea87a';
+}
+
 function renderCompanies(){
-  const grid=document.getElementById('coMgmtGrid');grid.innerHTML='';
+  const grid=document.getElementById('coMgmtGrid');
+  if(!grid) return;
+  grid.innerHTML='';
+  if(!companies.length){
+    grid.innerHTML='<div class="empty-state">No companies yet. Click "+ Add Company" to create one.</div>';
+    return;
+  }
   companies.forEach(co=>{
-    const colorStyle=getCoPillClass(co.color);
-    grid.innerHTML+=`<div class="co-mgmt-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div>
-          <div class="co-mgmt-name">${co.name}</div>
-          <div style="font-size:11px;color:var(--muted)">Code: ${co.code} · ${co.divisions.length} division${co.divisions.length!==1?'s':''}</div>
+    const accent=getCoPillColor(co.color);
+    const totalDivs=co.divisions.length;
+    const totalSubs=co.divisions.reduce((s,d)=>s+(d.subdivisions||[]).length,0);
+
+    let divHtml='';
+    (co.divisions||[]).forEach(div=>{
+      const subs=div.subdivisions||[];
+      divHtml+=`
+      <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden">
+        <!-- Division header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:var(--bg);flex-wrap:wrap;gap:6px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:10px;font-weight:800;letter-spacing:.5px;color:${accent};background:${accent}18;border:1px solid ${accent}44;border-radius:6px;padding:2px 8px">${div.code}</span>
+            <span style="font-size:13px;font-weight:700;color:var(--ink2)">${div.name}</span>
+            ${subs.length?`<span style="font-size:10px;color:var(--muted2)">${subs.length} subdivision${subs.length!==1?'s':''}</span>`:''}
+          </div>
+          <div style="display:flex;gap:5px">
+            <button onclick="renameDivision('${co.id}','${div.code}')" style="font-size:10px;padding:3px 9px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;color:var(--blue)">✏ Rename</button>
+            <button onclick="deleteDivision('${co.id}','${div.code}')" style="font-size:10px;padding:3px 9px;border:1px solid #fecaca;border-radius:6px;background:none;cursor:pointer;color:var(--red)">✕ Remove</button>
+          </div>
         </div>
-        <span class="co-pill" style="${colorStyle}">${co.code}</span>
+        <!-- Subdivisions list -->
+        ${subs.length?`
+        <div style="padding:8px 14px 4px 14px;display:flex;flex-wrap:wrap;gap:6px">
+          ${subs.map(s=>`
+          <span style="display:inline-flex;align-items:center;gap:4px;background:#f0fdf4;border:1px solid #86efac;border-radius:20px;padding:3px 10px;font-size:11px;color:#166534;font-weight:600">
+            📍 ${s.name}
+            <button onclick="renameSubdivision('${co.id}','${div.code}','${s.code}')" title="Rename" style="background:none;border:none;cursor:pointer;color:#166534;font-size:11px;padding:0 2px;line-height:1">✏</button>
+            <button onclick="deleteSubdivision('${co.id}','${div.code}','${s.code}')" title="Remove" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:13px;padding:0 2px;line-height:1">×</button>
+          </span>`).join('')}
+        </div>`:''}
+        <!-- Add Subdivision -->
+        <div style="padding:8px 14px 10px;display:flex;gap:6px;align-items:center;border-top:1px solid var(--border2);margin-top:4px">
+          <span style="font-size:10px;color:var(--muted);font-weight:700;flex-shrink:0">+ Subdivision:</span>
+          <input type="text" id="subInput_${co.id}_${div.code}" placeholder="e.g. Site A, Block 1..." style="flex:1;font-size:12px;padding:5px 9px;border:1px solid var(--border);border-radius:7px;outline:none;font-family:'DM Sans',sans-serif"
+            onkeydown="if(event.key==='Enter')addSubdivision('${co.id}','${div.code}')">
+          <button onclick="addSubdivision('${co.id}','${div.code}')" style="font-size:11px;padding:5px 12px;border-radius:7px;background:var(--teal-xlight);border:1px solid var(--teal-light);color:var(--teal-dark);cursor:pointer;font-weight:700;white-space:nowrap">+ Add</button>
+        </div>
+      </div>`;
+    });
+
+    grid.innerHTML+=`
+    <div style="background:var(--surface);border-radius:16px;border:2px solid ${accent}33;box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden">
+      <!-- Company Header -->
+      <div style="background:linear-gradient(135deg,${accent}22,${accent}0a);border-bottom:2px solid ${accent}33;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:40px;height:40px;border-radius:12px;background:${accent};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0">${co.code}</div>
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--ink)">${co.name}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${totalDivs} division${totalDivs!==1?'s':''}${totalSubs?' · '+totalSubs+' subdivision'+(totalSubs!==1?'s':''):''}</div>
+          </div>
+        </div>
+        <button onclick="deleteCompany('${co.id}')" class="btn-danger" style="font-size:11px;padding:6px 12px">🗑 Delete Company</button>
       </div>
-      <div style="margin-bottom:10px;min-height:28px">${co.divisions.map(d=>`<span class="div-tag">${d.code}. ${d.name}<button onclick="deleteDivision('${co.id}','${d.code}')" title="Remove division">×</button></span>`).join('')}</div>
-      <div style="display:flex;gap:6px;margin-bottom:10px">
-        <input type="text" id="divInput_${co.id}" placeholder="New division name" style="flex:1;font-size:12px">
-        <button class="btn-secondary" style="padding:6px 12px;font-size:12px" onclick="addDivision('${co.id}')">+ Add</button>
-      </div>
-      <div class="co-mgmt-actions">
-        <button class="btn-danger" style="font-size:11px;padding:6px 10px" onclick="deleteCompany('${co.id}')">Delete company</button>
+
+      <!-- Divisions -->
+      <div style="padding:16px 20px">
+        ${divHtml}
+
+        <!-- Add Division Row -->
+        <div style="display:flex;gap:8px;align-items:center;padding:10px 0 2px;border-top:1px dashed var(--border);margin-top:6px">
+          <span style="font-size:11px;color:var(--muted);font-weight:700;flex-shrink:0">+ Division:</span>
+          <input type="text" id="divInput_${co.id}" placeholder="Division name (e.g. Procurement)" style="flex:1;font-size:12px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;outline:none;font-family:'DM Sans',sans-serif"
+            onkeydown="if(event.key==='Enter')addDivision('${co.id}')">
+          <button onclick="addDivision('${co.id}')" class="btn-secondary" style="padding:7px 14px;font-size:12px;white-space:nowrap">+ Add Division</button>
+        </div>
       </div>
     </div>`;
   });
@@ -2964,16 +3112,22 @@ async function runDiagnostics(){
 let payRequests=[], prFilter='all', currentPRType='Material';
 const PR_SB='https://carcospsxvrmvkxhdyym.supabase.co/rest/v1', PR_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE';
 const PR_STEPS=['prepared','checked','approved','verified','paid'];
-const ME1_SUBS=[
-  {code:'ME1-1',client:'Matisan Engineering Plc',desc:'Head Office'},
-  {code:'ME1-2',client:'Haji Abdulkadir Aliyye',desc:'G+4 Mixed Use Building'},
-  {code:'ME1-3',client:'Almaz Yirba',desc:'Warehouse, Weigh Bridge & Guard House'},
-  {code:'ME1-4',client:"W/rt Rosa Mamuye",desc:'G+2+T Residential Building'},
-  {code:'ME1-5',client:'Fenaol Coffee Trading PLC',desc:'Factory Building, Fence & Guard House'},
-  {code:'ME1-6',client:'ECWC',desc:'B+G+5 Multi-purpose Hall'},
-  {code:'ME1-7',client:'Lampros Trading PLC',desc:'Factory Expansion Building'},
-  {code:'ME1-8',client:'CGCOC',desc:'BHS Civil Works'},
-];
+// ME1_SUBS is now dynamic — built from companies[].divisions[].subdivisions
+// This replaces the old hardcoded list. Subdivisions are managed in Companies & Divisions page.
+function getSubsForDiv(divCode){
+  for(const co of companies){
+    const div=co.divisions.find(d=>d.code===divCode);
+    if(div && div.subdivisions && div.subdivisions.length){
+      return div.subdivisions.map(s=>({
+        code: s.code,
+        name: s.name,
+        // client defaults to subdivision name (user can override in PR form)
+        client: s.client||s.name
+      }));
+    }
+  }
+  return [];
+}
 
 function prDispName(u){const n=ls('omni-display-names')||{};return n[u]||u;}
 
@@ -3030,18 +3184,33 @@ function updatePRDiv(){
   populatePRDivision(null);
 }
 function updatePRSub(){
-  const divVal=(document.getElementById('prDiv').value||'').toUpperCase();
-  const isME1=divVal.startsWith('ME1');
-  document.getElementById('prSubRow').style.display=isME1?'block':'none';
-  document.getElementById('prTypeRow').style.display=isME1?'block':'none';
-  if(isME1){
-    const s=document.getElementById('prSub'); s.innerHTML='<option value="">— Select site —</option>';
-    ME1_SUBS.forEach(x=>{const o=document.createElement('option');o.value=x.code;o.textContent=x.code+' — '+x.desc+' ('+x.client+')';o.dataset.client=x.client;s.appendChild(o);});
+  const divVal=(document.getElementById('prDiv').value||'').trim();
+  // Get subdivisions from companies data for the selected division
+  const subs = getSubsForDiv(divVal);
+  const hasSubs = subs.length > 0;
+  document.getElementById('prSubRow').style.display = hasSubs ? 'block' : 'none';
+  // prTypeRow (Material/Manpower/Machinery) — show for any division with subs or ME1
+  const isME1 = divVal.toUpperCase().startsWith('ME1');
+  document.getElementById('prTypeRow').style.display = (hasSubs||isME1) ? 'block' : 'none';
+  if(hasSubs){
+    const s=document.getElementById('prSub');
+    s.innerHTML='<option value="">— Select site / subdivision —</option>';
+    subs.forEach(x=>{
+      const o=document.createElement('option');
+      o.value=x.name;  // store name as value so it saves meaningfully
+      o.textContent=x.name;
+      o.dataset.client=x.client||'';
+      s.appendChild(o);
+    });
   }
 }
 function updatePRSubClient(){
   const opt=document.getElementById('prSub').selectedOptions[0];
-  if(opt&&opt.dataset.client) document.getElementById('prClient').value=opt.dataset.client;
+  // Auto-fill client if subdivision has a client, but don't overwrite if user already typed
+  const clientEl=document.getElementById('prClient')||document.getElementById('prClientAlt');
+  if(opt && opt.dataset.client && clientEl && !clientEl.value){
+    clientEl.value=opt.dataset.client;
+  }
 }
 
 function calcPRTotals(){
