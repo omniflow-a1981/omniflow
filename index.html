@@ -3111,6 +3111,9 @@ function handleInvUploadFinance(input){
 function handleSlipUpload(input){
   const files = Array.from(input.files); if(!files.length) return;
   let loaded=0;
+  const slipZoneEl = document.getElementById('slipZone');
+  // Mark zone as "loading" so user sees feedback immediately
+  if(slipZoneEl) slipZoneEl.classList.add('has-file');
   files.forEach(file=>{
     const reader = new FileReader();
     reader.onload = function(e){
@@ -3119,8 +3122,6 @@ function handleSlipUpload(input){
       if(loaded===files.length){
         input.value='';
         updateSlipSummary();
-        const z=document.getElementById('slipZone');
-        if(z) z.classList.add('has-file');
       }
     };
     reader.readAsDataURL(file);
@@ -3792,7 +3793,15 @@ function viewPR(id){
   document.getElementById('prDetailModal').classList.add('open');
   // If paid section shown, init slip summary display
   if(prNextStep(pr)==='paid' && prCanAct(pr,'paid')){
+    // Reset session attachments but pre-populate from DB if already saved
     prAttachments.transfer_slip = [];
+    if(pr.transfer_slip && pr.transfer_slip !== 'null'){
+      try{
+        const saved = JSON.parse(pr.transfer_slip);
+        const arr = Array.isArray(saved) ? saved : (saved ? [saved] : []);
+        prAttachments.transfer_slip = arr;
+      }catch(e){}
+    }
     setTimeout(updateSlipSummary, 50);
   }
 }
@@ -3890,9 +3899,9 @@ function requestPaymentPR(id){
     refHtml+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
     // Store attachments in window cache for easy reference
     window._prAttCache = {};
-    if(pr.pre_invoice){try{const a=JSON.parse(pr.pre_invoice);window._prAttCache.pre=a;refHtml+='<button onclick="viewAttachment(window._prAttCache.pre.data,window._prAttCache.pre.name)" class="btn-secondary" style="font-size:11px;padding:4px 10px">📄 Pre-Invoice: '+a.name+'</button>';}catch(e){}}
-    if(pr.post_invoice){try{const a=JSON.parse(pr.post_invoice);window._prAttCache.post=a;refHtml+='<button onclick="viewAttachment(window._prAttCache.post.data,window._prAttCache.post.name)" class="btn-secondary" style="font-size:11px;padding:4px 10px">📄 Post-Invoice: '+a.name+'</button>';}catch(e){}}
-    if(pr.transfer_slip){try{const a=JSON.parse(pr.transfer_slip);window._prAttCache.slip=a;refHtml+='<button onclick="viewAttachment(window._prAttCache.slip.data,window._prAttCache.slip.name)" class="btn-secondary" style="font-size:11px;padding:4px 10px;background:var(--teal-light);color:var(--teal-dark)">🧾 Transfer Slip: '+a.name+'</button>';}catch(e){}}
+    if(pr.pre_invoice){try{const raw=JSON.parse(pr.pre_invoice);const arr=Array.isArray(raw)?raw:(raw?[raw]:[]);arr.forEach((a,i)=>{window._prAttCache['pre'+i]=a;refHtml+='<button onclick="viewAttachment(window._prAttCache[\'pre'+i+'\'].data,window._prAttCache[\'pre'+i+'\'].name)" class="btn-secondary" style="font-size:11px;padding:4px 10px">📄 Pre-Invoice'+(arr.length>1?' '+(i+1):'')+': '+a.name+'</button>';}); }catch(e){}}
+    if(pr.post_invoice){try{const raw=JSON.parse(pr.post_invoice);const arr=Array.isArray(raw)?raw:(raw?[raw]:[]);arr.forEach((a,i)=>{window._prAttCache['post'+i]=a;refHtml+='<button onclick="viewAttachment(window._prAttCache[\'post'+i+'\'].data,window._prAttCache[\'post'+i+'\'].name)" class="btn-secondary" style="font-size:11px;padding:4px 10px">📋 Post-Invoice'+(arr.length>1?' '+(i+1):'')+': '+a.name+'</button>';}); }catch(e){}}
+    if(pr.transfer_slip){try{const raw=JSON.parse(pr.transfer_slip);const arr=Array.isArray(raw)?raw:(raw?[raw]:[]);arr.forEach((a,i)=>{window._prAttCache['slip'+i]=a;refHtml+='<button onclick="viewAttachment(window._prAttCache[\'slip'+i+'\'].data,window._prAttCache[\'slip'+i+'\'].name)" class="btn-secondary" style="font-size:11px;padding:4px 10px;background:var(--teal-light);color:var(--teal-dark)">🧾 Transfer Slip'+(arr.length>1?' '+(i+1):'')+': '+a.name+'</button>';}); }catch(e){}}
     refHtml+='</div></div>';
   }
   // Insert reference attachments before the invoice upload section
@@ -4045,8 +4054,9 @@ async function actOnPR(id){
                        (prAttachments.post_invoice && prAttachments.post_invoice.length > 0);
     const hasAnyInv = hasPreInv || hasPostInv;
 
-    // Transfer slip: always required
-    const hasSlip = prAttachments.transfer_slip && prAttachments.transfer_slip.length > 0;
+    // Transfer slip: check BOTH session uploads AND DB-stored slip (fixes race condition + reload bug)
+    const hasSlip = (prAttachments.transfer_slip && prAttachments.transfer_slip.length > 0) ||
+                    (pr.transfer_slip && pr.transfer_slip !== 'null' && pr.transfer_slip !== '[]');
 
     // Rule 1: Transfer slip always required
     if(!hasSlip){
