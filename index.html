@@ -1128,7 +1128,7 @@ function startRealtime(){
         ref:t.ref, note:t.note||''
       }));
       // Check if anything changed (count or IDs or amounts)
-      const sig = t => String(t.id)+':'+t.amt;
+      const sig = t => String(t.id)+':'+t.amt+':'+t.date+':'+t.type;
       if(mapped.length !== transactions.length ||
          mapped.map(sig).join() !== transactions.map(sig).join()){
         transactions = mapped;
@@ -1731,11 +1731,11 @@ function getMergedTransactions(){
   
   // Remove from manual transactions:
   // 1. Any with 'pr-' prefix id (old PR ledger saves)
-  // 2. Any whose ref matches a PR transaction (Supabase-saved duplicates)
+  // 2. Any whose ref AND note BOTH match a PR (Supabase-saved duplicates only)
   const cleanManual = transactions.filter(t => {
     if(String(t.id).startsWith('pr-')) return false;
-    // If this manual tx ref matches a PR ref exactly - it's a duplicate
-    if(t.ref && prRefs.has(t.ref)) return false;
+    // Only suppress if ref matches a PR AND note indicates it was auto-saved by PR sync
+    if(t.ref && prRefs.has(t.ref) && t.note && t.note.startsWith('PR Payment')) return false;
     return true;
   });
   
@@ -2177,9 +2177,10 @@ function renderLedger(){
     if(type&&t.type!==type)return false;
     return true;
   });
-  document.getElementById('ledgerCount').textContent=filtered.length+' of '+transactions.length+' transactions';
+  const allMerged=getMergedTransactions();
+  document.getElementById('ledgerCount').textContent=filtered.length+' of '+allMerged.length+' transactions';
   const body=document.getElementById('ledgerBody');
-  if(!filtered.length){body.innerHTML='<div class="empty-state">'+(transactions.length===0?'No transactions yet. Start adding!':'No transactions match these filters.')+'</div>';return}
+  if(!filtered.length){body.innerHTML='<div class="empty-state">'+(allMerged.length===0?'No transactions yet. Start adding!':'No transactions match these filters.')+'</div>';return}
   body.innerHTML=filtered.map(tx=>`<div class="l-row">
     <span style="color:var(--muted);font-size:11px">${tx.date}</span>
     <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${tx.ref}${tx.note?' — '+tx.note:''}">${tx.ref}</span>
@@ -2858,9 +2859,10 @@ async function deletePayable(id){
 // CSV EXPORT
 // ══════════════════════════════════════
 function copyCSV(){
-  if(!transactions.length){alert('No transactions to export.');return}
+  const exportTxs=getMergedTransactions();
+  if(!exportTxs.length){alert('No transactions to export.');return}
   const h='Date,Company,Division Code,Division Name,Type,Amount (ETB),Amount (USD),Reference,Note';
-  const r=transactions.map(t=>`${t.date},${t.co},${t.divCode},${t.divName},${t.type==='in'?'Inflow':'Outflow'},${t.amt},${t.amtUsd||''},"${t.ref}","${t.note||''}"`);
+  const r=exportTxs.map(t=>`${t.date},${t.co},${t.divCode},${t.divName},${t.type==='in'?'Inflow':'Outflow'},${t.amt},${t.amtUsd||''},"${t.ref}","${t.note||''}"`);
   navigator.clipboard.writeText([h,...r].join('\n')).then(()=>showFlash('✓ Copied! Paste into your Excel Transactions sheet.')).catch(()=>alert('Copy failed.'));
 }
 
