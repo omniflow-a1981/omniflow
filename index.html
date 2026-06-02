@@ -2978,9 +2978,11 @@ function renderPayables(){
         if(!subItems.length) return;
         const subTotal = subItems.reduce((s,p)=>s+(p.amt||0),0);
 
-        if(sub){
+                if(sub){
+          const subInfo = getSubsForDiv(divCode).find(function(s){return s.name===sub;});
+          const subClientLabel = subInfo && subInfo.client && subInfo.client!==sub ? ' · <span style="font-weight:400;color:var(--muted)">'+subInfo.client+'</span>' : '';
           html += `<div style="background:var(--surface);padding:6px 18px 0 28px">
-            <div style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:4px">📍 ${sub} — ${fmt(subTotal)}</div>`;
+            <div style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:4px">📍 ${sub}${subClientLabel} — ${fmt(subTotal)}</div>`;
         } else {
           html += `<div style="padding:0 18px 0 18px">`;
         }
@@ -3118,12 +3120,14 @@ function getSubsForDiv(divCode){
   for(const co of companies){
     const div=co.divisions.find(d=>d.code===divCode);
     if(div && div.subdivisions && div.subdivisions.length){
-      return div.subdivisions.map(s=>({
-        code: s.code,
-        name: s.name,
-        // client defaults to subdivision name (user can override in PR form)
-        client: s.client||s.name
-      }));
+      return div.subdivisions.map(s=>({code:s.code, name:s.name, client:s.client||s.name}));
+    }
+  }
+  // Fallback to DEFAULT_COMPANIES so ME1 sites always available
+  for(const co of DEFAULT_COMPANIES){
+    const div=co.divisions.find(d=>d.code===divCode);
+    if(div && div.subdivisions && div.subdivisions.length){
+      return div.subdivisions.map(s=>({code:s.code, name:s.name, client:s.client||s.name}));
     }
   }
   return [];
@@ -3185,32 +3189,35 @@ function updatePRDiv(){
 }
 function updatePRSub(){
   const divVal=(document.getElementById('prDiv').value||'').trim();
-  // Get subdivisions from companies data for the selected division
-  const subs = getSubsForDiv(divVal);
-  const hasSubs = subs.length > 0;
-  document.getElementById('prSubRow').style.display = hasSubs ? 'block' : 'none';
-  // prTypeRow (Material/Manpower/Machinery) — show for any division with subs or ME1
-  const isME1 = divVal.toUpperCase().startsWith('ME1');
-  document.getElementById('prTypeRow').style.display = (hasSubs||isME1) ? 'block' : 'none';
+  const subs=getSubsForDiv(divVal);
+  const hasSubs=subs.length>0;
+  const isME1=divVal.toUpperCase().startsWith('ME1');
+  const subRow=document.getElementById('prSubRow');
+  const typeRow=document.getElementById('prTypeRow');
+  if(subRow) subRow.style.display=hasSubs?'block':'none';
+  if(typeRow) typeRow.style.display=(hasSubs||isME1)?'block':'none';
   if(hasSubs){
     const s=document.getElementById('prSub');
+    if(!s) return;
+    const prevVal=s.value;
     s.innerHTML='<option value="">— Select site / subdivision —</option>';
-    subs.forEach(x=>{
+    subs.forEach(function(x){
       const o=document.createElement('option');
-      o.value=x.name;  // store name as value so it saves meaningfully
-      o.textContent=x.name;
+      o.value=x.name;
+      o.textContent=x.name+(x.client&&x.client!==x.name?'  ·  '+x.client:'');
       o.dataset.client=x.client||'';
+      if(x.name===prevVal) o.selected=true;
       s.appendChild(o);
     });
+    if(prevVal) updatePRSubClient();
   }
 }
+
 function updatePRSubClient(){
-  const opt=document.getElementById('prSub').selectedOptions[0];
-  // Auto-fill client if subdivision has a client, but don't overwrite if user already typed
-  const clientEl=document.getElementById('prClient')||document.getElementById('prClientAlt');
-  if(opt && opt.dataset.client && clientEl && !clientEl.value){
-    clientEl.value=opt.dataset.client;
-  }
+  const s=document.getElementById('prSub');
+  const opt=s&&s.selectedOptions[0];
+  const clientEl=document.getElementById('prClient');
+  if(opt&&opt.dataset.client&&clientEl) clientEl.value=opt.dataset.client;
 }
 
 function calcPRTotals(){
@@ -3780,7 +3787,10 @@ function renderPRList(){
     const isPending=(prNextStep(pr)==='paid')||(prNextStep(pr)==='complete'&&partialAmt>0&&partialAmt<pr.net_payable)
     const pendingAmt=isPending?(partialAmt>0&&partialAmt<pr.net_payable?pr.net_payable-partialAmt:pr.net_payable):0
     const pendingTag=pendingAmt>0?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#fef3c7;color:#92400e;font-weight:700">⏳ Pending: ${fmt(pendingAmt)}</span>`:'';
-    const subTag=pr.sub_project?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#dbeafe;color:#1e40af;font-weight:600">${pr.sub_project}</span>`:'';
+        const subDivForTag=(pr.division||'').split('.')[0].trim();
+    const subInfo3=pr.sub_project?getSubsForDiv(subDivForTag).find(function(s){return s.name===pr.sub_project;}):null;
+    const subClientStr=subInfo3&&subInfo3.client&&subInfo3.client!==pr.sub_project?' · '+subInfo3.client:'';
+    const subTag=pr.sub_project?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#dbeafe;color:#1e40af;font-weight:600">📍 ${pr.sub_project}${subClientStr}</span>`:''
     return `<div class="pr-card">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
         <div>
