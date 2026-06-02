@@ -840,7 +840,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     </div>
     <div id="prSubRow" style="display:none;margin-bottom:10px">
       <div style="background:var(--teal-xlight,#f0fdf4);border:1.5px solid var(--teal-light,#86efac);border-radius:12px;padding:14px 16px">
-        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--teal-dark,#065f46);margin-bottom:10px">📍 Site / Subdivision</div>
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--teal-dark,#065f46);margin-bottom:10px">📍 Subdivision / Site <span style="font-weight:400;opacity:.7;font-size:9px;text-transform:none">(select to auto-fill Project, Client & Location)</span></div>
         <div class="fr fr3" style="margin-bottom:10px">
           <div class="ff"><label>Site <span style="color:var(--red)">*</span></label>
             <select id="prSub" onchange="updatePRSubFields()">
@@ -2534,9 +2534,8 @@ function addSubdivision(coId,divCode){
   var subCode=divCode+'-S'+(div.subdivisions.length+1);
   div.subdivisions.push({code:subCode,name:name,client:clientVal,project:projectVal,location:locationVal});
   ls('omni-companies',companies);
-  ['subInput_','subClient_','subProject_','subLocation_'].forEach(function(p){
-    var el=document.getElementById(p+coId+'_'+divCode);if(el)el.value='';
-  });
+  var drawer=document.getElementById('siteDrawer_'+coId+'_'+divCode);
+  if(drawer) drawer.style.display='none';
   populateCoSelects();renderCompanies();
   showFlash('✓ Site "'+name+'" added to '+divCode,'coFlash','coFlashMsg');
 }
@@ -2613,15 +2612,45 @@ function renderCompanies(){
         });
         divHtml+='</div>';
       }
-      divHtml+='<div style="padding:10px 14px 12px;border-top:1px solid var(--border2);margin-top:4px;background:#fafffe">'
-        +'<div style="font-size:10px;font-weight:700;color:#065f46;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">+ Add New Site</div>'
-        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">'
-          +'<input type="text" id="subInput_'+cid+'_'+dc+'" placeholder="Site name *" style="font-size:12px;padding:6px 9px;border:1px solid #86efac;border-radius:7px;outline:none">'
-          +'<input type="text" id="subClient_'+cid+'_'+dc+'" placeholder="Client name" style="font-size:12px;padding:6px 9px;border:1px solid #86efac;border-radius:7px;outline:none">'
-          +'<input type="text" id="subProject_'+cid+'_'+dc+'" placeholder="Project / Description" style="font-size:12px;padding:6px 9px;border:1px solid #86efac;border-radius:7px;outline:none">'
-          +'<input type="text" id="subLocation_'+cid+'_'+dc+'" placeholder="Location" style="font-size:12px;padding:6px 9px;border:1px solid #86efac;border-radius:7px;outline:none">'
+      // Drawer: hidden by default, toggled open by "+ Add Site" button
+      divHtml+='<div style="padding:10px 14px;border-top:1px solid var(--border2);margin-top:4px;background:#fafffe">'
+        +'<button onclick="toggleSiteDrawer(this)" data-coid="'+cid+'" data-dc="'+dc+'" '
+          +'style="font-size:12px;font-weight:700;color:#065f46;background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:7px 16px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .15s">'
+          +'<span style="font-size:15px;line-height:1">+</span> Add Site'
+        +'</button>'
+      +'</div>'
+      +'<div id="siteDrawer_'+cid+'_'+dc+'" style="display:none;padding:0 14px 14px;background:#f6fffe;border-top:1px solid #86efac">'
+        +'<div style="padding-top:12px">'
+          +'<div style="font-size:11px;font-weight:800;color:#065f46;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">New Site Details</div>'
+          +'<div style="margin-bottom:10px">'
+            +'<label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Project Code / Site ID <span style="color:var(--red)">*</span></label>'
+            +'<input type="text" id="subInput_'+cid+'_'+dc+'" placeholder="e.g. ME1-S9, HQ-001, BHS-CW..." '
+              +'style="width:100%;box-sizing:border-box;font-size:13px;padding:9px 12px;border:1.5px solid #86efac;border-radius:9px;outline:none;font-family:inherit">'
+          +'</div>'
+          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'
+            +'<div>'
+              +'<label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Client</label>'
+              +'<input type="text" id="subClient_'+cid+'_'+dc+'" placeholder="e.g. Haji Abdulkadir Aliyye" '
+                +'style="width:100%;box-sizing:border-box;font-size:13px;padding:9px 12px;border:1.5px solid #86efac;border-radius:9px;outline:none;font-family:inherit">'
+            +'</div>'
+            +'<div>'
+              +'<label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Location</label>'
+              +'<input type="text" id="subLocation_'+cid+'_'+dc+'" placeholder="e.g. Asella, Addis Ababa..." '
+                +'style="width:100%;box-sizing:border-box;font-size:13px;padding:9px 12px;border:1.5px solid #86efac;border-radius:9px;outline:none;font-family:inherit">'
+            +'</div>'
+          +'</div>'
+          +'<div style="margin-bottom:14px">'
+            +'<label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Project / Description</label>'
+            +'<input type="text" id="subProject_'+cid+'_'+dc+'" placeholder="e.g. G+4 Mixed Use Building Construction" '
+              +'style="width:100%;box-sizing:border-box;font-size:13px;padding:9px 12px;border:1.5px solid #86efac;border-radius:9px;outline:none;font-family:inherit">'
+          +'</div>'
+          +'<div style="display:flex;gap:8px">'
+            +'<button onclick="addSubdivisionBtn(this)" data-coid="'+cid+'" data-dc="'+dc+'" '
+              +'style="font-size:13px;font-weight:700;padding:9px 20px;border-radius:9px;background:#0ea87a;border:none;color:#fff;cursor:pointer">Save Site</button>'
+            +'<button onclick="toggleSiteDrawer(this)" data-coid="'+cid+'" data-dc="'+dc+'" '
+              +'style="font-size:13px;padding:9px 16px;border-radius:9px;background:none;border:1.5px solid var(--border);color:var(--muted);cursor:pointer">Cancel</button>'
+          +'</div>'
         +'</div>'
-        +'<button onclick="addSubdivisionBtn(this)" data-coid="'+cid+'" data-dc="'+dc+'" style="font-size:11px;padding:6px 14px;border-radius:7px;background:#f0fdf4;border:1px solid #86efac;color:#065f46;cursor:pointer;font-weight:700">+ Add Site</button>'
       +'</div>'+'</div>';
     });
     grid.innerHTML+='<div style="background:var(--surface);border-radius:16px;border:2px solid '+accent+'33;box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden">'
@@ -3042,12 +3071,14 @@ let payRequests=[], prFilter='all', currentPRType='Material';
 const PR_SB='https://carcospsxvrmvkxhdyym.supabase.co/rest/v1', PR_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE';
 const PR_STEPS=['prepared','checked','approved','verified','paid'];
 function getSubsForDiv(divCode){
+  // Normalise: "ME1. Construction" → "ME1"
+  var _dc=divCode&&divCode.indexOf('.')>-1?divCode.split('.')[0].trim():divCode;
   for(var _c of companies){
-    var _d=_c.divisions&&_c.divisions.find(function(d){return d.code===divCode;});
+    var _d=_c.divisions&&_c.divisions.find(function(d){return d.code===_dc;});
     if(_d&&_d.subdivisions&&_d.subdivisions.length) return _d.subdivisions.map(function(s){return {code:s.code,name:s.name,client:s.client||s.name,location:s.location||'',project:s.project||''};});
   }
   for(var _c2 of DEFAULT_COMPANIES){
-    var _d2=_c2.divisions&&_c2.divisions.find(function(d){return d.code===divCode;});
+    var _d2=_c2.divisions&&_c2.divisions.find(function(d){return d.code===_dc;});
     if(_d2&&_d2.subdivisions&&_d2.subdivisions.length) return _d2.subdivisions.map(function(s){return {code:s.code,name:s.name,client:s.client||s.name,location:s.location||'',project:s.project||''};});
   }
   return [];
@@ -3106,16 +3137,20 @@ function buildPRHead(type){
 
 function updatePRDiv(){
   populatePRDivision(null);
+  updatePRSub();
 }
 function updatePRSub(){
-  var divVal=(document.getElementById('prDiv').value||'').trim();
+  var divRaw=(document.getElementById('prDiv').value||'').trim();
+  // Extract code from "ME1. Construction" → "ME1"
+  var divVal=divRaw.indexOf('.')>-1 ? divRaw.split('.')[0].trim() : divRaw;
   var subs=getSubsForDiv(divVal);
   var hasSubs=subs.length>0;
   var isME1=divVal.toUpperCase().startsWith('ME1');
   var subRow=document.getElementById('prSubRow');
   var typeRow=document.getElementById('prTypeRow');
   if(subRow) subRow.style.display=hasSubs?'block':'none';
-  if(typeRow) typeRow.style.display=(hasSubs||isME1)?'block':'none';
+  // Request Type always shown when any division is selected
+  if(typeRow) typeRow.style.display=divVal?'block':'none';
   if(hasSubs){
     var s=document.getElementById('prSub');
     if(!s) return;
@@ -4599,6 +4634,21 @@ async function syncPaidPRsToLedger(){
 // BOOT
 // ══════════════════════════════════════
 initLogin();
+
+// ── Site Drawer toggle ──
+function toggleSiteDrawer(btn){
+  var cid=btn.dataset.coid, dc=btn.dataset.dc;
+  var drawer=document.getElementById('siteDrawer_'+cid+'_'+dc);
+  if(!drawer) return;
+  var open=drawer.style.display!=='none';
+  drawer.style.display=open?'none':'block';
+  if(!open){
+    // Scroll into view and focus first input
+    drawer.scrollIntoView({behavior:'smooth',block:'nearest'});
+    var first=drawer.querySelector('input');
+    if(first) setTimeout(function(){first.focus();},200);
+  }
+}
 
 // Data-attribute button handlers — avoids all inline quote escaping
 function renameDivisionBtn(btn){renameDivision(btn.dataset.coid,btn.dataset.dc);}
