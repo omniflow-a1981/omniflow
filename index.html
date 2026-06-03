@@ -49,9 +49,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 /* ── LAYOUT ── */
 .layout{display:flex;min-height:100vh}
 .sidebar{width:230px;flex-shrink:0;background:var(--ink2);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto}
-.main{margin-left:230px;padding:28px 28px 48px;flex:1;min-width:0}
-.page{display:none;animation:fadeUp .22s ease}
-.page.active{display:block}
+.main{margin-left:230px;padding:28px 28px 48px;flex:1;min-width:0;max-width:calc(100vw - 230px);overflow-x:hidden;box-sizing:border-box}
+.page{display:none;animation:fadeUp .22s ease;width:100%;overflow-x:hidden;box-sizing:border-box}
+.page.active{display:block;max-width:100%;overflow-x:hidden}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
 /* ── SIDEBAR ── */
@@ -241,7 +241,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 .modal-title em{color:var(--teal);font-style:normal}
 
 /* ── BALANCES ── */
-.bal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:12px;margin-bottom:16px}
+.bal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:12px;margin-bottom:16px;min-width:0;overflow:hidden}
 .bc{background:var(--surface);border-radius:12px;border:1px solid var(--border);padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
 .bc-div{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:9px}
 .bc-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0}
@@ -249,7 +249,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 .bc-row .bv.g{color:var(--teal-dark)}.bc-row .bv.r{color:var(--red)}
 .bc-sep{border:none;border-top:1px solid var(--border2);margin:5px 0}
 .bc-usd{font-size:10px;color:var(--muted2);font-style:italic;margin-top:2px}
-.grand-row{display:flex;justify-content:space-around;flex-wrap:wrap;gap:12px;background:linear-gradient(135deg,var(--ink2),var(--ink));border-radius:14px;padding:20px 24px;margin-bottom:20px}
+.grand-row{display:flex;justify-content:space-around;flex-wrap:wrap;overflow-x:auto;gap:12px;background:linear-gradient(135deg,var(--ink2),var(--ink));border-radius:14px;padding:20px 24px;margin-bottom:20px}
 .grand-item .gl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:rgba(255,255,255,.4);margin-bottom:4px}
 .grand-item .gv{font-family:'DM Serif Display',serif;font-size:22px;color:#fff}
 .grand-item .gv.g{color:#34d399}
@@ -288,7 +288,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 .pr-draft{background:#f1f5f9;color:#64748b}.pr-pending{background:#fef3c7;color:#92400e}
 .pr-checked{background:#dbeafe;color:#1e40af}.pr-approved{background:#ede9fe;color:#5b21b6}
 .pr-verified{background:#d1fae5;color:#065f46}.pr-paid{background:#dcfce7;color:#14532d}
-.pr-card{background:var(--surface);border-radius:14px;border:1px solid var(--border);padding:18px 20px;margin-bottom:14px;box-shadow:var(--shadow)}
+.pr-card{background:var(--surface);border-radius:14px;border:1px solid var(--border);padding:18px 20px;margin-bottom:14px;box-shadow:var(--shadow);overflow:hidden;word-break:break-word;min-width:0}
 .pr-table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:12px}
 .pr-table th{background:var(--bg);padding:7px 9px;text-align:left;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;border-bottom:1.5px solid var(--border)}
 .pr-table td{padding:7px 9px;border-bottom:1px solid var(--border2)}
@@ -347,7 +347,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 
 /* ── TABLET 900px ── */
 @media(max-width:900px){
-  .sidebar{width:190px}.main{margin-left:190px}
+  .sidebar{width:190px}.main{margin-left:190px;max-width:calc(100vw - 190px)}
   .chart-grid,.out-grid{grid-template-columns:1fr}
 }
 
@@ -417,7 +417,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   .kpi-usd{font-size:10px;padding:1px 5px}
 
   /* Grand row on balances — scroll */
-  .grand-row{flex-wrap:nowrap;overflow-x:auto;gap:16px;padding:16px 20px}
+  .grand-row{flex-wrap:wrap;overflow-x:auto;gap:16px;padding:16px 20px}
   .grand-item{flex-shrink:0}
 }
 
@@ -841,7 +841,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 </div>
 
 <!-- ════ PAYMENT REQUESTS ════ -->
-<div id="pgPayReq" class="page">
+<div id="pgPayReq" class="page" style="width:100%;box-sizing:border-box">
   <div class="page-header">
     <div><div class="page-title">Payment <em>Requests</em></div><div class="page-subtitle">Create, track and approve payment requests</div></div>
     <button class="btn-primary" onclick="openNewPR()">+ New Request</button>
@@ -3984,7 +3984,7 @@ function renderPRList(){
     var _sclient=_sinfo&&_sinfo.client&&_sinfo.client!==pr.sub_project?' · '+_sinfo.client:'';
     const subTag=pr.sub_project?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#dbeafe;color:#1e40af;font-weight:600">📍 ${pr.sub_project}${_sclient}</span>`:'';
     return `<div class="pr-card">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;min-width:0;overflow:hidden">
         <div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">
             <span style="font-size:15px;font-weight:700;color:var(--ink2)">${pr.project}</span>
