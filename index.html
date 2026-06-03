@@ -2,10 +2,6 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
-  <!-- OmniFlow build: 20260603161006 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OmniFlow — Cash Management</title>
 <meta name="theme-color" content="#1e293b">
@@ -17,7 +13,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 :root{
-  --sb-w: 230px;
   --teal:#0ea87a;--teal-dark:#077a59;--teal-light:#d0f5e8;--teal-xlight:#edfaf4;
   --blue:#2563eb;--blue-dark:#1d4ed8;--blue-light:#dbeafe;
   --amber:#f59e0b;--amber-light:#fef3c7;
@@ -52,9 +47,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 .login-user-chip:hover{border-color:var(--teal);color:var(--teal)}
 
 /* ── LAYOUT ── */
-.layout{display:block;min-height:100vh;position:relative}
-.sidebar{width:230px;width:var(--sb-w);flex-shrink:0;background:var(--ink2);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto}
-.main{margin-left:230px;margin-left:var(--sb-w);padding:24px 28px 60px;box-sizing:border-box;min-height:100vh;overflow-x:hidden}
+.layout{display:flex;min-height:100vh}
+.sidebar{width:230px;flex-shrink:0;background:var(--ink2);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto}
+.main{margin-left:230px;padding:24px 28px 60px;min-width:0;box-sizing:border-box;overflow-x:hidden}
 .page{display:none;animation:fadeUp .22s ease}
 .page.active{display:block}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -81,7 +76,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 .signout-btn:hover{color:var(--red)}
 
 /* ── PAGE HEADER ── */
-.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;margin-top:0;flex-wrap:wrap;gap:12px}
+.page-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px}
 .page-title{font-family:'DM Serif Display',serif;font-size:28px;color:var(--ink);line-height:1.15}
 .page-title em{color:var(--teal);font-style:normal}
 .page-subtitle{font-size:13px;color:var(--muted);margin-top:3px}
@@ -246,7 +241,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 .modal-title em{color:var(--teal);font-style:normal}
 
 /* ── BALANCES ── */
-.bal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:12px;margin-bottom:16px;min-width:0;overflow:hidden}
+.bal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:12px;margin-bottom:16px}
 .bc{background:var(--surface);border-radius:12px;border:1px solid var(--border);padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
 .bc-div{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:9px}
 .bc-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0}
@@ -254,7 +249,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 .bc-row .bv.g{color:var(--teal-dark)}.bc-row .bv.r{color:var(--red)}
 .bc-sep{border:none;border-top:1px solid var(--border2);margin:5px 0}
 .bc-usd{font-size:10px;color:var(--muted2);font-style:italic;margin-top:2px}
-.grand-row{display:flex;justify-content:space-around;flex-wrap:wrap;overflow-x:auto;gap:12px;background:linear-gradient(135deg,var(--ink2),var(--ink));border-radius:14px;padding:20px 24px;margin-bottom:20px}
+.grand-row{display:flex;justify-content:space-around;flex-wrap:wrap;gap:12px;background:linear-gradient(135deg,var(--ink2),var(--ink));border-radius:14px;padding:20px 24px;margin-bottom:20px}
 .grand-item .gl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:rgba(255,255,255,.4);margin-bottom:4px}
 .grand-item .gv{font-family:'DM Serif Display',serif;font-size:22px;color:#fff}
 .grand-item .gv.g{color:#34d399}
@@ -277,8 +272,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 
 
 /* ── SYNC INDICATOR ── */
-.sync-bar{display:none;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;font-size:12px;font-weight:600;margin-bottom:0;border:1px solid}
-.sync-bar.on{display:flex;margin-bottom:12px}
+.sync-bar{display:none;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;font-size:12px;font-weight:600;margin-bottom:12px;border:1px solid}
+.sync-bar.on{display:flex}
 .sync-bar.syncing{background:var(--amber-light);border-color:#fde68a;color:#92400e}
 .sync-bar.error{background:var(--red-light);border-color:#fecaca;color:#991b1b}
 .sync-bar.ok{background:var(--teal-light);border-color:#6ee7b7;color:var(--teal-dark)}
@@ -293,7 +288,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 .pr-draft{background:#f1f5f9;color:#64748b}.pr-pending{background:#fef3c7;color:#92400e}
 .pr-checked{background:#dbeafe;color:#1e40af}.pr-approved{background:#ede9fe;color:#5b21b6}
 .pr-verified{background:#d1fae5;color:#065f46}.pr-paid{background:#dcfce7;color:#14532d}
-.pr-card{background:var(--surface);border-radius:14px;border:1px solid var(--border);padding:18px 20px;margin-bottom:14px;box-shadow:var(--shadow);overflow:hidden;word-break:break-word;min-width:0}
+.pr-card{background:var(--surface);border-radius:14px;border:1px solid var(--border);padding:18px 20px;margin-bottom:14px;box-shadow:var(--shadow)}
 .pr-table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:12px}
 .pr-table th{background:var(--bg);padding:7px 9px;text-align:left;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;border-bottom:1.5px solid var(--border)}
 .pr-table td{padding:7px 9px;border-bottom:1px solid var(--border2)}
@@ -318,7 +313,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 .notif-item.unread{border-left:3px solid var(--teal)}
 .notif-item.warning{border-left:3px solid var(--amber)}
 .notif-item.error{border-left:3px solid var(--red)}
-@media print{.sidebar,.mob-header,.bottom-tabs,.btn-row,.date-filter-bar .dfb-toggle,.sync-bar,.flash-bar{display:none!important}.main{margin-left:0!important;width:100%!important;max-width:100%!important}}
+@media print{.sidebar,.mob-header,.bottom-tabs,.btn-row,.date-filter-bar .dfb-toggle,.sync-bar,.flash-bar{display:none!important}.main{margin-left:0!important}}
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 
 /* ── MOBILE HAMBURGER & OVERLAY ── */
@@ -352,22 +347,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 
 /* ── TABLET 900px ── */
 @media(max-width:900px){
-  :root{--sb-w:190px}
-  .main{margin-left:var(--sb-w);padding:20px 20px 60px}
+  .sidebar{width:190px}.main{margin-left:190px}
   .chart-grid,.out-grid{grid-template-columns:1fr}
 }
 
 /* ── MOBILE 640px ── */
 @media(max-width:640px){
   /* Show mobile header and bottom tabs, hide desktop sidebar */
-  .main{margin-left:0!important;padding:72px 14px 80px}
   .mob-header{display:flex}
   .bottom-tabs{display:block}
   .sidebar{transform:translateX(-100%);transition:transform .28s cubic-bezier(.4,0,.2,1);position:fixed;top:0;left:0;bottom:0;width:82%;max-width:300px;z-index:160;height:100vh}
   .sidebar.open{transform:translateX(0)}
 
   /* Main content offset for top bar and bottom tabs */
-  /* margin-left:0 already set above; layout is display:block — no flex needed */
+  .main{margin-left:0!important;padding:72px 14px 80px}
 
   /* Login page mobile */
   .login-box{padding:28px 20px;border-radius:14px;margin:12px}
@@ -423,7 +416,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   .kpi-usd{font-size:10px;padding:1px 5px}
 
   /* Grand row on balances — scroll */
-  .grand-row{flex-wrap:wrap;overflow-x:auto;gap:16px;padding:16px 20px}
+  .grand-row{flex-wrap:nowrap;overflow-x:auto;gap:16px;padding:16px 20px}
   .grand-item{flex-shrink:0}
 }
 
@@ -433,20 +426,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   .bal-grid{grid-template-columns:1fr}
   .kpi-val{font-size:16px}
 }
-/* Prevent hidden elements from taking space */
-.sync-bar{transition:all .2s}
-.sync-bar:not(.on){margin:0!important;padding:0!important;border:none!important;min-height:0!important;height:0!important;overflow:hidden!important}
-.flash-bar:not(.on){margin:0!important;padding:0!important;min-height:0!important;height:0!important;overflow:hidden!important}
-#limitedBanner[style*="display:none"]{margin:0!important}
-#prAlertBanner[style*="display:none"]{margin:0!important;padding:0!important}
-.pr-alert-bar{transition:all .2s}
-
-/* ── LAYOUT STABILITY ── */
-html, body { overflow-x: hidden; }
-.main { position: relative; }
-.page { min-height: 60px; }
-.page-header { padding-top: 4px; }
-
 </style>
 </head>
 <body>
@@ -570,8 +549,9 @@ html, body { overflow-x: hidden; }
 </aside>
 
 <main class="main">
-<!-- Pre-page notification bars (all collapse to zero height when inactive) -->
-<div id="syncBar" class="sync-bar"><span id="syncMsg"></span></div>
+<!-- Sync status bar -->
+<div class="sync-bar" id="syncBar"><span id="syncMsg"></span></div>
+<!-- Limited access banner -->
 <div id="limitedBanner" style="display:none;align-items:center;gap:10px;background:var(--amber-light);border:1px solid #fde68a;border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:12px;color:#92400e;font-weight:600">
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
   Limited access — you can add and edit transactions for <strong id="allowedRangeLabel">today and yesterday</strong> only.
@@ -695,58 +675,10 @@ html, body { overflow-x: hidden; }
   <div class="grand-row" id="grandRow"></div>
   <!-- NAC section injected here by renderBalances() -->
   <div id="balNacSlot"></div>
-  <div style="background:var(--surface);border-radius:16px;border:1.5px solid var(--border2);box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px">
-    <!-- Card Header -->
-    <div style="background:linear-gradient(135deg,#0f172a,#1e293b);padding:18px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-      <div>
-        <div style="font-size:15px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px">
-          &#9874; Edit Opening Balances
-        </div>
-        <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:3px">Set the starting balance for each division · auto-seeded from Excel import</div>
-      </div>
-      <button class="btn-primary" onclick="saveBalances()" style="background:#34d399;color:#022c22;border:none;font-weight:800;padding:9px 20px;font-size:13px">Save Balances</button>
-    </div>
-    <!-- Division input grid -->
-    <div style="padding:18px 22px 14px" id="balEditGrid"></div>
-    <!-- ME1 Bank Account Breakdown -->
-    <div style="margin:4px 22px 22px;border-radius:12px;overflow:hidden;border:1.5px solid #bfdbfe">
-      <div style="background:linear-gradient(135deg,#1e40af,#2563eb);padding:13px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:22px">&#127974;</span>
-          <div>
-            <div style="font-size:13px;font-weight:800;color:#fff">ME1 — Bank Account Breakdown</div>
-            <div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:2px">Matisan Engineering Plc · Construction · Beginning Balance</div>
-          </div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:10px;color:rgba(255,255,255,.5)">Total Beginning Balance</div>
-          <div style="font-size:20px;font-weight:800;color:#93c5fd" id="me1TotalDisplay">ETB 0</div>
-        </div>
-      </div>
-      <div style="overflow-x:auto;background:var(--surface)">
-        <table style="width:100%;border-collapse:collapse">
-          <thead>
-            <tr style="background:#eff6ff;border-bottom:2px solid #bfdbfe">
-              <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:800;color:#1e40af;text-transform:uppercase;letter-spacing:.5px">#</th>
-              <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:800;color:#1e40af;text-transform:uppercase;letter-spacing:.5px">Bank</th>
-              <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:800;color:#1e40af;text-transform:uppercase;letter-spacing:.5px">Account No.</th>
-              <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:800;color:#1e40af;text-transform:uppercase;letter-spacing:.5px">Branch</th>
-              <th style="padding:9px 14px;text-align:right;font-size:10px;font-weight:800;color:#1e40af;text-transform:uppercase;letter-spacing:.5px">Balance (ETB)</th>
-              <th style="padding:9px 14px;text-align:center;font-size:10px;font-weight:800;color:#1e40af;text-transform:uppercase;letter-spacing:.5px">Edit</th>
-            </tr>
-          </thead>
-          <tbody id="me1BankBody"></tbody>
-          <tfoot>
-            <tr style="background:#dbeafe;border-top:2px solid #93c5fd">
-              <td colspan="4" style="padding:11px 14px;font-size:13px;font-weight:800;color:#1e40af">TOTAL</td>
-              <td style="padding:11px 14px;font-size:15px;font-weight:800;color:#1e40af;text-align:right" id="me1BankTotal"></td>
-              <td></td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </div>
-  </div>
+  <div class="card">
+    <div class="card-title">Edit opening balances</div>
+    <div id="balEditGrid"></div>
+    <button class="btn-primary" style="margin-top:4px" onclick="saveBalances()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save Opening Balances</button>
   </div>
 </div>
 
@@ -866,7 +798,7 @@ html, body { overflow-x: hidden; }
     <button class="btn-primary" onclick="openNewPR()">+ New Request</button>
   </div>
   <div class="flash-bar" id="prFlash"><span id="prFlashMsg"></span></div>
-  <div id="prAlertBanner" style="display:none;width:100%;box-sizing:border-box;align-items:center;gap:8px;background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;font-weight:600;color:#92400e">
+  <div id="prAlertBanner" style="display:none;align-items:center;gap:8px;background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;font-weight:600;color:#92400e">
     <span id="prAlertMsg"></span>
   </div>
   <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
@@ -907,7 +839,7 @@ html, body { overflow-x: hidden; }
     </div>
     <div id="prSubRow" style="display:none;margin-bottom:10px">
       <div style="background:var(--teal-xlight,#f0fdf4);border:1.5px solid var(--teal-light,#86efac);border-radius:12px;padding:14px 16px">
-        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--teal-dark,#065f46);margin-bottom:10px">📍 Subdivision / Site <span style="font-weight:400;opacity:.7;font-size:9px;text-transform:none">(select to auto-fill Project, Client & Location)</span></div>
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--teal-dark,#065f46);margin-bottom:10px">📍 Site / Subdivision</div>
         <div class="fr fr3" style="margin-bottom:10px">
           <div class="ff"><label>Site <span style="color:var(--red)">*</span></label>
             <select id="prSub" onchange="updatePRSubFields()">
@@ -1291,95 +1223,6 @@ const DEFAULT_COMPANIES = [
     ]}
 ];
 
-
-// ══════════════════════════════════════════════════════════════
-// ME1 BEGINNING BALANCE — Matisan Engineering Plc · Construction
-// Source: Begning_balalnce_and_Bank_details_for_ME1.xlsx
-// Total: ETB 1,129,174.12 across 11 bank accounts
-// ══════════════════════════════════════════════════════════════
-const ME1_BEGINNING_BALANCE = {
-  "totalBeginningBalance": 1129174.12,
-  "banks": [
-    {
-      "no": 1,
-      "name": "MEP CBE -MAIN",
-      "account": "1000531313813",
-      "branch": "AWRARIS",
-      "balance": 163663.4
-    },
-    {
-      "no": 2,
-      "name": "MEP CBE -PROJECT",
-      "account": "1000637951975",
-      "branch": "AWRARIS",
-      "balance": 848.77
-    },
-    {
-      "no": 3,
-      "name": "MEP COOP",
-      "account": "1000087166396",
-      "branch": "MESKEL FLOWER",
-      "balance": 452701.44
-    },
-    {
-      "no": 4,
-      "name": "MEP ABYSSINIA",
-      "account": "127398647",
-      "branch": "YEKA",
-      "balance": 522.15
-    },
-    {
-      "no": 5,
-      "name": "MEP AWASH",
-      "account": "013041198140800",
-      "branch": "KOKEB",
-      "balance": 1440.0
-    },
-    {
-      "no": 6,
-      "name": "MEP DASHEN",
-      "account": "0012519914011",
-      "branch": "BOLE",
-      "balance": 539.0
-    },
-    {
-      "no": 7,
-      "name": "MEP OIB",
-      "account": "3797963",
-      "branch": "DERARTU",
-      "balance": 827.5
-    },
-    {
-      "no": 8,
-      "name": "MEP HIBRET BANK",
-      "account": "1061815972112010",
-      "branch": "BOLE",
-      "balance": 505631.86
-    },
-    {
-      "no": 9,
-      "name": "MEP WEGAGEN -MAIN",
-      "account": "1109068310101",
-      "branch": "HAYA HULET",
-      "balance": 1000.0
-    },
-    {
-      "no": 10,
-      "name": "MEP WEGAGEN -PROJECT",
-      "account": "11090683101103",
-      "branch": "HAYA HULET",
-      "balance": 1000.0
-    },
-    {
-      "no": 11,
-      "name": "MEP ADDIS BANK",
-      "account": "0031025877104001",
-      "branch": "BOLE",
-      "balance": 1000.0
-    }
-  ]
-};
-
 const DEFAULT_BAL = {WE1:1,WE2:349258.72,WE3:1,ME1:3272756.58,ME2:1,ME3:8649766.46};
 
 const DEFAULT_OUT = [
@@ -1605,7 +1448,7 @@ function doSignOut(){
 
 async function showApp(){
   document.getElementById('loginScreen').style.display='none';
-  document.getElementById('appLayout').style.display='block';
+  document.getElementById('appLayout').style.display='flex';
 
   // Block any stray renderAll calls until ALL data is loaded from cloud
   window._omniLoading = true;
@@ -1720,7 +1563,6 @@ async function initApp(){
         balances[b.div_code+'_usd'] = parseFloat(b.opening_usd)||0;
       });
     } else { balances = ls('omni-bal')||{...DEFAULT_BAL}; }
-  if(!balances['ME1']||balances['ME1']===0){balances['ME1']=ME1_BEGINNING_BALANCE.totalBeginningBalance;ls('omni-bal',balances);}
 
     outstandings = Array.isArray(outData) ? outData.map(o=>({
       id: o.id, co: o.company_id, div: o.division,
@@ -1751,7 +1593,6 @@ async function initApp(){
     console.warn('Cloud load failed, using local cache:', e);
     transactions = ls('omni-tx')||[];
     balances     = ls('omni-bal')||{...DEFAULT_BAL};
-  if(!balances['ME1']||balances['ME1']===0){balances['ME1']=ME1_BEGINNING_BALANCE.totalBeginningBalance;ls('omni-bal',balances);}
     outstandings = ls('omni-out')||JSON.parse(JSON.stringify(DEFAULT_OUT));
     companies    = ls('omni-companies')||JSON.parse(JSON.stringify(DEFAULT_COMPANIES));
     payables     = ls('omni-payables')||[];
@@ -2508,9 +2349,6 @@ function renderBalances(){
   const nacSlot = document.getElementById('balNacSlot');
   if(nacSlot){ nacSlot.innerHTML=''; nacSlot.appendChild(nacContainer); }
 
-  // ── ME1 Bank Table ──
-  renderME1BankTable();
-
   // edit grid — landscape card grid matching the original dashboard style
   const eg=document.getElementById('balEditGrid');
   eg.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:12px;margin-bottom:4px">';
@@ -2536,65 +2374,6 @@ function renderBalances(){
   });
   eg.innerHTML+='</div>';
 }
-function renderME1BankTable(){
-  var tbody=document.getElementById('me1BankBody');
-  var totalEl=document.getElementById('me1BankTotal');
-  var headerEl=document.getElementById('me1TotalDisplay');
-  if(!tbody) return;
-  var banks=ME1_BEGINNING_BALANCE.banks;
-  var total=0;
-  var rows='';
-  banks.forEach(function(b,i){
-    total+=b.balance;
-    var bg=i%2===0?'var(--surface)':'#f8faff';
-    rows+='<tr class="me1-bank-row" data-idx="'+i+'" data-orig="'+b.balance+'" style="background:'+bg+';border-bottom:1px solid #e0eaff">'
-      +'<td style="padding:10px 14px;font-size:12px;font-weight:800;color:#1e40af">'+b.no+'</td>'
-      +'<td style="padding:10px 14px;font-size:13px;font-weight:700;color:var(--ink2)">'+b.name+'</td>'
-      +'<td style="padding:10px 14px;font-size:12px;font-family:monospace;color:#2563eb;letter-spacing:.3px">'+b.account+'</td>'
-      +'<td style="padding:10px 14px;font-size:12px;color:var(--muted)">'+b.branch+'</td>'
-      +'<td style="padding:10px 14px;text-align:right">'
-        +'<input type="number" id="bankBal_'+i+'" value="'+b.balance.toFixed(2)+'" min="0" step="0.01" '
-          +'style="width:130px;padding:6px 10px;border:1.5px solid #bfdbfe;border-radius:7px;font-size:13px;font-weight:700;color:#1e40af;text-align:right;outline:none;font-family:inherit;background:#f0f7ff" '
-          +'oninput="updateME1BankTotal()">'
-      +'</td>'
-      +'<td style="padding:10px 14px;text-align:center">'
-        +'<button onclick="resetBankBalBtn(this)" data-idx="'+i+'" data-orig="'+b.balance.toFixed(2)+'" title="Reset to original" '
-          +'style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;color:#1e40af;font-weight:700">'
-          +'↺</button>'
-      +'</td>'
-      +'</tr>';
-  });
-  tbody.innerHTML=rows;
-  var fmt=total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-  if(totalEl) totalEl.textContent='ETB '+fmt;
-  if(headerEl) headerEl.textContent='ETB '+fmt;
-}
-
-function updateME1BankTotal(){
-  const banks = ME1_BEGINNING_BALANCE.banks;
-  let total = 0;
-  banks.forEach(function(b, i){
-    const el = document.getElementById('bankBal_'+i);
-    total += el ? (parseFloat(el.value)||0) : b.balance;
-  });
-  const fmtTotal = total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const totalEl = document.getElementById('me1BankTotal');
-  const headerEl = document.getElementById('me1TotalDisplay');
-  if(totalEl) totalEl.textContent = 'ETB '+fmtTotal;
-  if(headerEl) headerEl.textContent = 'ETB '+fmtTotal;
-  // Sync ME1 opening balance input with sum of all bank balances
-  var me1Input = document.getElementById('bIME1');
-  if(me1Input) me1Input.value = Math.round(total);
-}
-
-function resetBankBal(idx, originalVal){
-  var el=document.getElementById('bankBal_'+idx);
-  if(el){el.value=parseFloat(originalVal).toFixed(2);updateME1BankTotal();}
-}
-function resetBankBalBtn(btn){
-  resetBankBal(btn.dataset.idx, btn.dataset.orig);
-}
-
 async function saveBalances(){
   const payload = [];
   getAllDivs().forEach(d=>{
@@ -2610,15 +2389,6 @@ async function saveBalances(){
     await apiCall('PUT','/balances',payload);
     showSync('ok','Balances saved to cloud ✓');
   }catch(e){ showSync('error','Saved locally — sync pending'); }
-  // Save individual ME1 bank balances back to ME1_BEGINNING_BALANCE
-  const bankBodies = document.getElementById('me1BankBody');
-  if(bankBodies){
-    ME1_BEGINNING_BALANCE.banks.forEach(function(b, i){
-      const el = document.getElementById('bankBal_'+i);
-      if(el) b.balance = parseFloat(el.value)||b.balance;
-    });
-    ME1_BEGINNING_BALANCE.totalBeginningBalance = ME1_BEGINNING_BALANCE.banks.reduce(function(s,b){return s+b.balance;},0);
-  }
   showFlash('✓ Opening balances saved.');renderBalances();renderDashboard();
 }
 
@@ -2763,8 +2533,9 @@ function addSubdivision(coId,divCode){
   var subCode=divCode+'-S'+(div.subdivisions.length+1);
   div.subdivisions.push({code:subCode,name:name,client:clientVal,project:projectVal,location:locationVal});
   ls('omni-companies',companies);
-  var drawer=document.getElementById('siteDrawer_'+coId+'_'+divCode);
-  if(drawer) drawer.style.display='none';
+  ['subInput_','subClient_','subProject_','subLocation_'].forEach(function(p){
+    var el=document.getElementById(p+coId+'_'+divCode);if(el)el.value='';
+  });
   populateCoSelects();renderCompanies();
   showFlash('✓ Site "'+name+'" added to '+divCode,'coFlash','coFlashMsg');
 }
@@ -2841,45 +2612,15 @@ function renderCompanies(){
         });
         divHtml+='</div>';
       }
-      // Drawer: hidden by default, toggled open by "+ Add Site" button
-      divHtml+='<div style="padding:10px 14px;border-top:1px solid var(--border2);margin-top:4px;background:#fafffe">'
-        +'<button onclick="toggleSiteDrawer(this)" data-coid="'+cid+'" data-dc="'+dc+'" '
-          +'style="font-size:12px;font-weight:700;color:#065f46;background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:7px 16px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .15s">'
-          +'<span style="font-size:15px;line-height:1">+</span> Add Site'
-        +'</button>'
-      +'</div>'
-      +'<div id="siteDrawer_'+cid+'_'+dc+'" style="display:none;padding:0 14px 14px;background:#f6fffe;border-top:1px solid #86efac">'
-        +'<div style="padding-top:12px">'
-          +'<div style="font-size:11px;font-weight:800;color:#065f46;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">New Site Details</div>'
-          +'<div style="margin-bottom:10px">'
-            +'<label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Project Code / Site ID <span style="color:var(--red)">*</span></label>'
-            +'<input type="text" id="subInput_'+cid+'_'+dc+'" placeholder="e.g. ME1-S9, HQ-001, BHS-CW..." '
-              +'style="width:100%;box-sizing:border-box;font-size:13px;padding:9px 12px;border:1.5px solid #86efac;border-radius:9px;outline:none;font-family:inherit">'
-          +'</div>'
-          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'
-            +'<div>'
-              +'<label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Client</label>'
-              +'<input type="text" id="subClient_'+cid+'_'+dc+'" placeholder="e.g. Haji Abdulkadir Aliyye" '
-                +'style="width:100%;box-sizing:border-box;font-size:13px;padding:9px 12px;border:1.5px solid #86efac;border-radius:9px;outline:none;font-family:inherit">'
-            +'</div>'
-            +'<div>'
-              +'<label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Location</label>'
-              +'<input type="text" id="subLocation_'+cid+'_'+dc+'" placeholder="e.g. Asella, Addis Ababa..." '
-                +'style="width:100%;box-sizing:border-box;font-size:13px;padding:9px 12px;border:1.5px solid #86efac;border-radius:9px;outline:none;font-family:inherit">'
-            +'</div>'
-          +'</div>'
-          +'<div style="margin-bottom:14px">'
-            +'<label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Project / Description</label>'
-            +'<input type="text" id="subProject_'+cid+'_'+dc+'" placeholder="e.g. G+4 Mixed Use Building Construction" '
-              +'style="width:100%;box-sizing:border-box;font-size:13px;padding:9px 12px;border:1.5px solid #86efac;border-radius:9px;outline:none;font-family:inherit">'
-          +'</div>'
-          +'<div style="display:flex;gap:8px">'
-            +'<button onclick="addSubdivisionBtn(this)" data-coid="'+cid+'" data-dc="'+dc+'" '
-              +'style="font-size:13px;font-weight:700;padding:9px 20px;border-radius:9px;background:#0ea87a;border:none;color:#fff;cursor:pointer">Save Site</button>'
-            +'<button onclick="toggleSiteDrawer(this)" data-coid="'+cid+'" data-dc="'+dc+'" '
-              +'style="font-size:13px;padding:9px 16px;border-radius:9px;background:none;border:1.5px solid var(--border);color:var(--muted);cursor:pointer">Cancel</button>'
-          +'</div>'
+      divHtml+='<div style="padding:10px 14px 12px;border-top:1px solid var(--border2);margin-top:4px;background:#fafffe">'
+        +'<div style="font-size:10px;font-weight:700;color:#065f46;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">+ Add New Site</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">'
+          +'<input type="text" id="subInput_'+cid+'_'+dc+'" placeholder="Site name *" style="font-size:12px;padding:6px 9px;border:1px solid #86efac;border-radius:7px;outline:none">'
+          +'<input type="text" id="subClient_'+cid+'_'+dc+'" placeholder="Client name" style="font-size:12px;padding:6px 9px;border:1px solid #86efac;border-radius:7px;outline:none">'
+          +'<input type="text" id="subProject_'+cid+'_'+dc+'" placeholder="Project / Description" style="font-size:12px;padding:6px 9px;border:1px solid #86efac;border-radius:7px;outline:none">'
+          +'<input type="text" id="subLocation_'+cid+'_'+dc+'" placeholder="Location" style="font-size:12px;padding:6px 9px;border:1px solid #86efac;border-radius:7px;outline:none">'
         +'</div>'
+        +'<button onclick="addSubdivisionBtn(this)" data-coid="'+cid+'" data-dc="'+dc+'" style="font-size:11px;padding:6px 14px;border-radius:7px;background:#f0fdf4;border:1px solid #86efac;color:#065f46;cursor:pointer;font-weight:700">+ Add Site</button>'
       +'</div>'+'</div>';
     });
     grid.innerHTML+='<div style="background:var(--surface);border-radius:16px;border:2px solid '+accent+'33;box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden">'
@@ -3300,14 +3041,12 @@ let payRequests=[], prFilter='all', currentPRType='Material';
 const PR_SB='https://carcospsxvrmvkxhdyym.supabase.co/rest/v1', PR_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE';
 const PR_STEPS=['prepared','checked','approved','verified','paid'];
 function getSubsForDiv(divCode){
-  // Normalise: "ME1. Construction" → "ME1"
-  var _dc=divCode&&divCode.indexOf('.')>-1?divCode.split('.')[0].trim():divCode;
   for(var _c of companies){
-    var _d=_c.divisions&&_c.divisions.find(function(d){return d.code===_dc;});
+    var _d=_c.divisions&&_c.divisions.find(function(d){return d.code===divCode;});
     if(_d&&_d.subdivisions&&_d.subdivisions.length) return _d.subdivisions.map(function(s){return {code:s.code,name:s.name,client:s.client||s.name,location:s.location||'',project:s.project||''};});
   }
   for(var _c2 of DEFAULT_COMPANIES){
-    var _d2=_c2.divisions&&_c2.divisions.find(function(d){return d.code===_dc;});
+    var _d2=_c2.divisions&&_c2.divisions.find(function(d){return d.code===divCode;});
     if(_d2&&_d2.subdivisions&&_d2.subdivisions.length) return _d2.subdivisions.map(function(s){return {code:s.code,name:s.name,client:s.client||s.name,location:s.location||'',project:s.project||''};});
   }
   return [];
@@ -3366,20 +3105,16 @@ function buildPRHead(type){
 
 function updatePRDiv(){
   populatePRDivision(null);
-  updatePRSub();
 }
 function updatePRSub(){
-  var divRaw=(document.getElementById('prDiv').value||'').trim();
-  // Extract code from "ME1. Construction" → "ME1"
-  var divVal=divRaw.indexOf('.')>-1 ? divRaw.split('.')[0].trim() : divRaw;
+  var divVal=(document.getElementById('prDiv').value||'').trim();
   var subs=getSubsForDiv(divVal);
   var hasSubs=subs.length>0;
   var isME1=divVal.toUpperCase().startsWith('ME1');
   var subRow=document.getElementById('prSubRow');
   var typeRow=document.getElementById('prTypeRow');
   if(subRow) subRow.style.display=hasSubs?'block':'none';
-  // Request Type always shown when any division is selected
-  if(typeRow) typeRow.style.display=divVal?'block':'none';
+  if(typeRow) typeRow.style.display=(hasSubs||isME1)?'block':'none';
   if(hasSubs){
     var s=document.getElementById('prSub');
     if(!s) return;
@@ -4003,7 +3738,7 @@ function renderPRList(){
     var _sclient=_sinfo&&_sinfo.client&&_sinfo.client!==pr.sub_project?' · '+_sinfo.client:'';
     const subTag=pr.sub_project?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#dbeafe;color:#1e40af;font-weight:600">📍 ${pr.sub_project}${_sclient}</span>`:'';
     return `<div class="pr-card">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;min-width:0;overflow:hidden">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
         <div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">
             <span style="font-size:15px;font-weight:700;color:var(--ink2)">${pr.project}</span>
@@ -4126,19 +3861,6 @@ function viewPR(id){
     ${next==='paid'&&canAct?`
     <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:12px">
       <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:8px">💳 Payment Details — Finance</div>
-      <!-- Bank selector — populated from ME1 bank list + other banks -->
-      <div style="margin-bottom:8px">
-        <label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Paying Bank / Account <span style="color:var(--red)">*</span></label>
-        <select id="prPayBank" onchange="onPayBankChange()" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;outline:none;background:var(--surface)">
-          <option value="">— Select bank account —</option>
-          <optgroup label="ME1 — Matisan Construction Accounts">
-            ${ME1_BEGINNING_BALANCE.banks.map(b=>`<option value="${b.name}|${b.account}|${b.branch}">${b.name} · ${b.account} (${b.branch})</option>`).join('')}
-          </optgroup>
-          <optgroup label="Other / Manual Entry">
-            <option value="OTHER">Other (type manually below)</option>
-          </optgroup>
-        </select>
-      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
         <div><label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Cheque / Transfer Number *</label>
           <input type="text" id="prTransferId" placeholder="e.g. CHQ-001234" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;font-weight:700;outline:none"></div>
@@ -4487,9 +4209,7 @@ async function actOnPR(id){
   if(next==='complete'||!prCanAct(pr,next)) return;
 
   if(next==='paid'){
-    const bankSel=document.getElementById('prPayBank');
-  const selectedBank=bankSel&&bankSel.value&&bankSel.value!=='OTHER'?bankSel.value.split('|')[0]:'';
-  const tel=document.getElementById('prTransferId');
+    const tel=document.getElementById('prTransferId');
     const mel=document.getElementById('prPayMethod');
     const cel=document.getElementById('prPaidComment');
     if(!tel||!tel.value.trim()){alert('Please enter the Cheque/Transfer Number before marking as paid.');return;}
@@ -4541,7 +4261,6 @@ async function actOnPR(id){
         status:'paid',
         transfer_id:tid,
         pay_method:pm,
-        bank_name:selectedBank||'',
         paid_comment:cmt,
         transfer_slip:(prAttachments.transfer_slip&&prAttachments.transfer_slip.length)?JSON.stringify(prAttachments.transfer_slip):null,
         // Save Finance-uploaded invoices if preparer didn't attach any
@@ -4551,7 +4270,7 @@ async function actOnPR(id){
       });
 
       // Step 2: Create ledger entry — Supabase save + local array + renderAll
-      await createPRLedgerEntry(pr, tid, selectedBank?pm+' ('+selectedBank+')':pm);
+      await createPRLedgerEntry(pr, tid, pm);
 
       // Step 3: Show success flash BEFORE closing so user sees it
       showFlash('✓ Paid — transaction added to ledger.','prFlash','prFlashMsg');
@@ -4879,45 +4598,6 @@ async function syncPaidPRsToLedger(){
 // BOOT
 // ══════════════════════════════════════
 initLogin();
-
-// ── Site Drawer toggle ──
-function toggleSiteDrawer(btn){
-  var cid=btn.dataset.coid, dc=btn.dataset.dc;
-  var drawer=document.getElementById('siteDrawer_'+cid+'_'+dc);
-  if(!drawer) return;
-  var open=drawer.style.display!=='none';
-  drawer.style.display=open?'none':'block';
-  if(!open){
-    // Scroll into view and focus first input
-    drawer.scrollIntoView({behavior:'smooth',block:'nearest'});
-    var first=drawer.querySelector('input');
-    if(first) setTimeout(function(){first.focus();},200);
-  }
-}
-
-// ── Pay Bank change handler ──
-function onPayBankChange(){
-  var sel = document.getElementById('prPayBank');
-  if(!sel) return;
-  var val = sel.value;
-  // If OTHER selected, clear any auto-filled cheque hint
-  if(val === 'OTHER' || !val) return;
-  // Parse "name|account|branch"
-  var parts = val.split('|');
-  var bankName = parts[0]||'';
-  var accountNo = parts[1]||'';
-  // Auto-fill a hint into the cheque/transfer number field if empty
-  var tidEl = document.getElementById('prTransferId');
-  if(tidEl && !tidEl.value) {
-    tidEl.placeholder = 'e.g. ' + (accountNo ? accountNo.slice(-6) + '-TRF' : 'CHQ-001234');
-  }
-  // Auto-select payment method based on bank name
-  var mEl = document.getElementById('prPayMethod');
-  if(mEl){
-    if(bankName.toLowerCase().includes('cbe birr')||bankName.toLowerCase().includes('telebirr')) mEl.value='CBE Birr';
-    else mEl.value='Bank Transfer';
-  }
-}
 
 // Data-attribute button handlers — avoids all inline quote escaping
 function renameDivisionBtn(btn){renameDivision(btn.dataset.coid,btn.dataset.dc);}
