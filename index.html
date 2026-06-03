@@ -676,10 +676,58 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   <div class="grand-row" id="grandRow"></div>
   <!-- NAC section injected here by renderBalances() -->
   <div id="balNacSlot"></div>
-  <div class="card">
-    <div class="card-title">Edit opening balances</div>
-    <div id="balEditGrid"></div>
-    <button class="btn-primary" style="margin-top:4px" onclick="saveBalances()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save Opening Balances</button>
+  <div style="background:var(--surface);border-radius:16px;border:1.5px solid var(--border2);box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px">
+    <!-- Card Header -->
+    <div style="background:linear-gradient(135deg,#0f172a,#1e293b);padding:18px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px">
+          &#9874; Edit Opening Balances
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:3px">Set the starting balance for each division · auto-seeded from Excel import</div>
+      </div>
+      <button class="btn-primary" onclick="saveBalances()" style="background:#34d399;color:#022c22;border:none;font-weight:800;padding:9px 20px;font-size:13px">Save Balances</button>
+    </div>
+    <!-- Division input grid -->
+    <div style="padding:18px 22px 14px" id="balEditGrid"></div>
+    <!-- ME1 Bank Account Breakdown -->
+    <div style="margin:4px 22px 22px;border-radius:12px;overflow:hidden;border:1.5px solid #bfdbfe">
+      <div style="background:linear-gradient(135deg,#1e40af,#2563eb);padding:13px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:22px">&#127974;</span>
+          <div>
+            <div style="font-size:13px;font-weight:800;color:#fff">ME1 — Bank Account Breakdown</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:2px">Matisan Engineering Plc · Construction · Beginning Balance</div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:10px;color:rgba(255,255,255,.5)">Total Beginning Balance</div>
+          <div style="font-size:20px;font-weight:800;color:#93c5fd" id="me1TotalDisplay">ETB 0</div>
+        </div>
+      </div>
+      <div style="overflow-x:auto;background:var(--surface)">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:#eff6ff;border-bottom:2px solid #bfdbfe">
+              <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:800;color:#1e40af;text-transform:uppercase;letter-spacing:.5px">#</th>
+              <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:800;color:#1e40af;text-transform:uppercase;letter-spacing:.5px">Bank</th>
+              <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:800;color:#1e40af;text-transform:uppercase;letter-spacing:.5px">Account No.</th>
+              <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:800;color:#1e40af;text-transform:uppercase;letter-spacing:.5px">Branch</th>
+              <th style="padding:9px 14px;text-align:right;font-size:10px;font-weight:800;color:#1e40af;text-transform:uppercase;letter-spacing:.5px">Balance (ETB)</th>
+              <th style="padding:9px 14px;text-align:center;font-size:10px;font-weight:800;color:#1e40af;text-transform:uppercase;letter-spacing:.5px">Edit</th>
+            </tr>
+          </thead>
+          <tbody id="me1BankBody"></tbody>
+          <tfoot>
+            <tr style="background:#dbeafe;border-top:2px solid #93c5fd">
+              <td colspan="4" style="padding:11px 14px;font-size:13px;font-weight:800;color:#1e40af">TOTAL</td>
+              <td style="padding:11px 14px;font-size:15px;font-weight:800;color:#1e40af;text-align:right" id="me1BankTotal"></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
   </div>
 </div>
 
@@ -2339,41 +2387,6 @@ function renderBalances(){
     const usdClose=begUsd+s.usdNet;
     tB+=beg;tI+=s.ins;tO+=s.outs;tBusd+=begUsd;tIusd+=s.usdIn;tOusd+=s.usdOut;
     const colorStyle=d.color==='teal'?'color:var(--teal-dark)':d.color==='blue'?'color:var(--blue-dark)':'color:#5b21b6';
-    // Build bank details row for ME1
-    const bankDetailsHtml = d.code==='ME1' ? (() => {
-      const banks = ME1_BEGINNING_BALANCE.banks;
-      let rows = banks.map(b=>`
-        <tr>
-          <td style="padding:4px 8px;font-size:11px;color:var(--ink2);font-weight:600">${b.no}</td>
-          <td style="padding:4px 8px;font-size:11px;color:var(--ink2)">${b.name}</td>
-          <td style="padding:4px 8px;font-size:11px;color:var(--muted);font-family:monospace">${b.account}</td>
-          <td style="padding:4px 8px;font-size:11px;color:var(--muted)">${b.branch}</td>
-          <td style="padding:4px 8px;font-size:12px;font-weight:700;color:var(--teal-dark);text-align:right">${b.balance.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-        </tr>`).join('');
-      return `<div style="margin-top:10px;border-top:1px solid var(--border2);padding-top:10px">
-        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--blue-dark);margin-bottom:8px">🏦 Bank Account Breakdown</div>
-        <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:11px">
-          <thead>
-            <tr style="border-bottom:1px solid var(--border)">
-              <th style="padding:4px 8px;text-align:left;font-size:10px;color:var(--muted);font-weight:700">#</th>
-              <th style="padding:4px 8px;text-align:left;font-size:10px;color:var(--muted);font-weight:700">Bank</th>
-              <th style="padding:4px 8px;text-align:left;font-size:10px;color:var(--muted);font-weight:700">Account No.</th>
-              <th style="padding:4px 8px;text-align:left;font-size:10px;color:var(--muted);font-weight:700">Branch</th>
-              <th style="padding:4px 8px;text-align:right;font-size:10px;color:var(--muted);font-weight:700">Balance (ETB)</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-          <tfoot>
-            <tr style="border-top:2px solid var(--border);background:var(--bg)">
-              <td colspan="4" style="padding:6px 8px;font-size:12px;font-weight:800;color:var(--ink)">TOTAL</td>
-              <td style="padding:6px 8px;font-size:13px;font-weight:800;color:var(--teal-dark);text-align:right">${ME1_BEGINNING_BALANCE.totalBeginningBalance.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-            </tr>
-          </tfoot>
-        </table>
-        </div>
-      </div>`;
-    })() : '';
     g.innerHTML+=`<div class="bc">
       <div class="bc-div" style="${colorStyle}">${d.code} · ${d.name}${usdDiv?'<span class="usd-badge">ETB+USD</span>':''}</div>
       <div class="bc-row"><span class="bl">Opening (ETB)</span><span class="bv">${fmt(beg)}</span></div>
@@ -2385,7 +2398,6 @@ function renderBalances(){
       <hr class="bc-sep">
       <div class="bc-row"><span class="bl" style="font-weight:700">Closing (ETB)</span><span class="bv ${etbClose>=0?'g':'r'}">${fmt(etbClose)}</span></div>
       ${usdDiv?`<div class="bc-row"><span class="bl" style="font-weight:700">Closing (USD)</span><span class="bv" style="color:${usdClose>=0?'var(--teal-dark)':'var(--red)'}">$${usdClose.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>`:''}
-    ${bankDetailsHtml}
     </div>`;
   });
   const tN=tI-tO,tE=tB+tN,tNusd=tIusd-tOusd,tEusd=tBusd+tNusd;
@@ -2477,6 +2489,9 @@ function renderBalances(){
   const nacSlot = document.getElementById('balNacSlot');
   if(nacSlot){ nacSlot.innerHTML=''; nacSlot.appendChild(nacContainer); }
 
+  // ── ME1 Bank Table ──
+  renderME1BankTable();
+
   // edit grid — landscape card grid matching the original dashboard style
   const eg=document.getElementById('balEditGrid');
   eg.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:12px;margin-bottom:4px">';
@@ -2502,6 +2517,65 @@ function renderBalances(){
   });
   eg.innerHTML+='</div>';
 }
+function renderME1BankTable(){
+  var tbody=document.getElementById('me1BankBody');
+  var totalEl=document.getElementById('me1BankTotal');
+  var headerEl=document.getElementById('me1TotalDisplay');
+  if(!tbody) return;
+  var banks=ME1_BEGINNING_BALANCE.banks;
+  var total=0;
+  var rows='';
+  banks.forEach(function(b,i){
+    total+=b.balance;
+    var bg=i%2===0?'var(--surface)':'#f8faff';
+    rows+='<tr class="me1-bank-row" data-idx="'+i+'" data-orig="'+b.balance+'" style="background:'+bg+';border-bottom:1px solid #e0eaff">'
+      +'<td style="padding:10px 14px;font-size:12px;font-weight:800;color:#1e40af">'+b.no+'</td>'
+      +'<td style="padding:10px 14px;font-size:13px;font-weight:700;color:var(--ink2)">'+b.name+'</td>'
+      +'<td style="padding:10px 14px;font-size:12px;font-family:monospace;color:#2563eb;letter-spacing:.3px">'+b.account+'</td>'
+      +'<td style="padding:10px 14px;font-size:12px;color:var(--muted)">'+b.branch+'</td>'
+      +'<td style="padding:10px 14px;text-align:right">'
+        +'<input type="number" id="bankBal_'+i+'" value="'+b.balance.toFixed(2)+'" min="0" step="0.01" '
+          +'style="width:130px;padding:6px 10px;border:1.5px solid #bfdbfe;border-radius:7px;font-size:13px;font-weight:700;color:#1e40af;text-align:right;outline:none;font-family:inherit;background:#f0f7ff" '
+          +'oninput="updateME1BankTotal()">'
+      +'</td>'
+      +'<td style="padding:10px 14px;text-align:center">'
+        +'<button onclick="resetBankBalBtn(this)" data-idx="'+i+'" data-orig="'+b.balance.toFixed(2)+'" title="Reset to original" '
+          +'style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;color:#1e40af;font-weight:700">'
+          +'↺</button>'
+      +'</td>'
+      +'</tr>';
+  });
+  tbody.innerHTML=rows;
+  var fmt=total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  if(totalEl) totalEl.textContent='ETB '+fmt;
+  if(headerEl) headerEl.textContent='ETB '+fmt;
+}
+
+function updateME1BankTotal(){
+  const banks = ME1_BEGINNING_BALANCE.banks;
+  let total = 0;
+  banks.forEach(function(b, i){
+    const el = document.getElementById('bankBal_'+i);
+    total += el ? (parseFloat(el.value)||0) : b.balance;
+  });
+  const fmtTotal = total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const totalEl = document.getElementById('me1BankTotal');
+  const headerEl = document.getElementById('me1TotalDisplay');
+  if(totalEl) totalEl.textContent = 'ETB '+fmtTotal;
+  if(headerEl) headerEl.textContent = 'ETB '+fmtTotal;
+  // Sync ME1 opening balance input with sum of all bank balances
+  var me1Input = document.getElementById('bIME1');
+  if(me1Input) me1Input.value = Math.round(total);
+}
+
+function resetBankBal(idx, originalVal){
+  var el=document.getElementById('bankBal_'+idx);
+  if(el){el.value=parseFloat(originalVal).toFixed(2);updateME1BankTotal();}
+}
+function resetBankBalBtn(btn){
+  resetBankBal(btn.dataset.idx, btn.dataset.orig);
+}
+
 async function saveBalances(){
   const payload = [];
   getAllDivs().forEach(d=>{
@@ -2517,6 +2591,15 @@ async function saveBalances(){
     await apiCall('PUT','/balances',payload);
     showSync('ok','Balances saved to cloud ✓');
   }catch(e){ showSync('error','Saved locally — sync pending'); }
+  // Save individual ME1 bank balances back to ME1_BEGINNING_BALANCE
+  const bankBodies = document.getElementById('me1BankBody');
+  if(bankBodies){
+    ME1_BEGINNING_BALANCE.banks.forEach(function(b, i){
+      const el = document.getElementById('bankBal_'+i);
+      if(el) b.balance = parseFloat(el.value)||b.balance;
+    });
+    ME1_BEGINNING_BALANCE.totalBeginningBalance = ME1_BEGINNING_BALANCE.banks.reduce(function(s,b){return s+b.balance;},0);
+  }
   showFlash('✓ Opening balances saved.');renderBalances();renderDashboard();
 }
 
@@ -4030,7 +4113,7 @@ function viewPR(id){
         <select id="prPayBank" onchange="onPayBankChange()" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;outline:none;background:var(--surface)">
           <option value="">— Select bank account —</option>
           <optgroup label="ME1 — Matisan Construction Accounts">
-            ${ME1_BEGINNING_BALANCE.banks.map(b=>`<option value="${b.name}|${b.account}|${b.branch}">${b.name} · ${b.account} (${b.branch}) — ETB ${b.balance.toLocaleString('en-US',{minimumFractionDigits:2})}</option>`).join('')}
+            ${ME1_BEGINNING_BALANCE.banks.map(b=>`<option value="${b.name}|${b.account}|${b.branch}">${b.name} · ${b.account} (${b.branch})</option>`).join('')}
           </optgroup>
           <optgroup label="Other / Manual Entry">
             <option value="OTHER">Other (type manually below)</option>
