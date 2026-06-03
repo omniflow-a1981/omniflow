@@ -1604,7 +1604,7 @@ async function initApp(){
 
   populateCoSelects();
   updateDivs();
-  setTimeout(populatePayBankDrop,300);
+  setTimeout(function(){populatePayBankDrop();},300);
   // renderAll intentionally not called here — showApp calls it once after all data loads
   startRealtime();
   updateOnlineBadge();
@@ -2302,6 +2302,20 @@ const DIV_BANKS_DEFAULT = {
     {no:10, name:'MEP WEGAGEN -PROJECT', account:'1109068310103',   branch:'Haya Hulet',    beg:1000.00,   debit:0, credit:0},
     {no:11, name:'MEP ADISS BANK',       account:'0031025877104001',branch:'BOLE',          beg:1000.00,   debit:0, credit:0},
   ],
+  // ME2 — Export: two sections (Current ETB + Retention USD)
+  ME2: [
+    // Current Accounts - ETB
+    {no:1, name:'MEP EXPORT- CBE -MAIN',      account:'1000694065345', branch:'AWRARIS',      beg:0,          debit:0, credit:0, section:'Current Accounts - ETB'},
+    {no:2, name:'MEP EXPORT - COOP -MAIN',    account:'1012100223939', branch:'MESKEL FLOWER', beg:3223045.75, debit:0, credit:0, section:'Current Accounts - ETB'},
+    {no:5, name:'MEP EXPORT- GEDA BANK',      account:'1000007233691', branch:'DOLA',          beg:1000.00,    debit:0, credit:0, section:'Current Accounts - ETB'},
+    {no:4, name:'MEP EXPORT -WEGAGEN -MAIN',  account:'1109068310102', branch:'',              beg:1000.00,    debit:0, credit:0, section:'Current Accounts - ETB'},
+    // Retention Accounts - USD
+    {no:3, name:'MEP EXPORT -COOP-RETENTION',      account:'1012100224641', branch:'MESKEL FLOWER', beg:37905.22, debit:0, credit:0, section:'Retention Accounts - USD'},
+    {no:6, name:'MEP EXPORT- GEDA BANK-RETENTION', account:'1000007328951', branch:'DOLA',          beg:0,        debit:0, credit:0, section:'Retention Accounts - USD'},
+  ],
+  ME3: [
+    {no:1, name:'MEP IMPORT- NBE', account:'', branch:'AWRARIS', beg:0, debit:0, credit:0},
+  ],
 };
 
 const DIV_BANK_TITLES = {
@@ -2309,15 +2323,17 @@ const DIV_BANK_TITLES = {
   WE2: 'WANOFI ENGINEERING PLC — WE2. Supervision CASH AND BANK BOOK BALANCE',
   WE3: 'WANOFI ENGINEERING PLC — WE3. Others CASH AND BANK BOOK BALANCE',
   ME1: 'MATISAN ENGINEERING PLC — ME1 CONSTRUCTION BEGINNING BALANCE',
+  ME2: 'MATISAN ENGINEERING PLC — ME2 EXPORT CASH AND BANK BOOK BALANCE',
+  ME3: 'MATISAN ENGINEERING PLC — ME3 IMPORT CASH AND BANK BOOK BALANCE',
 };
 const DIV_BANK_COLORS = {
-  WE1:'#065f46', WE2:'#1e40af', WE3:'#7c3aed', ME1:'#1e3a8a'
+  WE1:'#065f46', WE2:'#1e40af', WE3:'#7c3aed', ME1:'#1e3a8a', ME2:'#92400e', ME3:'#166534'
 };
 const DIV_BANK_LIGHT = {
-  WE1:'#d1fae5', WE2:'#dbeafe', WE3:'#ede9fe', ME1:'#dbeafe'
+  WE1:'#d1fae5', WE2:'#dbeafe', WE3:'#ede9fe', ME1:'#dbeafe', ME2:'#fef3c7', ME3:'#dcfce7'
 };
 const DIV_BANK_BORDER = {
-  WE1:'#6ee7b7', WE2:'#93c5fd', WE3:'#c4b5fd', ME1:'#93c5fd'
+  WE1:'#6ee7b7', WE2:'#93c5fd', WE3:'#c4b5fd', ME1:'#93c5fd', ME2:'#fcd34d', ME3:'#86efac'
 };
 
 function getDivBanks(div){ return ls('omni-banks-'+div) || JSON.parse(JSON.stringify(DIV_BANKS_DEFAULT[div]||[])); }
@@ -2485,7 +2501,7 @@ function renderAllDivBanks(){
   if(!container) return;
   container.innerHTML='';
   // Render each division that has bank data defined
-  ['WE1','WE2','WE3','ME1'].forEach(function(div){
+  ['WE1','WE2','WE3','ME1','ME2','ME3'].forEach(function(div){
     if(!DIV_BANKS_DEFAULT[div]) return;
     container.appendChild(buildDivBankRegister(div));
   });
@@ -2502,13 +2518,19 @@ function buildDivBankRegister(div){
   var title=DIV_BANK_TITLES[div]||div+' CASH AND BANK BOOK BALANCE';
 
   var totBeg=0,totDeb=0,totCred=0;
+  var lastSection='';
   var rows=banks.map(function(b,i){
     var ending=(b.beg||0)-(b.debit||0)+(b.credit||0);
     totBeg+=(b.beg||0); totDeb+=(b.debit||0); totCred+=(b.credit||0);
     var bg=i%2===0?'#fff':light+'44';
     var bd='border:1px solid '+light;
     var inp='padding:5px 8px;font-family:inherit;outline:none;border-radius:6px;text-align:right;font-size:13px;font-weight:700;';
-    return '<tr style="background:'+bg+';'+bd+'">'
+    var sectionRow='';
+    if(b.section && b.section!==lastSection){
+      lastSection=b.section;
+      sectionRow='<tr style="background:'+col+';"><td colspan="9" style="padding:6px 14px;font-size:11px;font-weight:800;color:#fff;text-align:center;letter-spacing:.3px">'+b.section+'</td></tr>';
+    }
+    return sectionRow+'<tr style="background:'+bg+';'+bd+'">'
       +'<td style="padding:8px 8px;text-align:center;font-size:12px;font-weight:800;color:'+col+';border:1px solid '+light+'">'+(b.no||i+1)+'</td>'
       +'<td style="padding:8px 12px;font-size:13px;font-weight:600;color:#1e293b;border:1px solid '+light+'">'+b.name+'</td>'
       +'<td style="padding:8px 12px;font-size:12px;font-family:monospace;color:#374151;border:1px solid '+light+'">'+b.account+'</td>'
@@ -2602,7 +2624,7 @@ function addDivBank(div){
   banks.push({no:banks.length+1,name:n.value.trim(),account:(a?a.value.trim():''),branch:(br?br.value.trim():''),beg:parseFloat(bg?bg.value:0)||0,debit:0,credit:0});
   saveDivBanks(div,banks);
   [n,a,br,bg].forEach(function(el){if(el)el.value='';});
-  renderAllDivBanks(); populatePayBankDrop();
+  renderAllDivBanks(); populatePayBankDrop(div);
 }
 
 function me1Change(inp){
@@ -2632,29 +2654,30 @@ function addMe1Bank(){
 // ══════════════════════════════════
 // FINANCE PAYMENT BANK DROPDOWN
 // ══════════════════════════════════
-function populatePayBankDrop(){
+function populatePayBankDrop(filterDiv){
   var sel=document.getElementById('prPayBank');
   if(!sel)return;
-  // Remove all optgroups first
   while(sel.options.length>1) sel.remove(1);
-  ['WE1','WE2','WE3','ME1'].forEach(function(div){
+  // If filterDiv provided, show only that division's banks
+  var divsToShow = filterDiv ? [filterDiv] : ['WE1','WE2','WE3','ME1','ME2','ME3'];
+  divsToShow.forEach(function(div){
     if(!DIV_BANKS_DEFAULT[div]) return;
-    var grp=document.createElement('optgroup');
-    grp.label=div+' · '+(div.startsWith('WE')?'Wanofi':'Matisan');
     var banks=getDivBanks(div);
+    if(!banks.length) return;
+    var grp=document.createElement('optgroup');
+    grp.label=div+' · '+(div.startsWith('WE')?'Wanofi Engineering':'Matisan Engineering');
     banks.forEach(function(b){
       var o=document.createElement('option');
       o.value=div+'|'+b.name+'|'+b.account+'|'+b.branch;
-      o.textContent=b.name+' · '+b.account+' ('+b.branch+')';
+      var label=b.name+(b.account?' · '+b.account:'')+(b.branch?' ('+b.branch+')':'');
+      o.textContent=label;
       grp.appendChild(o);
     });
     sel.appendChild(grp);
   });
-  var og=document.createElement('optgroup');
-  og.label='Other';
-  var oo=document.createElement('option');
-  oo.value='OTHER'; oo.textContent='Other / enter manually';
-  og.appendChild(oo); sel.appendChild(og);
+  var og=document.createElement('optgroup');og.label='Other';
+  var oo=document.createElement('option');oo.value='OTHER';oo.textContent='Other / enter manually';
+  og.appendChild(oo);sel.appendChild(og);
 }
 function onPayBankSel(){
   var sel=document.getElementById('prPayBank');
@@ -4157,7 +4180,7 @@ function viewPR(id){
     ${pr.transfer_id?`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px"><strong style="color:#166534">Transfer ID:</strong> ${pr.transfer_id} | <strong style="color:#166534">Method:</strong> ${pr.pay_method||'—'}</div>`:''}
 
     <!-- Action area for current step -->
-    ${next==='paid'&&canAct?(setTimeout(populatePayBankDrop,80),'')+'':''}
+    ${next==='paid'&&canAct?(setTimeout(function(){var divCode=(pr.division||'').split('.')[0].trim();populatePayBankDrop(divCode);},80),'')+'':''}
     ${next==='paid'&&canAct?`
     <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:12px">
       <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:8px">💳 Payment Details — Finance</div>
