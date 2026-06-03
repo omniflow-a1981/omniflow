@@ -2517,6 +2517,17 @@ function buildDivBankRegister(div){
   var border=DIV_BANK_BORDER[div]||'#93c5fd';
   var title=DIV_BANK_TITLES[div]||div+' CASH AND BANK BOOK BALANCE';
 
+  // For ME2: track totals per section separately
+  var sectionTotals={};
+  banks.forEach(function(b){
+    var sec=b.section||'';
+    if(!sectionTotals[sec]) sectionTotals[sec]={beg:0,deb:0,cred:0};
+    sectionTotals[sec].beg+=(b.beg||0);
+    sectionTotals[sec].deb+=(b.debit||0);
+    sectionTotals[sec].cred+=(b.credit||0);
+  });
+  var hasSections=banks.some(function(b){return b.section;});
+
   var totBeg=0,totDeb=0,totCred=0;
   var lastSection='';
   var rows=banks.map(function(b,i){
@@ -2527,8 +2538,13 @@ function buildDivBankRegister(div){
     var inp='padding:5px 8px;font-family:inherit;outline:none;border-radius:6px;text-align:right;font-size:13px;font-weight:700;';
     var sectionRow='';
     if(b.section && b.section!==lastSection){
+      // Add subtotal row for previous section
+      if(lastSection && sectionTotals[lastSection]){
+        var ps=sectionTotals[lastSection];
+        sectionRow+='<tr style="background:'+light+';border-top:2px solid '+col+'">'+'<td colspan="4" style="padding:8px 12px;font-size:12px;font-weight:800;color:'+col+';text-align:center;border:1px solid '+border+'">Sub-Total — '+lastSection+'</td>'+'<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:800;color:'+col+';border:1px solid '+border+'">'+fmtBirr(ps.beg)+'</td>'+'<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:800;color:#dc2626;border:1px solid '+border+'">'+(ps.deb>0?fmtBirr(ps.deb):'-')+'</td>'+'<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:800;color:#059669;border:1px solid '+border+'">'+(ps.cred>0?fmtBirr(ps.cred):'-')+'</td>'+'<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:800;color:'+col+';border:1px solid '+border+'">'+fmtBirr(ps.beg-ps.deb+ps.cred)+'</td>'+'<td style="border:1px solid '+border+'"></td>'+'</tr>';
+      }
       lastSection=b.section;
-      sectionRow='<tr style="background:'+col+';"><td colspan="9" style="padding:6px 14px;font-size:11px;font-weight:800;color:#fff;text-align:center;letter-spacing:.3px">'+b.section+'</td></tr>';
+      sectionRow+='<tr style="background:'+col+';"><td colspan="9" style="padding:7px 14px;font-size:11px;font-weight:800;color:#fff;text-align:center;letter-spacing:.3px">'+b.section+'</td></tr>';
     }
     return sectionRow+'<tr style="background:'+bg+';'+bd+'">'
       +'<td style="padding:8px 8px;text-align:center;font-size:12px;font-weight:800;color:'+col+';border:1px solid '+light+'">'+(b.no||i+1)+'</td>'
@@ -2555,11 +2571,22 @@ function buildDivBankRegister(div){
   }).join('');
 
   var totEnd=totBeg-totDeb+totCred;
+  var uid='reg_'+div;
   var wrap=document.createElement('div');
   wrap.style.cssText='margin-top:20px;border-radius:12px;overflow:hidden;border:2px solid '+col;
   wrap.innerHTML=
-    '<div style="background:'+col+';padding:12px 18px;text-align:center;font-size:13px;font-weight:800;color:#fff;letter-spacing:.3px">'+title+'</div>'
-    +'<div style="background:'+light+';padding:6px 18px;text-align:center;font-size:11px;font-weight:700;color:'+col+';border-bottom:1px solid '+border+'">SUMMARY OF ALL BANK BALANCE &nbsp;|&nbsp; Total: <span style="font-size:13px;font-weight:800" id="tot_hdr_'+div+'">ETB '+fmtBirr(totBeg)+'</span></div>'
+    // Clickable header — always visible
+    '<div onclick="toggleBankReg(\''+uid+'\')" style="background:'+col+';padding:12px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer">'
+      +'<span style="font-size:13px;font-weight:800;color:#fff;letter-spacing:.3px">'+title+'</span>'
+      +'<span id="'+uid+'_icon" style="color:#fff;font-size:18px;font-weight:700;line-height:1">−</span>'
+    +'</div>'
+    // Always-visible total strip
+    +'<div style="background:'+light+';padding:8px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid '+border+'">'
+      +'<span style="font-size:11px;font-weight:700;color:'+col+'">SUMMARY OF ALL BANK BALANCE</span>'
+      +'<span style="font-size:14px;font-weight:800;color:'+col+'" id="tot_hdr_'+div+'">Total: ETB '+fmtBirr(totBeg)+'</span>'
+    +'</div>'
+    // Collapsible detail section
+    +'<div id="'+uid+'_body">'
     +'<div style="overflow-x:auto">'
     +'<table style="width:100%;border-collapse:collapse;min-width:860px">'
     +'<thead><tr style="background:'+light+';border-bottom:2px solid '+col+'">'
@@ -2597,7 +2624,8 @@ function buildDivBankRegister(div){
           +'<input type="number" id="newBk_bal_'+div+'" placeholder="0.00" min="0" step="0.01" style="width:100%;padding:8px 12px;border:1.5px solid '+border+';border-radius:8px;font-size:13px;outline:none;font-family:inherit;box-sizing:border-box"></div>'
       +'</div>'
       +'<button onclick="addDivBankBtn(this)" data-div="'+div+'" style="padding:9px 22px;background:'+col+';color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">+ Add Bank</button>'
-    +'</div>';
+    +'</div>'
+    +'</div>'; // close collapsible body
   return wrap;
 }
 
@@ -2607,6 +2635,14 @@ function divBankChange(inp){
   banks[i][f]=parseFloat(inp.value)||0;
   saveDivBanks(div,banks);
   renderAllDivBanks();
+}
+function toggleBankReg(uid){
+  var body=document.getElementById(uid+'_body');
+  var icon=document.getElementById(uid+'_icon');
+  if(!body)return;
+  var hidden=body.style.display==='none';
+  body.style.display=hidden?'block':'none';
+  if(icon) icon.textContent=hidden?'−':'+';
 }
 function delDivBankBtn(btn){ delDivBank(btn.dataset.div, parseInt(btn.dataset.i)); }
 function delDivBank(div,i){
@@ -2934,15 +2970,26 @@ function renderCompanies(){
         });
         divHtml+='</div>';
       }
-      divHtml+='<div style="padding:10px 14px 12px;border-top:1px solid var(--border2);margin-top:4px;background:#fafffe">'
-        +'<div style="font-size:10px;font-weight:700;color:#065f46;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">+ Add New Site</div>'
-        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">'
-          +'<input type="text" id="subInput_'+cid+'_'+dc+'" placeholder="Site name *" style="font-size:12px;padding:6px 9px;border:1px solid #86efac;border-radius:7px;outline:none">'
-          +'<input type="text" id="subClient_'+cid+'_'+dc+'" placeholder="Client name" style="font-size:12px;padding:6px 9px;border:1px solid #86efac;border-radius:7px;outline:none">'
-          +'<input type="text" id="subProject_'+cid+'_'+dc+'" placeholder="Project / Description" style="font-size:12px;padding:6px 9px;border:1px solid #86efac;border-radius:7px;outline:none">'
-          +'<input type="text" id="subLocation_'+cid+'_'+dc+'" placeholder="Location" style="font-size:12px;padding:6px 9px;border:1px solid #86efac;border-radius:7px;outline:none">'
+      divHtml+='<div style="margin-top:8px;border:2px solid #86efac;border-radius:12px;background:#f0fdf4;overflow:hidden">'
+        +'<div style="background:#059669;padding:10px 16px;display:flex;align-items:center;gap:8px">'
+          +'<span style="font-size:12px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.4px">📍 Add New Site / Subdivision</span>'
         +'</div>'
-        +'<button onclick="addSubdivisionBtn(this)" data-coid="'+cid+'" data-dc="'+dc+'" style="font-size:11px;padding:6px 14px;border-radius:7px;background:#f0fdf4;border:1px solid #86efac;color:#065f46;cursor:pointer;font-weight:700">+ Add Site</button>'
+        +'<div style="padding:14px 16px">'
+          +'<div style="margin-bottom:10px">'
+            +'<label style="display:block;font-size:10px;font-weight:700;color:#047857;margin-bottom:5px;text-transform:uppercase">Project Code / Site ID <span style="color:#ef4444">*</span></label>'
+            +'<input type="text" id="subInput_'+cid+'_'+dc+'" placeholder="e.g. ME1-S9, HQ-001, SITE-A..." style="width:100%;padding:10px 14px;border:2px solid #86efac;border-radius:9px;font-size:14px;font-weight:600;outline:none;background:#fff;box-sizing:border-box;font-family:inherit">'
+          +'</div>'
+          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'
+            +'<div><label style="display:block;font-size:10px;font-weight:700;color:#047857;margin-bottom:4px;text-transform:uppercase">Client</label>'
+              +'<input type="text" id="subClient_'+cid+'_'+dc+'" placeholder="Client name" style="width:100%;padding:9px 12px;border:1.5px solid #86efac;border-radius:9px;font-size:13px;outline:none;background:#fff;box-sizing:border-box;font-family:inherit"></div>'
+            +'<div><label style="display:block;font-size:10px;font-weight:700;color:#047857;margin-bottom:4px;text-transform:uppercase">Location</label>'
+              +'<input type="text" id="subLocation_'+cid+'_'+dc+'" placeholder="Location" style="width:100%;padding:9px 12px;border:1.5px solid #86efac;border-radius:9px;font-size:13px;outline:none;background:#fff;box-sizing:border-box;font-family:inherit"></div>'
+          +'</div>'
+          +'<div style="margin-bottom:12px"><label style="display:block;font-size:10px;font-weight:700;color:#047857;margin-bottom:4px;text-transform:uppercase">Project / Description</label>'
+            +'<input type="text" id="subProject_'+cid+'_'+dc+'" placeholder="e.g. G+4 Mixed Use Building Construction" style="width:100%;padding:9px 12px;border:1.5px solid #86efac;border-radius:9px;font-size:13px;outline:none;background:#fff;box-sizing:border-box;font-family:inherit">'
+          +'</div>'
+          +'<button onclick="addSubdivisionBtn(this)" data-coid="'+cid+'" data-dc="'+dc+'" style="width:100%;padding:12px;border-radius:10px;background:#059669;border:none;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">+ Save Site</button>'
+        +'</div>'
       +'</div>'+'</div>';
     });
     grid.innerHTML+='<div style="background:var(--surface);border-radius:16px;border:2px solid '+accent+'33;box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden">'
