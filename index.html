@@ -1224,6 +1224,95 @@ const DEFAULT_COMPANIES = [
     ]}
 ];
 
+
+// ══════════════════════════════════════════════════════════════
+// ME1 BEGINNING BALANCE — Matisan Engineering Plc · Construction
+// Source: Begning_balalnce_and_Bank_details_for_ME1.xlsx
+// Total: ETB 1,129,174.12 across 11 bank accounts
+// ══════════════════════════════════════════════════════════════
+const ME1_BEGINNING_BALANCE = {
+  "totalBeginningBalance": 1129174.12,
+  "banks": [
+    {
+      "no": 1,
+      "name": "MEP CBE -MAIN",
+      "account": "1000531313813",
+      "branch": "AWRARIS",
+      "balance": 163663.4
+    },
+    {
+      "no": 2,
+      "name": "MEP CBE -PROJECT",
+      "account": "1000637951975",
+      "branch": "AWRARIS",
+      "balance": 848.77
+    },
+    {
+      "no": 3,
+      "name": "MEP COOP",
+      "account": "1000087166396",
+      "branch": "MESKEL FLOWER",
+      "balance": 452701.44
+    },
+    {
+      "no": 4,
+      "name": "MEP ABYSSINIA",
+      "account": "127398647",
+      "branch": "YEKA",
+      "balance": 522.15
+    },
+    {
+      "no": 5,
+      "name": "MEP AWASH",
+      "account": "013041198140800",
+      "branch": "KOKEB",
+      "balance": 1440.0
+    },
+    {
+      "no": 6,
+      "name": "MEP DASHEN",
+      "account": "0012519914011",
+      "branch": "BOLE",
+      "balance": 539.0
+    },
+    {
+      "no": 7,
+      "name": "MEP OIB",
+      "account": "3797963",
+      "branch": "DERARTU",
+      "balance": 827.5
+    },
+    {
+      "no": 8,
+      "name": "MEP HIBRET BANK",
+      "account": "1061815972112010",
+      "branch": "BOLE",
+      "balance": 505631.86
+    },
+    {
+      "no": 9,
+      "name": "MEP WEGAGEN -MAIN",
+      "account": "1109068310101",
+      "branch": "HAYA HULET",
+      "balance": 1000.0
+    },
+    {
+      "no": 10,
+      "name": "MEP WEGAGEN -PROJECT",
+      "account": "11090683101103",
+      "branch": "HAYA HULET",
+      "balance": 1000.0
+    },
+    {
+      "no": 11,
+      "name": "MEP ADDIS BANK",
+      "account": "0031025877104001",
+      "branch": "BOLE",
+      "balance": 1000.0
+    }
+  ]
+};
+
 const DEFAULT_BAL = {WE1:1,WE2:349258.72,WE3:1,ME1:3272756.58,ME2:1,ME3:8649766.46};
 
 const DEFAULT_OUT = [
@@ -1564,6 +1653,7 @@ async function initApp(){
         balances[b.div_code+'_usd'] = parseFloat(b.opening_usd)||0;
       });
     } else { balances = ls('omni-bal')||{...DEFAULT_BAL}; }
+  if(!balances['ME1']||balances['ME1']===0){balances['ME1']=ME1_BEGINNING_BALANCE.totalBeginningBalance;ls('omni-bal',balances);}
 
     outstandings = Array.isArray(outData) ? outData.map(o=>({
       id: o.id, co: o.company_id, div: o.division,
@@ -1594,6 +1684,7 @@ async function initApp(){
     console.warn('Cloud load failed, using local cache:', e);
     transactions = ls('omni-tx')||[];
     balances     = ls('omni-bal')||{...DEFAULT_BAL};
+  if(!balances['ME1']||balances['ME1']===0){balances['ME1']=ME1_BEGINNING_BALANCE.totalBeginningBalance;ls('omni-bal',balances);}
     outstandings = ls('omni-out')||JSON.parse(JSON.stringify(DEFAULT_OUT));
     companies    = ls('omni-companies')||JSON.parse(JSON.stringify(DEFAULT_COMPANIES));
     payables     = ls('omni-payables')||[];
@@ -2248,6 +2339,41 @@ function renderBalances(){
     const usdClose=begUsd+s.usdNet;
     tB+=beg;tI+=s.ins;tO+=s.outs;tBusd+=begUsd;tIusd+=s.usdIn;tOusd+=s.usdOut;
     const colorStyle=d.color==='teal'?'color:var(--teal-dark)':d.color==='blue'?'color:var(--blue-dark)':'color:#5b21b6';
+    // Build bank details row for ME1
+    const bankDetailsHtml = d.code==='ME1' ? (() => {
+      const banks = ME1_BEGINNING_BALANCE.banks;
+      let rows = banks.map(b=>`
+        <tr>
+          <td style="padding:4px 8px;font-size:11px;color:var(--ink2);font-weight:600">${b.no}</td>
+          <td style="padding:4px 8px;font-size:11px;color:var(--ink2)">${b.name}</td>
+          <td style="padding:4px 8px;font-size:11px;color:var(--muted);font-family:monospace">${b.account}</td>
+          <td style="padding:4px 8px;font-size:11px;color:var(--muted)">${b.branch}</td>
+          <td style="padding:4px 8px;font-size:12px;font-weight:700;color:var(--teal-dark);text-align:right">${b.balance.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+        </tr>`).join('');
+      return `<div style="margin-top:10px;border-top:1px solid var(--border2);padding-top:10px">
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--blue-dark);margin-bottom:8px">🏦 Bank Account Breakdown</div>
+        <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border)">
+              <th style="padding:4px 8px;text-align:left;font-size:10px;color:var(--muted);font-weight:700">#</th>
+              <th style="padding:4px 8px;text-align:left;font-size:10px;color:var(--muted);font-weight:700">Bank</th>
+              <th style="padding:4px 8px;text-align:left;font-size:10px;color:var(--muted);font-weight:700">Account No.</th>
+              <th style="padding:4px 8px;text-align:left;font-size:10px;color:var(--muted);font-weight:700">Branch</th>
+              <th style="padding:4px 8px;text-align:right;font-size:10px;color:var(--muted);font-weight:700">Balance (ETB)</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+          <tfoot>
+            <tr style="border-top:2px solid var(--border);background:var(--bg)">
+              <td colspan="4" style="padding:6px 8px;font-size:12px;font-weight:800;color:var(--ink)">TOTAL</td>
+              <td style="padding:6px 8px;font-size:13px;font-weight:800;color:var(--teal-dark);text-align:right">${ME1_BEGINNING_BALANCE.totalBeginningBalance.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+            </tr>
+          </tfoot>
+        </table>
+        </div>
+      </div>`;
+    })() : '';
     g.innerHTML+=`<div class="bc">
       <div class="bc-div" style="${colorStyle}">${d.code} · ${d.name}${usdDiv?'<span class="usd-badge">ETB+USD</span>':''}</div>
       <div class="bc-row"><span class="bl">Opening (ETB)</span><span class="bv">${fmt(beg)}</span></div>
@@ -2259,6 +2385,7 @@ function renderBalances(){
       <hr class="bc-sep">
       <div class="bc-row"><span class="bl" style="font-weight:700">Closing (ETB)</span><span class="bv ${etbClose>=0?'g':'r'}">${fmt(etbClose)}</span></div>
       ${usdDiv?`<div class="bc-row"><span class="bl" style="font-weight:700">Closing (USD)</span><span class="bv" style="color:${usdClose>=0?'var(--teal-dark)':'var(--red)'}">$${usdClose.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>`:''}
+    ${bankDetailsHtml}
     </div>`;
   });
   const tN=tI-tO,tE=tB+tN,tNusd=tIusd-tOusd,tEusd=tBusd+tNusd;
@@ -3897,6 +4024,19 @@ function viewPR(id){
     ${next==='paid'&&canAct?`
     <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:12px">
       <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:8px">💳 Payment Details — Finance</div>
+      <!-- Bank selector — populated from ME1 bank list + other banks -->
+      <div style="margin-bottom:8px">
+        <label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Paying Bank / Account <span style="color:var(--red)">*</span></label>
+        <select id="prPayBank" onchange="onPayBankChange()" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;outline:none;background:var(--surface)">
+          <option value="">— Select bank account —</option>
+          <optgroup label="ME1 — Matisan Construction Accounts">
+            ${ME1_BEGINNING_BALANCE.banks.map(b=>`<option value="${b.name}|${b.account}|${b.branch}">${b.name} · ${b.account} (${b.branch}) — ETB ${b.balance.toLocaleString('en-US',{minimumFractionDigits:2})}</option>`).join('')}
+          </optgroup>
+          <optgroup label="Other / Manual Entry">
+            <option value="OTHER">Other (type manually below)</option>
+          </optgroup>
+        </select>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
         <div><label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Cheque / Transfer Number *</label>
           <input type="text" id="prTransferId" placeholder="e.g. CHQ-001234" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;font-weight:700;outline:none"></div>
@@ -4245,7 +4385,9 @@ async function actOnPR(id){
   if(next==='complete'||!prCanAct(pr,next)) return;
 
   if(next==='paid'){
-    const tel=document.getElementById('prTransferId');
+    const bankSel=document.getElementById('prPayBank');
+  const selectedBank=bankSel&&bankSel.value&&bankSel.value!=='OTHER'?bankSel.value.split('|')[0]:'';
+  const tel=document.getElementById('prTransferId');
     const mel=document.getElementById('prPayMethod');
     const cel=document.getElementById('prPaidComment');
     if(!tel||!tel.value.trim()){alert('Please enter the Cheque/Transfer Number before marking as paid.');return;}
@@ -4297,6 +4439,7 @@ async function actOnPR(id){
         status:'paid',
         transfer_id:tid,
         pay_method:pm,
+        bank_name:selectedBank||'',
         paid_comment:cmt,
         transfer_slip:(prAttachments.transfer_slip&&prAttachments.transfer_slip.length)?JSON.stringify(prAttachments.transfer_slip):null,
         // Save Finance-uploaded invoices if preparer didn't attach any
@@ -4306,7 +4449,7 @@ async function actOnPR(id){
       });
 
       // Step 2: Create ledger entry — Supabase save + local array + renderAll
-      await createPRLedgerEntry(pr, tid, pm);
+      await createPRLedgerEntry(pr, tid, selectedBank?pm+' ('+selectedBank+')':pm);
 
       // Step 3: Show success flash BEFORE closing so user sees it
       showFlash('✓ Paid — transaction added to ledger.','prFlash','prFlashMsg');
@@ -4647,6 +4790,30 @@ function toggleSiteDrawer(btn){
     drawer.scrollIntoView({behavior:'smooth',block:'nearest'});
     var first=drawer.querySelector('input');
     if(first) setTimeout(function(){first.focus();},200);
+  }
+}
+
+// ── Pay Bank change handler ──
+function onPayBankChange(){
+  var sel = document.getElementById('prPayBank');
+  if(!sel) return;
+  var val = sel.value;
+  // If OTHER selected, clear any auto-filled cheque hint
+  if(val === 'OTHER' || !val) return;
+  // Parse "name|account|branch"
+  var parts = val.split('|');
+  var bankName = parts[0]||'';
+  var accountNo = parts[1]||'';
+  // Auto-fill a hint into the cheque/transfer number field if empty
+  var tidEl = document.getElementById('prTransferId');
+  if(tidEl && !tidEl.value) {
+    tidEl.placeholder = 'e.g. ' + (accountNo ? accountNo.slice(-6) + '-TRF' : 'CHQ-001234');
+  }
+  // Auto-select payment method based on bank name
+  var mEl = document.getElementById('prPayMethod');
+  if(mEl){
+    if(bankName.toLowerCase().includes('cbe birr')||bankName.toLowerCase().includes('telebirr')) mEl.value='CBE Birr';
+    else mEl.value='Bank Transfer';
   }
 }
 
