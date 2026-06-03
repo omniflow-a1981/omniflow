@@ -2480,13 +2480,15 @@ function renderMe1Register(){
     var ending = (b.beg||0) - (b.debit||0) + (b.credit||0);
     totBeg += (b.beg||0); totDeb += (b.debit||0); totCred += (b.credit||0);
     var bg = i%2===0 ? 'var(--surface)' : '#f8faff';
-    var is = 'border:1px solid #e0eaff;border-radius:6px;padding:5px 8px;font-family:inherit;outline:none;width:100%';
-    var isHL = 'border:1.5px solid #93c5fd;border-radius:6px;padding:5px 8px;font-family:inherit;outline:none;background:#eff6ff;color:#1e40af;font-weight:700;text-align:right';
+    var isHL = 'border:1.5px solid #93c5fd;border-radius:6px;padding:6px 10px;font-family:inherit;outline:none;background:#eff6ff;color:#1e40af;font-weight:700;text-align:right';
+    var isNum = 'border:1px solid #e0eaff;border-radius:6px;padding:6px 10px;font-family:inherit;outline:none;text-align:right';
+    var tdTxt = 'padding:10px 14px;font-size:13px;font-weight:600;color:var(--ink2)';
+    var tdMono = 'padding:10px 14px;font-size:12px;font-family:monospace;color:#374151';
     return '<tr style="background:'+bg+';border-bottom:1px solid #e0eaff">'
-      +'<td style="padding:8px 12px;text-align:center;font-size:12px;font-weight:800;color:#1e40af">'+(i+1)+'</td>'
-      +'<td style="padding:8px 12px"><input type="text" value="'+escHtml(b.name)+'" data-idx="'+i+'" data-field="name" onchange="me1BankChange(this)" style="'+is+';font-size:12px;font-weight:600;min-width:160px"></td>'
-      +'<td style="padding:8px 12px"><input type="text" value="'+escHtml(b.account)+'" data-idx="'+i+'" data-field="account" onchange="me1BankChange(this)" style="'+is+';font-size:12px;font-family:monospace;min-width:140px"></td>'
-      +'<td style="padding:8px 12px"><input type="text" value="'+escHtml(b.branch)+'" data-idx="'+i+'" data-field="branch" onchange="me1BankChange(this)" style="'+is+';font-size:12px;min-width:100px"></td>'
+      +'<td style="padding:10px 14px;text-align:center;font-size:13px;font-weight:800;color:#1e40af">'+(i+1)+'</td>'
+      +'<td style="'+tdTxt+'">'+escHtml(b.name)+'</td>'
+      +'<td style="'+tdMono+'">'+escHtml(b.account)+'</td>'
+      +'<td style="'+tdTxt+'">'+escHtml(b.branch)+'</td>'
       +'<td style="padding:8px 12px;text-align:right"><input type="number" value="'+(b.beg||0).toFixed(2)+'" min="0" step="0.01" data-idx="'+i+'" data-field="beg" onchange="me1BankChange(this)" style="'+isHL+';width:130px;font-size:13px"></td>'
       +'<td style="padding:8px 12px;text-align:right"><input type="number" value="'+(b.debit||0).toFixed(2)+'" min="0" step="0.01" data-idx="'+i+'" data-field="debit" onchange="me1BankChange(this)" style="'+is+';width:110px;font-size:12px;text-align:right;color:#dc2626"></td>'
       +'<td style="padding:8px 12px;text-align:right"><input type="number" value="'+(b.credit||0).toFixed(2)+'" min="0" step="0.01" data-idx="'+i+'" data-field="credit" onchange="me1BankChange(this)" style="'+is+';width:110px;font-size:12px;text-align:right;color:#059669"></td>'
