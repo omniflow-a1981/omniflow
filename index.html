@@ -2538,10 +2538,18 @@ function buildDivBankRegister(div){
     var inp='padding:5px 8px;font-family:inherit;outline:none;border-radius:6px;text-align:right;font-size:13px;font-weight:700;';
     var sectionRow='';
     if(b.section && b.section!==lastSection){
-      // Add subtotal row for previous section
       if(lastSection && sectionTotals[lastSection]){
         var ps=sectionTotals[lastSection];
-        sectionRow+='<tr style="background:'+light+';border-top:2px solid '+col+'">'+'<td colspan="4" style="padding:8px 12px;font-size:12px;font-weight:800;color:'+col+';text-align:center;border:1px solid '+border+'">Sub-Total — '+lastSection+'</td>'+'<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:800;color:'+col+';border:1px solid '+border+'">'+fmtBirr(ps.beg)+'</td>'+'<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:800;color:#dc2626;border:1px solid '+border+'">'+(ps.deb>0?fmtBirr(ps.deb):'-')+'</td>'+'<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:800;color:#059669;border:1px solid '+border+'">'+(ps.cred>0?fmtBirr(ps.cred):'-')+'</td>'+'<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:800;color:'+col+';border:1px solid '+border+'">'+fmtBirr(ps.beg-ps.deb+ps.cred)+'</td>'+'<td style="border:1px solid '+border+'"></td>'+'</tr>';
+        var isUSD=lastSection.indexOf('USD')>=0;
+        var curr=isUSD?'USD':'ETB';
+        sectionRow+='<tr style="background:'+light+';border-top:2px solid '+col+'">'
+          +'<td colspan="4" style="padding:8px 12px;font-size:12px;font-weight:800;color:'+col+';text-align:center;border:1px solid '+border+'">Sub-Total ('+curr+') — '+lastSection+'</td>'
+          +'<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:800;color:'+col+';border:1px solid '+border+'">'+fmtBirr(ps.beg)+' '+curr+'</td>'
+          +'<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:800;color:#dc2626;border:1px solid '+border+'">'+(ps.deb>0?fmtBirr(ps.deb)+' '+curr:'-')+'</td>'
+          +'<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:800;color:#059669;border:1px solid '+border+'">'+(ps.cred>0?fmtBirr(ps.cred)+' '+curr:'-')+'</td>'
+          +'<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:800;color:'+col+';border:1px solid '+border+'">'+fmtBirr(ps.beg-ps.deb+ps.cred)+' '+curr+'</td>'
+          +'<td style="border:1px solid '+border+'"></td>'
+        +'</tr>';
       }
       lastSection=b.section;
       sectionRow+='<tr style="background:'+col+';"><td colspan="9" style="padding:7px 14px;font-size:11px;font-weight:800;color:#fff;text-align:center;letter-spacing:.3px">'+b.section+'</td></tr>';
@@ -2601,14 +2609,35 @@ function buildDivBankRegister(div){
       +'<th style="padding:9px 6px;font-size:11px;font-weight:800;color:'+col+';border:1px solid '+border+';text-align:center;width:36px">Del</th>'
     +'</tr></thead>'
     +'<tbody id="tbody_'+div+'">'+rows+'</tbody>'
-    +'<tfoot><tr style="background:'+light+';border-top:2px solid '+col+';font-weight:800">'
-      +'<td colspan="4" style="padding:10px 14px;text-align:center;font-size:13px;font-weight:800;color:'+col+';border:1px solid '+border+'">Total Bank Balance</td>'
-      +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:'+col+';border:1px solid '+border+'" id="tot_beg_'+div+'">'+fmtBirr(totBeg)+'</td>'
-      +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:#dc2626;border:1px solid '+border+'" id="tot_deb_'+div+'">'+(totDeb>0?fmtBirr(totDeb):'-')+'</td>'
-      +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:#059669;border:1px solid '+border+'" id="tot_cred_'+div+'">'+(totCred>0?fmtBirr(totCred):'-')+'</td>'
-      +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:'+col+';border:1px solid '+border+'" id="tot_end_'+div+'">'+fmtBirr(totEnd)+'</td>'
-      +'<td style="border:1px solid '+border+'"></td>'
-    +'</tr></tfoot>'
+    // For ME2: build two total rows (ETB + USD); for others: single total
+    var tfootHtml='';
+    if(hasSections && Object.keys(sectionTotals).length>1){
+      // Separate total rows per section currency
+      Object.keys(sectionTotals).forEach(function(sec){
+        var st=sectionTotals[sec];
+        var isUSD=sec.indexOf('USD')>=0;
+        var curr=isUSD?'USD':'ETB';
+        var rowBg=isUSD?'#eff6ff':'#dbeafe';
+        tfootHtml+='<tr style="background:'+rowBg+';border-top:2px solid '+col+'">'
+          +'<td colspan="4" style="padding:10px 14px;text-align:center;font-size:13px;font-weight:800;color:'+col+';border:1px solid '+border+'">Total Bank Balance ('+curr+') — '+sec+'</td>'
+          +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:'+col+';border:1px solid '+border+'">'+fmtBirr(st.beg)+' '+curr+'</td>'
+          +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:#dc2626;border:1px solid '+border+'">'+(st.deb>0?fmtBirr(st.deb)+' '+curr:'-')+'</td>'
+          +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:#059669;border:1px solid '+border+'">'+(st.cred>0?fmtBirr(st.cred)+' '+curr:'-')+'</td>'
+          +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:'+col+';border:1px solid '+border+'">'+fmtBirr(st.beg-st.deb+st.cred)+' '+curr+'</td>'
+          +'<td style="border:1px solid '+border+'"></td>'
+        +'</tr>';
+      });
+    } else {
+      tfootHtml='<tr style="background:'+light+';border-top:2px solid '+col+'">'
+        +'<td colspan="4" style="padding:10px 14px;text-align:center;font-size:13px;font-weight:800;color:'+col+';border:1px solid '+border+'">Total Bank Balance</td>'
+        +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:'+col+';border:1px solid '+border+'" id="tot_beg_'+div+'">'+fmtBirr(totBeg)+'</td>'
+        +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:#dc2626;border:1px solid '+border+'" id="tot_deb_'+div+'">'+(totDeb>0?fmtBirr(totDeb):'-')+'</td>'
+        +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:#059669;border:1px solid '+border+'" id="tot_cred_'+div+'">'+(totCred>0?fmtBirr(totCred):'-')+'</td>'
+        +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:'+col+';border:1px solid '+border+'" id="tot_end_'+div+'">'+fmtBirr(totEnd)+'</td>'
+        +'<td style="border:1px solid '+border+'"></td>'
+        +'</tr>';
+    }
+    +'<tfoot>'+tfootHtml+'</tfoot>'
     +'</table></div>'
     // Add bank section
     +'<div style="background:#f8faff;border-top:2px dashed '+border+';padding:14px 18px">'
@@ -2971,24 +3000,32 @@ function renderCompanies(){
         divHtml+='</div>';
       }
       divHtml+='<div style="margin-top:8px;border:2px solid #86efac;border-radius:12px;background:#f0fdf4;overflow:hidden">'
-        +'<div style="background:#059669;padding:10px 16px;display:flex;align-items:center;gap:8px">'
+        +'<div style="background:#059669;padding:10px 16px">'
           +'<span style="font-size:12px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.4px">📍 Add New Site / Subdivision</span>'
         +'</div>'
         +'<div style="padding:14px 16px">'
           +'<div style="margin-bottom:10px">'
             +'<label style="display:block;font-size:10px;font-weight:700;color:#047857;margin-bottom:5px;text-transform:uppercase">Project Code / Site ID <span style="color:#ef4444">*</span></label>'
-            +'<input type="text" id="subInput_'+cid+'_'+dc+'" placeholder="e.g. ME1-S9, HQ-001, SITE-A..." style="width:100%;padding:10px 14px;border:2px solid #86efac;border-radius:9px;font-size:14px;font-weight:600;outline:none;background:#fff;box-sizing:border-box;font-family:inherit">'
+            +'<input type="text" id="subInput_'+cid+'_'+dc+'" placeholder="e.g. ME1-S9, HQ-001, SITE-A..." '
+              +'style="width:100%;padding:11px 14px;border:2px solid #86efac;border-radius:9px;font-size:14px;font-weight:600;outline:none;background:#fff;box-sizing:border-box;font-family:inherit">'
           +'</div>'
-          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'
-            +'<div><label style="display:block;font-size:10px;font-weight:700;color:#047857;margin-bottom:4px;text-transform:uppercase">Client</label>'
-              +'<input type="text" id="subClient_'+cid+'_'+dc+'" placeholder="Client name" style="width:100%;padding:9px 12px;border:1.5px solid #86efac;border-radius:9px;font-size:13px;outline:none;background:#fff;box-sizing:border-box;font-family:inherit"></div>'
-            +'<div><label style="display:block;font-size:10px;font-weight:700;color:#047857;margin-bottom:4px;text-transform:uppercase">Location</label>'
-              +'<input type="text" id="subLocation_'+cid+'_'+dc+'" placeholder="Location" style="width:100%;padding:9px 12px;border:1.5px solid #86efac;border-radius:9px;font-size:13px;outline:none;background:#fff;box-sizing:border-box;font-family:inherit"></div>'
+          +'<div style="margin-bottom:10px">'
+            +'<label style="display:block;font-size:10px;font-weight:700;color:#047857;margin-bottom:5px;text-transform:uppercase">Client</label>'
+            +'<input type="text" id="subClient_'+cid+'_'+dc+'" placeholder="e.g. Haji Abdulkadir Aliyye" '
+              +'style="width:100%;padding:11px 14px;border:1.5px solid #86efac;border-radius:9px;font-size:13px;outline:none;background:#fff;box-sizing:border-box;font-family:inherit">'
           +'</div>'
-          +'<div style="margin-bottom:12px"><label style="display:block;font-size:10px;font-weight:700;color:#047857;margin-bottom:4px;text-transform:uppercase">Project / Description</label>'
-            +'<input type="text" id="subProject_'+cid+'_'+dc+'" placeholder="e.g. G+4 Mixed Use Building Construction" style="width:100%;padding:9px 12px;border:1.5px solid #86efac;border-radius:9px;font-size:13px;outline:none;background:#fff;box-sizing:border-box;font-family:inherit">'
+          +'<div style="margin-bottom:10px">'
+            +'<label style="display:block;font-size:10px;font-weight:700;color:#047857;margin-bottom:5px;text-transform:uppercase">Location</label>'
+            +'<input type="text" id="subLocation_'+cid+'_'+dc+'" placeholder="e.g. Addis Ababa, Asella..." '
+              +'style="width:100%;padding:11px 14px;border:1.5px solid #86efac;border-radius:9px;font-size:13px;outline:none;background:#fff;box-sizing:border-box;font-family:inherit">'
           +'</div>'
-          +'<button onclick="addSubdivisionBtn(this)" data-coid="'+cid+'" data-dc="'+dc+'" style="width:100%;padding:12px;border-radius:10px;background:#059669;border:none;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">+ Save Site</button>'
+          +'<div style="margin-bottom:14px">'
+            +'<label style="display:block;font-size:10px;font-weight:700;color:#047857;margin-bottom:5px;text-transform:uppercase">Project / Description</label>'
+            +'<input type="text" id="subProject_'+cid+'_'+dc+'" placeholder="e.g. G+4 Mixed Use Building Construction" '
+              +'style="width:100%;padding:11px 14px;border:1.5px solid #86efac;border-radius:9px;font-size:13px;outline:none;background:#fff;box-sizing:border-box;font-family:inherit">'
+          +'</div>'
+          +'<button onclick="addSubdivisionBtn(this)" data-coid="'+cid+'" data-dc="'+dc+'" '
+            +'style="width:100%;padding:13px;border-radius:10px;background:#059669;border:none;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit">+ Save Site</button>'
         +'</div>'
       +'</div>'+'</div>';
     });
