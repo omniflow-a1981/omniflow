@@ -675,87 +675,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   <div class="grand-row" id="grandRow"></div>
   <!-- NAC section injected here by renderBalances() -->
   <div id="balNacSlot"></div>
-  <!-- Edit Opening Balances -->
-  <div class="card" style="padding:0;overflow:hidden;border:1.5px solid var(--border2)">
-    <!-- Header -->
-    <div style="background:linear-gradient(135deg,#0f172a,#1e293b);padding:16px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-      <div>
-        <div style="font-size:15px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px">⚙ Edit Opening Balances</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px">Set starting balance per division · ME1 has full bank register</div>
-      </div>
-      <button class="btn-primary" onclick="saveBalances()" style="background:#34d399;color:#022c22;border:none;font-weight:800;padding:9px 20px;font-size:13px">💾 Save All</button>
-    </div>
-    <!-- Division quick inputs -->
-    <div style="padding:16px 22px 10px" id="balEditGrid"></div>
-
-    <!-- ME1 BANK REGISTER -->
-    <div style="margin:0 0 0 0">
-      <!-- Title bar matching Excel -->
-      <div style="background:#1e3a8a;color:#fff;text-align:center;padding:14px;font-size:15px;font-weight:800;letter-spacing:.5px;border-radius:12px 12px 0 0">
-        MATISAN ENGINEERING PLC — ME1 CONSTRUCTION BEGINNING BALANCE
-      </div>
-      <div style="border:2px solid #1e3a8a;border-top:none;border-radius:0 0 12px 12px;overflow:hidden">
-        <!-- Sub-header -->
-        <div style="background:#dbeafe;text-align:center;padding:8px;font-size:12px;font-weight:700;color:#1e3a8a;border-bottom:1px solid #93c5fd">
-          SUMMARY OF ALL BANK BALANCES
-          &nbsp;&nbsp;|&nbsp;&nbsp;
-          Total: <span id="me1RegTotal" style="font-size:14px;font-weight:800;color:#1e40af">ETB 0</span>
-        </div>
-        <!-- Scrollable table -->
-        <div style="overflow-x:auto">
-          <table style="width:100%;border-collapse:collapse;min-width:900px">
-            <thead>
-              <tr style="background:#1e3a8a">
-                <th style="padding:10px 12px;color:#fff;font-size:11px;font-weight:700;text-align:center;border-right:1px solid #3b5ba5;width:40px">#</th>
-                <th style="padding:10px 12px;color:#fff;font-size:11px;font-weight:700;text-align:center;border-right:1px solid #3b5ba5">BANK LIST</th>
-                <th style="padding:10px 12px;color:#fff;font-size:11px;font-weight:700;text-align:center;border-right:1px solid #3b5ba5">ACCOUNT NO</th>
-                <th style="padding:10px 12px;color:#fff;font-size:11px;font-weight:700;text-align:center;border-right:1px solid #3b5ba5">BANK BRANCH</th>
-                <th style="padding:10px 12px;color:#fff;font-size:11px;font-weight:700;text-align:center;border-right:1px solid #3b5ba5">Big.Balance<br><span style="font-weight:400;font-style:italic;font-size:10px">Birr</span></th>
-                <th style="padding:10px 12px;color:#fff;font-size:11px;font-weight:700;text-align:center;border-right:1px solid #3b5ba5"><em>DEBIT</em><br><span style="font-weight:400;font-style:italic;font-size:10px">Birr</span></th>
-                <th style="padding:10px 12px;color:#fff;font-size:11px;font-weight:700;text-align:center;border-right:1px solid #3b5ba5"><em>CREDIT</em><br><span style="font-weight:400;font-style:italic;font-size:10px">Birr</span></th>
-                <th style="padding:10px 12px;color:#fff;font-size:11px;font-weight:700;text-align:center;border-right:1px solid #3b5ba5"><em>ENDING Balance</em><br><span style="font-weight:400;font-style:italic;font-size:10px">Birr</span></th>
-                <th style="padding:10px 12px;color:#fff;font-size:11px;font-weight:700;text-align:center;width:40px">✕</th>
-              </tr>
-            </thead>
-            <tbody id="me1RegBody"></tbody>
-            <tfoot>
-              <tr style="background:#dbeafe;border-top:2px solid #1e3a8a;font-weight:800">
-                <td colspan="4" style="padding:11px 14px;text-align:center;font-size:13px;font-weight:800;color:#1e3a8a;border-right:1px solid #93c5fd">Total Bank Balance</td>
-                <td style="padding:11px 14px;text-align:right;font-size:14px;font-weight:800;color:#1e3a8a;border-right:1px solid #93c5fd" id="me1RegTotBeg"></td>
-                <td style="padding:11px 14px;text-align:right;font-size:13px;font-weight:800;color:#dc2626;border-right:1px solid #93c5fd" id="me1RegTotDeb"></td>
-                <td style="padding:11px 14px;text-align:right;font-size:13px;font-weight:800;color:#059669;border-right:1px solid #93c5fd" id="me1RegTotCred"></td>
-                <td style="padding:11px 14px;text-align:right;font-size:14px;font-weight:800;color:#1e3a8a;border-right:1px solid #93c5fd" id="me1RegTotEnd"></td>
-                <td></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-        <!-- Add New Bank -->
-        <div style="background:#f8faff;border-top:2px dashed #93c5fd;padding:16px 18px">
-          <div style="font-size:12px;font-weight:800;color:#1e40af;margin-bottom:12px;text-transform:uppercase;letter-spacing:.4px">+ Add New Bank Account</div>
-          <div style="display:grid;grid-template-columns:2fr 2fr 1.5fr 1.5fr;gap:10px;margin-bottom:10px">
-            <div>
-              <label style="font-size:10px;font-weight:700;color:#1e40af;display:block;margin-bottom:4px;text-transform:uppercase">Bank Name *</label>
-              <input type="text" id="newBankName" placeholder="e.g. MEP CBE -MAIN" style="width:100%;padding:9px 12px;border:1.5px solid #93c5fd;border-radius:8px;font-size:13px;outline:none;font-family:inherit;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:10px;font-weight:700;color:#1e40af;display:block;margin-bottom:4px;text-transform:uppercase">Account No.</label>
-              <input type="text" id="newBankAcc" placeholder="e.g. 1000531313813" style="width:100%;padding:9px 12px;border:1.5px solid #93c5fd;border-radius:8px;font-size:13px;outline:none;font-family:monospace;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:10px;font-weight:700;color:#1e40af;display:block;margin-bottom:4px;text-transform:uppercase">Branch</label>
-              <input type="text" id="newBankBranch" placeholder="e.g. BOLE" style="width:100%;padding:9px 12px;border:1.5px solid #93c5fd;border-radius:8px;font-size:13px;outline:none;font-family:inherit;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:10px;font-weight:700;color:#1e40af;display:block;margin-bottom:4px;text-transform:uppercase">Beginning Balance</label>
-              <input type="number" id="newBankBal" placeholder="0.00" min="0" step="0.01" style="width:100%;padding:9px 12px;border:1.5px solid #93c5fd;border-radius:8px;font-size:13px;outline:none;font-family:inherit;box-sizing:border-box">
-            </div>
-          </div>
-          <button onclick="addMe1BankRow()" style="padding:10px 24px;background:#1d4ed8;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">+ Add Bank Account</button>
-        </div>
-      </div>
-    </div>
-  </div>
+  <div class="card">
+    <div class="card-title">Edit opening balances</div>
+    <div id="balEditGrid"></div>
+    <button class="btn-primary" style="margin-top:4px" onclick="saveBalances()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save Opening Balances</button>
   </div>
 </div>
 
@@ -1678,7 +1601,6 @@ async function initApp(){
 
   populateCoSelects();
   updateDivs();
-  setTimeout(populatePayBankDropdown, 500);
   // renderAll intentionally not called here — showApp calls it once after all data loads
   startRealtime();
   updateOnlineBadge();
@@ -2428,8 +2350,6 @@ function renderBalances(){
   if(nacSlot){ nacSlot.innerHTML=''; nacSlot.appendChild(nacContainer); }
 
   // edit grid — landscape card grid matching the original dashboard style
-  renderMe1Register();
-  setTimeout(populatePayBankDropdown, 100);
   const eg=document.getElementById('balEditGrid');
   eg.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:12px;margin-bottom:4px">';
   getAllDivs().forEach(d=>{
@@ -2442,182 +2362,18 @@ function renderBalances(){
         <div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:4px">Opening (ETB)</div>
         <input type="number" id="bI${d.code}" value="${Math.round(balances[d.code]||0)}"
           style="padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;width:100%;font-family:inherit;outline:none;color:var(--ink);background:var(--surface);transition:border-color .15s"
-           >
+          onfocus="this.style.borderColor='var(--teal)'" onblur="this.style.borderColor='var(--border)'">
       </div>
       ${usdDiv?`<div>
         <div style="font-size:10px;color:#92400e;font-weight:600;margin-bottom:4px">Opening (USD)</div>
         <input type="number" id="bIUsd${d.code}" value="${+(balances[d.code+'_usd']||0).toFixed(2)}" step="0.01"
           style="padding:7px 9px;border:1.5px solid #fed7aa;border-radius:7px;font-size:13px;width:100%;font-family:inherit;outline:none;color:var(--ink);background:var(--surface);transition:border-color .15s"
-           >
+          onfocus="this.style.borderColor='var(--amber)'" onblur="this.style.borderColor='#fed7aa'">
       </div>`:''}
     </div>`;
   });
   eg.innerHTML+='</div>';
 }
-// ══════════════════════════════════════
-// ME1 BANK REGISTER
-// ══════════════════════════════════════
-const ME1_BANKS_KEY = 'omni-me1-banks';
-
-const ME1_DEFAULT_BANKS = [
-  {no:1,  name:'MEP CBE -MAIN',        account:'1000531313813',   branch:'AWRARIS',       beg:163663.40, debit:0, credit:0},
-  {no:2,  name:'MEP CBE -PROJECT',     account:'1000637951975',   branch:'AWRARIS',       beg:848.77,    debit:0, credit:0},
-  {no:3,  name:'MEP COOP',             account:'1000087166396',   branch:'MESKEL FLOWER', beg:452701.44, debit:0, credit:0},
-  {no:4,  name:'MEP ABYSSINIA',        account:'127398647',       branch:'YEKA',          beg:522.15,    debit:0, credit:0},
-  {no:5,  name:'MEP AWASH',            account:'013041198140800', branch:'KOKEB',         beg:1440.00,   debit:0, credit:0},
-  {no:6,  name:'MEP DASHEN',           account:'0012519914011',   branch:'BOLE',          beg:539.00,    debit:0, credit:0},
-  {no:7,  name:'MEP OIB',              account:'3797963',         branch:'DERARTU',       beg:827.50,    debit:0, credit:0},
-  {no:8,  name:'MEP HIBRET BANK',      account:'1061815972112010',branch:'BOLE',          beg:505631.86, debit:0, credit:0},
-  {no:9,  name:'MEP WEGAGEN -MAIN',    account:'1109068310101',   branch:'Haya Hulet',    beg:1000.00,   debit:0, credit:0},
-  {no:10, name:'MEP WEGAGEN -PROJECT', account:'11090683101103',  branch:'Haya Hulet',    beg:1000.00,   debit:0, credit:0},
-  {no:11, name:'MEP ADISS BANK',       account:'0031025877104001',branch:'BOLE',          beg:1000.00,   debit:0, credit:0},
-];
-
-function getMe1Banks(){
-  return ls(ME1_BANKS_KEY) || JSON.parse(JSON.stringify(ME1_DEFAULT_BANKS));
-}
-function saveMe1Banks(banks){
-  ls(ME1_BANKS_KEY, banks);
-  // Sync ME1 opening balance to sum of bank beginning balances
-  var total = banks.reduce(function(s,b){return s+(b.beg||0);},0);
-  balances['ME1'] = Math.round(total);
-  ls('omni-bal', balances);
-}
-
-function renderMe1Register(){
-  var tbody=document.getElementById('me1RegBody');
-  if(!tbody) return;
-  var banks=getMe1Banks();
-  var totBeg=0,totDeb=0,totCred=0;
-  var fmt=function(v){return (v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});};
-  var rows='';
-  banks.forEach(function(b,i){
-    var ending=(b.beg||0)-(b.debit||0)+(b.credit||0);
-    totBeg+=(b.beg||0); totDeb+=(b.debit||0); totCred+=(b.credit||0);
-    var bg=i%2===0?'#ffffff':'#f0f7ff';
-    var br='border-right:1px solid #dbeafe';
-    rows+='<tr style="background:'+bg+';border-bottom:1px solid #dbeafe">'
-      // #
-      +'<td style="padding:9px 10px;text-align:center;font-size:12px;font-weight:700;color:#1e40af;'+br+'">'+(b.no||i+1)+'</td>'
-      // Bank name — read only
-      +'<td style="padding:9px 14px;font-size:13px;font-weight:600;color:#1e293b;'+br+'">'+escHtml(b.name)+'</td>'
-      // Account no — read only monospace
-      +'<td style="padding:9px 14px;font-size:12px;font-family:monospace;color:#374151;'+br+'">'+escHtml(b.account)+'</td>'
-      // Branch — read only
-      +'<td style="padding:9px 14px;font-size:12px;color:#374151;'+br+'">'+escHtml(b.branch)+'</td>'
-      // Beg Balance — editable, highlighted blue
-      +'<td style="padding:6px 8px;'+br+';text-align:right">'
-        +'<input type="number" value="'+fmt(b.beg).replace(/,/g,'')+'" min="0" step="0.01" '
-          +'data-idx="'+i+'" data-field="beg" onchange="me1BankChange(this)" '
-          +'style="width:120px;padding:5px 8px;border:1.5px solid #93c5fd;border-radius:6px;font-size:13px;font-weight:700;color:#1e40af;text-align:right;font-family:inherit;outline:none;background:#eff6ff">'
-      +'</td>'
-      // Debit — editable, red
-      +'<td style="padding:6px 8px;'+br+';text-align:right">'
-        +'<input type="number" value="'+fmt(b.debit||0).replace(/,/g,'')+'" min="0" step="0.01" '
-          +'data-idx="'+i+'" data-field="debit" onchange="me1BankChange(this)" '
-          +'style="width:110px;padding:5px 8px;border:1.5px solid #fca5a5;border-radius:6px;font-size:12px;color:#dc2626;text-align:right;font-family:inherit;outline:none;background:#fff5f5">'
-      +'</td>'
-      // Credit — editable, green
-      +'<td style="padding:6px 8px;'+br+';text-align:right">'
-        +'<input type="number" value="'+fmt(b.credit||0).replace(/,/g,'')+'" min="0" step="0.01" '
-          +'data-idx="'+i+'" data-field="credit" onchange="me1BankChange(this)" '
-          +'style="width:110px;padding:5px 8px;border:1.5px solid #86efac;border-radius:6px;font-size:12px;color:#059669;text-align:right;font-family:inherit;outline:none;background:#f0fdf4">'
-      +'</td>'
-      // Ending — auto-calculated, read only
-      +'<td style="padding:9px 14px;text-align:right;font-size:13px;font-weight:700;color:#1e40af;'+br+'">'+fmt(ending)+'</td>'
-      // Delete
-      +'<td style="padding:6px 8px;text-align:center">'
-        +'<button onclick="deleteMe1BankBtn(this)" data-idx="'+i+'" '
-          +'style="background:#fee2e2;border:1px solid #fca5a5;border-radius:6px;padding:3px 8px;cursor:pointer;color:#dc2626;font-size:11px;font-weight:700">✕</button>'
-      +'</td>'
-    +'</tr>';
-  });
-  tbody.innerHTML=rows;
-  var setEl=function(id,v){var e=document.getElementById(id);if(e)e.textContent=v;};
-  setEl('me1RegTotBeg',fmt(totBeg));
-  setEl('me1RegTotDeb',totDeb>0?fmt(totDeb):'-');
-  setEl('me1RegTotCred',totCred>0?fmt(totCred):'-');
-  setEl('me1RegTotEnd',fmt(totBeg-totDeb+totCred));
-  setEl('me1RegTotal','ETB '+fmt(totBeg));
-  var me1Input=document.getElementById('bIME1');
-  if(me1Input) me1Input.value=Math.round(totBeg);
-}
-
-function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
-
-function me1BankChange(input){
-  var idx = parseInt(input.dataset.idx);
-  var field = input.dataset.field;
-  var value = (field==='name'||field==='account'||field==='branch') ? input.value : (parseFloat(input.value)||0);
-  updateMe1Bank(idx, field, value);
-}
-function deleteMe1BankBtn(btn){ deleteMe1Bank(parseInt(btn.dataset.idx)); }
-function updateMe1Bank(idx, field, value){
-  var banks = getMe1Banks();
-  if(!banks[idx]) return;
-  banks[idx][field] = value;
-  saveMe1Banks(banks);
-  renderMe1Register();
-}
-
-function deleteMe1Bank(idx){
-  if(!confirm('Delete this bank account?')) return;
-  var banks = getMe1Banks();
-  banks.splice(idx,1);
-  saveMe1Banks(banks);
-  renderMe1Register();
-}
-
-function addMe1BankRow(){
-  var name   = document.getElementById('newBankName').value.trim();
-  var acc    = document.getElementById('newBankAcc').value.trim();
-  var branch = document.getElementById('newBankBranch').value.trim();
-  var beg    = parseFloat(document.getElementById('newBankBal').value)||0;
-  if(!name){alert('Please enter a bank name.');return;}
-  var banks = getMe1Banks();
-  banks.push({name:name, account:acc, branch:branch, beg:beg, debit:0, credit:0});
-  saveMe1Banks(banks);
-  ['newBankName','newBankAcc','newBankBranch','newBankBal'].forEach(function(id){
-    var el=document.getElementById(id);if(el)el.value='';
-  });
-  renderMe1Register();
-}
-
-// ── Payment Bank Dropdown ──
-function populatePayBankDropdown(){
-  var grp = document.getElementById('payBankOptGroup');
-  if(!grp) return;
-  var banks = (typeof getMe1Banks === 'function') ? getMe1Banks() : ME1_DEFAULT_BANKS;
-  grp.innerHTML = banks.map(function(b){
-    var val = b.name+'|'+b.account+'|'+b.branch;
-    return '<option value="'+val+'">'+b.name+' · '+b.account+' ('+b.branch+')</option>';
-  }).join('');
-}
-
-function onPayBankChange(){
-  var sel = document.getElementById('prPayBank');
-  if(!sel) return;
-  var val = sel.value;
-  var detail = document.getElementById('payBankDetail');
-  if(!val || val.startsWith('OTHER')){
-    if(detail) detail.style.display='none';
-    return;
-  }
-  var parts = val.split('|');
-  var bankName = parts[0]||'', acc = parts[1]||'', branch = parts[2]||'';
-  // Show detail badge
-  if(detail){
-    detail.style.display='block';
-    detail.innerHTML = '🏦 <strong>'+bankName+'</strong> &nbsp;|&nbsp; Acc: <code>'+acc+'</code> &nbsp;|&nbsp; Branch: '+branch;
-  }
-  // Auto-set payment method
-  var mEl = document.getElementById('prPayMethod');
-  if(mEl) mEl.value = 'Bank Transfer';
-  // Hint for cheque field
-  var tEl = document.getElementById('prTransferId');
-  if(tEl && !tEl.value) tEl.placeholder = bankName+' — enter cheque/TRF no.';
-}
-
 async function saveBalances(){
   const payload = [];
   getAllDivs().forEach(d=>{
@@ -2777,8 +2533,9 @@ function addSubdivision(coId,divCode){
   var subCode=divCode+'-S'+(div.subdivisions.length+1);
   div.subdivisions.push({code:subCode,name:name,client:clientVal,project:projectVal,location:locationVal});
   ls('omni-companies',companies);
-  var drawer=document.getElementById('siteDrawer_'+coId+'_'+divCode);
-  if(drawer) drawer.style.display='none';
+  ['subInput_','subClient_','subProject_','subLocation_'].forEach(function(p){
+    var el=document.getElementById(p+coId+'_'+divCode);if(el)el.value='';
+  });
   populateCoSelects();renderCompanies();
   showFlash('✓ Site "'+name+'" added to '+divCode,'coFlash','coFlashMsg');
 }
@@ -2855,53 +2612,15 @@ function renderCompanies(){
         });
         divHtml+='</div>';
       }
-      // Toggle button + hidden drawer
-      divHtml+='<div style="padding:10px 16px 12px;border-top:1px solid var(--border2);margin-top:4px;background:#fafffe">'
-        +'<button onclick="toggleSiteDrawer(this)" data-coid="'+cid+'" data-dc="'+dc+'" '
-          +'style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;font-size:13px;font-weight:700;color:#065f46;background:#f0fdf4;border:2px dashed #86efac;border-radius:10px;cursor:pointer;transition:all .2s">'
-          +'<span style="font-size:18px;line-height:1">+</span> Add New Site'
-        +'</button>'
-      +'</div>'
-      +'<div id="siteDrawer_'+cid+'_'+dc+'" style="display:none;background:#f0fdf4;border-top:2px solid #86efac;padding:0">'
-        +'<div style="padding:20px 20px 16px">'
-          +'<div style="font-size:12px;font-weight:800;color:#065f46;text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px;display:flex;align-items:center;gap:6px">'
-            +'<span style="background:#065f46;color:#fff;border-radius:6px;padding:2px 8px;font-size:11px">NEW SITE</span>'
-            +' Fill in the details below'
-          +'</div>'
-          +'<div style="margin-bottom:12px">'
-            +'<label style="display:block;font-size:11px;font-weight:700;color:#047857;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px">Project Code / Site ID <span style="color:#ef4444">*</span></label>'
-            +'<input type="text" id="subInput_'+cid+'_'+dc+'" placeholder="e.g. ME1-S9, HQ-001, SITE-A..." '
-              +'style="width:100%;padding:10px 14px;border:2px solid #86efac;border-radius:10px;font-size:14px;font-weight:600;outline:none;background:#fff;color:var(--ink);box-sizing:border-box;font-family:inherit" '
-              +''
-              +'>'
-          +'</div>'
-          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'
-            +'<div>'
-              +'<label style="display:block;font-size:11px;font-weight:700;color:#047857;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px">Client</label>'
-              +'<input type="text" id="subClient_'+cid+'_'+dc+'" placeholder="e.g. Haji Abdulkadir Aliyye" '
-                +'style="width:100%;padding:10px 14px;border:2px solid #86efac;border-radius:10px;font-size:13px;outline:none;background:#fff;color:var(--ink);box-sizing:border-box;font-family:inherit" '
-                +' >'
-            +'</div>'
-            +'<div>'
-              +'<label style="display:block;font-size:11px;font-weight:700;color:#047857;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px">Location</label>'
-              +'<input type="text" id="subLocation_'+cid+'_'+dc+'" placeholder="e.g. Addis Ababa, Asella..." '
-                +'style="width:100%;padding:10px 14px;border:2px solid #86efac;border-radius:10px;font-size:13px;outline:none;background:#fff;color:var(--ink);box-sizing:border-box;font-family:inherit" '
-                +' >'
-            +'</div>'
-          +'</div>'
-          +'<div style="margin-bottom:16px">'
-            +'<label style="display:block;font-size:11px;font-weight:700;color:#047857;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px">Project / Description</label>'
-            +'<input type="text" id="subProject_'+cid+'_'+dc+'" placeholder="e.g. G+4 Mixed Use Building Construction" '
-              +'style="width:100%;padding:10px 14px;border:2px solid #86efac;border-radius:10px;font-size:13px;outline:none;background:#fff;color:var(--ink);box-sizing:border-box;font-family:inherit" '
-              +' >'
-          +'</div>'
-          +'<div style="display:flex;gap:10px">'
-            +'<button onclick="addSubdivisionBtn(this)" data-coid="'+cid+'" data-dc="'+dc+'" '
-              +'style="flex:1;padding:11px 20px;border-radius:10px;background:#059669;border:none;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">✓ Save Site</button>'
-            +'<button onclick="toggleSiteDrawer(this)" data-coid="'+cid+'" data-dc="'+dc+'" '
-              +'style="padding:11px 20px;border-radius:10px;background:#fff;border:2px solid #86efac;color:#047857;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>'
-          +'</div>'
+      divHtml+='<div style="padding:10px 14px 12px;border-top:1px solid var(--border2);margin-top:4px;background:#fafffe">'
+        +'<div style="font-size:10px;font-weight:700;color:#065f46;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">+ Add New Site</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">'
+          +'<input type="text" id="subInput_'+cid+'_'+dc+'" placeholder="Site name *" style="font-size:12px;padding:6px 9px;border:1px solid #86efac;border-radius:7px;outline:none">'
+          +'<input type="text" id="subClient_'+cid+'_'+dc+'" placeholder="Client name" style="font-size:12px;padding:6px 9px;border:1px solid #86efac;border-radius:7px;outline:none">'
+          +'<input type="text" id="subProject_'+cid+'_'+dc+'" placeholder="Project / Description" style="font-size:12px;padding:6px 9px;border:1px solid #86efac;border-radius:7px;outline:none">'
+          +'<input type="text" id="subLocation_'+cid+'_'+dc+'" placeholder="Location" style="font-size:12px;padding:6px 9px;border:1px solid #86efac;border-radius:7px;outline:none">'
         +'</div>'
+        +'<button onclick="addSubdivisionBtn(this)" data-coid="'+cid+'" data-dc="'+dc+'" style="font-size:11px;padding:6px 14px;border-radius:7px;background:#f0fdf4;border:1px solid #86efac;color:#065f46;cursor:pointer;font-weight:700">+ Add Site</button>'
       +'</div>'+'</div>';
     });
     grid.innerHTML+='<div style="background:var(--surface);border-radius:16px;border:2px solid '+accent+'33;box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden">'
@@ -2940,15 +2659,15 @@ function renderAdminSettings(){
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
       <div>
         <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Current Password</div>
-        <input type="password" id="adminCurrentPw" placeholder="Enter current password" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none"  >
+        <input type="password" id="adminCurrentPw" placeholder="Enter current password" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none" onfocus="this.style.borderColor='var(--teal)'" onblur="this.style.borderColor='var(--border)'">
       </div>
       <div>
         <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">New Password</div>
-        <input type="password" id="adminNewPw" placeholder="Min 6 characters" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none"  >
+        <input type="password" id="adminNewPw" placeholder="Min 6 characters" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none" onfocus="this.style.borderColor='var(--teal)'" onblur="this.style.borderColor='var(--border)'">
       </div>
       <div>
         <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Confirm New Password</div>
-        <input type="password" id="adminConfirmPw" placeholder="Re-enter new password" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none"  >
+        <input type="password" id="adminConfirmPw" placeholder="Re-enter new password" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none" onfocus="this.style.borderColor='var(--teal)'" onblur="this.style.borderColor='var(--border)'">
       </div>
     </div>
     <div id="adminPwErr" style="font-size:12px;color:var(--red);margin-bottom:8px;display:none"></div>
@@ -2973,7 +2692,7 @@ function renderAdminSettings(){
       <div>
         <label for="pw_${u.username}" style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Set New Password</label>
         <div style="display:flex;gap:6px;align-items:center">
-          <input type="password" id="pw_${u.username}" placeholder="Enter new password" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;color:var(--ink);background:var(--surface)"  >
+          <input type="password" id="pw_${u.username}" placeholder="Enter new password" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;color:var(--ink);background:var(--surface)" onfocus="this.style.borderColor='var(--teal)'" onblur="this.style.borderColor='var(--border)'">
           <button onclick="togglePwVis('pw_${u.username}',this)" style="font-size:11px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);cursor:pointer;white-space:nowrap">Show</button>
         </div>
       </div>
@@ -4139,22 +3858,9 @@ function viewPR(id){
     ${pr.transfer_id?`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px"><strong style="color:#166534">Transfer ID:</strong> ${pr.transfer_id} | <strong style="color:#166534">Method:</strong> ${pr.pay_method||'—'}</div>`:''}
 
     <!-- Action area for current step -->
-    ${next==='paid'&&canAct?(setTimeout(populatePayBankDropdown,50),'')+'':''}
     ${next==='paid'&&canAct?`
     <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:12px">
       <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:8px">💳 Payment Details — Finance</div>
-      <!-- Paying Bank Selector -->
-      <div style="margin-bottom:10px">
-        <label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Paying Bank Account <span style="color:var(--red)">*</span></label>
-        <select id="prPayBank" onchange="onPayBankChange()" style="width:100%;padding:9px 12px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;outline:none;background:var(--surface)">
-          <option value="">— Select bank account —</option>
-          <optgroup label="ME1 · Matisan Engineering — Construction" id="payBankOptGroup"></optgroup>
-          <optgroup label="Other">
-            <option value="OTHER|—|—">Other / Manual entry</option>
-          </optgroup>
-        </select>
-        <div id="payBankDetail" style="display:none;margin-top:5px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:6px 10px;font-size:11px;color:#166534"></div>
-      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
         <div><label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Cheque / Transfer Number *</label>
           <input type="text" id="prTransferId" placeholder="e.g. CHQ-001234" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;font-weight:700;outline:none"></div>
@@ -4554,7 +4260,6 @@ async function actOnPR(id){
         paid_at:new Date().toISOString(),
         status:'paid',
         transfer_id:tid,
-        bank_name:(document.getElementById('prPayBank')?(document.getElementById('prPayBank').value.split('|')[0]||''):''),
         pay_method:pm,
         paid_comment:cmt,
         transfer_slip:(prAttachments.transfer_slip&&prAttachments.transfer_slip.length)?JSON.stringify(prAttachments.transfer_slip):null,
@@ -4893,21 +4598,6 @@ async function syncPaidPRsToLedger(){
 // BOOT
 // ══════════════════════════════════════
 initLogin();
-
-// ── Site Drawer ──
-function toggleSiteDrawer(btn){
-  var cid=btn.dataset.coid, dc=btn.dataset.dc;
-  var drawer=document.getElementById('siteDrawer_'+cid+'_'+dc);
-  if(!drawer) return;
-  var isOpen = drawer.style.display !== 'none';
-  drawer.style.display = isOpen ? 'none' : 'block';
-  if(!isOpen){
-    setTimeout(function(){
-      var first = drawer.querySelector('input');
-      if(first){ first.focus(); drawer.scrollIntoView({behavior:'smooth',block:'nearest'}); }
-    }, 50);
-  }
-}
 
 // Data-attribute button handlers — avoids all inline quote escaping
 function renameDivisionBtn(btn){renameDivision(btn.dataset.coid,btn.dataset.dc);}
