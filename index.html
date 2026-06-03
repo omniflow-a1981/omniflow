@@ -680,6 +680,59 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     <div id="balEditGrid"></div>
     <button class="btn-primary" style="margin-top:4px" onclick="saveBalances()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save Opening Balances</button>
   </div>
+
+  <!-- ME1 BANK REGISTER -->
+  <div style="margin-top:20px;border-radius:12px;overflow:hidden;border:2px solid #1e3a8a">
+    <div style="background:#1e3a8a;padding:13px 18px;text-align:center;font-size:14px;font-weight:800;color:#fff;letter-spacing:.4px">
+      MATISAN ENGINEERING PLC — ME1 CONSTRUCTION BEGINNING BALANCE
+    </div>
+    <div style="background:#dbeafe;padding:7px 18px;text-align:center;font-size:11px;font-weight:700;color:#1e40af;border-bottom:1px solid #93c5fd">
+      SUMMARY OF ALL BANK BALANCE &nbsp;|&nbsp; Total Beginning: <span id="me1TotHeader" style="font-size:13px;font-weight:800">ETB 0</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:860px">
+        <thead>
+          <tr style="background:#e8f0fe;border-bottom:2px solid #1e3a8a">
+            <th style="padding:9px 10px;font-size:11px;font-weight:800;color:#1e3a8a;border:1px solid #bfdbfe;text-align:center;width:36px">#</th>
+            <th style="padding:9px 12px;font-size:11px;font-weight:800;color:#1e3a8a;border:1px solid #bfdbfe;text-align:center">BANK LIST</th>
+            <th style="padding:9px 12px;font-size:11px;font-weight:800;color:#1e3a8a;border:1px solid #bfdbfe;text-align:center">ACCOUNT NO</th>
+            <th style="padding:9px 12px;font-size:11px;font-weight:800;color:#1e3a8a;border:1px solid #bfdbfe;text-align:center">BANK BRANCH</th>
+            <th style="padding:9px 12px;font-size:11px;font-weight:800;color:#1e3a8a;border:1px solid #bfdbfe;text-align:center">Big.Balance<br><em style="font-style:italic;font-weight:400">Birr</em></th>
+            <th style="padding:9px 12px;font-size:11px;font-weight:800;color:#1e3a8a;border:1px solid #bfdbfe;text-align:center"><em>DEBIT</em><br><em style="font-style:italic;font-weight:400">Birr</em></th>
+            <th style="padding:9px 12px;font-size:11px;font-weight:800;color:#1e3a8a;border:1px solid #bfdbfe;text-align:center"><em>CREDIT</em><br><em style="font-style:italic;font-weight:400">Birr</em></th>
+            <th style="padding:9px 12px;font-size:11px;font-weight:800;color:#1e3a8a;border:1px solid #bfdbfe;text-align:center"><em>ENDING Balance</em><br><em style="font-style:italic;font-weight:400">Birr</em></th>
+            <th style="padding:9px 6px;font-size:11px;font-weight:800;color:#1e3a8a;border:1px solid #bfdbfe;text-align:center;width:36px">Del</th>
+          </tr>
+        </thead>
+        <tbody id="me1RegBody"></tbody>
+        <tfoot>
+          <tr style="background:#dbeafe;border-top:2px solid #1e3a8a;font-weight:800">
+            <td colspan="4" style="padding:10px 14px;font-size:13px;font-weight:800;color:#1e3a8a;text-align:center;border:1px solid #bfdbfe">Total Bank Balance</td>
+            <td style="padding:10px 12px;font-size:13px;font-weight:800;color:#1e3a8a;text-align:right;border:1px solid #bfdbfe" id="me1TotBeg">0.00</td>
+            <td style="padding:10px 12px;font-size:13px;font-weight:800;color:#dc2626;text-align:right;border:1px solid #bfdbfe" id="me1TotDeb">-</td>
+            <td style="padding:10px 12px;font-size:13px;font-weight:800;color:#059669;text-align:right;border:1px solid #bfdbfe" id="me1TotCred">-</td>
+            <td style="padding:10px 12px;font-size:13px;font-weight:800;color:#1e3a8a;text-align:right;border:1px solid #bfdbfe" id="me1TotEnd">0.00</td>
+            <td style="border:1px solid #bfdbfe"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <!-- Add New Bank -->
+    <div style="background:#f8faff;border-top:2px dashed #93c5fd;padding:16px 18px">
+      <div style="font-size:12px;font-weight:800;color:#1e40af;margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">+ Add New Bank Account</div>
+      <div style="display:grid;grid-template-columns:2fr 2fr 1.5fr 1.5fr;gap:10px;margin-bottom:10px">
+        <div><label style="font-size:10px;font-weight:700;color:#1e40af;display:block;margin-bottom:4px">Bank Name *</label>
+          <input type="text" id="newBkName" placeholder="e.g. MEP CBE -MAIN" style="width:100%;padding:9px 12px;border:1.5px solid #93c5fd;border-radius:8px;font-size:13px;outline:none;font-family:inherit;box-sizing:border-box"></div>
+        <div><label style="font-size:10px;font-weight:700;color:#1e40af;display:block;margin-bottom:4px">Account No.</label>
+          <input type="text" id="newBkAcc" placeholder="e.g. 1000531313813" style="width:100%;padding:9px 12px;border:1.5px solid #93c5fd;border-radius:8px;font-size:13px;outline:none;font-family:monospace;box-sizing:border-box"></div>
+        <div><label style="font-size:10px;font-weight:700;color:#1e40af;display:block;margin-bottom:4px">Branch</label>
+          <input type="text" id="newBkBranch" placeholder="e.g. BOLE" style="width:100%;padding:9px 12px;border:1.5px solid #93c5fd;border-radius:8px;font-size:13px;outline:none;font-family:inherit;box-sizing:border-box"></div>
+        <div><label style="font-size:10px;font-weight:700;color:#1e40af;display:block;margin-bottom:4px">Beginning Balance</label>
+          <input type="number" id="newBkBal" placeholder="0.00" min="0" step="0.01" style="width:100%;padding:9px 12px;border:1.5px solid #93c5fd;border-radius:8px;font-size:13px;outline:none;font-family:inherit;box-sizing:border-box"></div>
+      </div>
+      <button onclick="addMe1Bank()" style="padding:10px 24px;background:#1d4ed8;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">+ Add Bank Account</button>
+    </div>
+  </div>
 </div>
 
 <!-- ════ OUTSTANDING ════ -->
@@ -1601,6 +1654,7 @@ async function initApp(){
 
   populateCoSelects();
   updateDivs();
+  setTimeout(populatePayBankDrop,300);
   // renderAll intentionally not called here — showApp calls it once after all data loads
   startRealtime();
   updateOnlineBadge();
@@ -2235,6 +2289,22 @@ function clearFilters(){document.getElementById('fltCo').value='';document.getEl
 // ══════════════════════════════════════
 // BALANCES
 // ══════════════════════════════════════
+const ME1_BANKS_DEFAULT = [
+  {no:1,  name:'MEP CBE -MAIN',        account:'1000531313813',   branch:'AWRARIS',       beg:163663.40, debit:0, credit:0},
+  {no:2,  name:'MEP CBE -PROJECT',     account:'1000637951975',   branch:'AWRARIS',       beg:848.77,    debit:0, credit:0},
+  {no:3,  name:'MEP COOP',             account:'1000087166396',   branch:'MESKEL FLOWER', beg:452701.44, debit:0, credit:0},
+  {no:4,  name:'MEP ABYSSINIA',        account:'127398647',       branch:'YEKA',          beg:522.15,    debit:0, credit:0},
+  {no:5,  name:'MEP AWASH',            account:'013041198140800', branch:'KOKEB',         beg:1440.00,   debit:0, credit:0},
+  {no:6,  name:'MEP DASHEN',           account:'0012519914011',   branch:'BOLE',          beg:539.00,    debit:0, credit:0},
+  {no:7,  name:'MEP OIB',              account:'3797963',         branch:'DERARTU',       beg:827.50,    debit:0, credit:0},
+  {no:8,  name:'MEP HIBRET BANK',      account:'1061815972112010',branch:'BOLE',          beg:505631.86, debit:0, credit:0},
+  {no:9,  name:'MEP WEGAGEN -MAIN',    account:'1109068310101',   branch:'Haya Hulet',    beg:1000.00,   debit:0, credit:0},
+  {no:10, name:'MEP WEGAGEN -PROJECT', account:'1109068310103',   branch:'Haya Hulet',    beg:1000.00,   debit:0, credit:0},
+  {no:11, name:'MEP ADISS BANK',       account:'0031025877104001',branch:'BOLE',          beg:1000.00,   debit:0, credit:0},
+];
+function getMe1Banks(){ return ls('omni-me1-banks') || JSON.parse(JSON.stringify(ME1_BANKS_DEFAULT)); }
+function saveMe1Banks(b){ ls('omni-me1-banks',b); var t=b.reduce(function(s,x){return s+(x.beg||0);},0); balances['ME1']=Math.round(t); ls('omni-bal',balances); }
+
 function renderBalances(){
   const g=document.getElementById('balGrid');g.innerHTML='';let tB=0,tI=0,tO=0,tBusd=0,tIusd=0,tOusd=0;
   getAllDivs().forEach(d=>{
@@ -2350,6 +2420,7 @@ function renderBalances(){
   if(nacSlot){ nacSlot.innerHTML=''; nacSlot.appendChild(nacContainer); }
 
   // edit grid — landscape card grid matching the original dashboard style
+  renderMe1Register();
   const eg=document.getElementById('balEditGrid');
   eg.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:12px;margin-bottom:4px">';
   getAllDivs().forEach(d=>{
@@ -2374,6 +2445,109 @@ function renderBalances(){
   });
   eg.innerHTML+='</div>';
 }
+// ══════════════════════════════════
+// ME1 BANK REGISTER FUNCTIONS
+// ══════════════════════════════════
+function fmtBirr(v){return (v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+function renderMe1Register(){
+  var tbody=document.getElementById('me1RegBody');
+  if(!tbody) return;
+  var banks=getMe1Banks();
+  var totBeg=0,totDeb=0,totCred=0;
+  tbody.innerHTML=banks.map(function(b,i){
+    var bg=i%2===0?'#fff':'#f0f7ff';
+    var bd='border:1px solid #dbeafe';
+    var ending=(b.beg||0)-(b.debit||0)+(b.credit||0);
+    totBeg+=(b.beg||0); totDeb+=(b.debit||0); totCred+=(b.credit||0);
+    var inpStyle='padding:5px 8px;font-family:inherit;outline:none;border-radius:6px;text-align:right;font-size:13px;font-weight:700;';
+    return '<tr style="background:'+bg+';'+bd+'">'
+      +'<td style="padding:9px 8px;text-align:center;font-size:12px;font-weight:800;color:#1e40af;'+bd+'">'+(b.no||i+1)+'</td>'
+      +'<td style="padding:9px 12px;font-size:13px;font-weight:600;color:#1e293b;'+bd+'">'+b.name+'</td>'
+      +'<td style="padding:9px 12px;font-size:12px;font-family:monospace;color:#374151;'+bd+'">'+b.account+'</td>'
+      +'<td style="padding:9px 12px;font-size:12px;color:#374151;'+bd+'">'+b.branch+'</td>'
+      +'<td style="padding:6px 8px;'+bd+'">'
+        +'<input type="number" value="'+String(b.beg||0)+'" min="0" step="0.01" '
+          +'data-i="'+i+'" data-f="beg" onchange="me1Change(this)" '
+          +'style="'+inpStyle+'width:120px;border:1.5px solid #93c5fd;color:#1e40af;background:#eff6ff;"></td>'
+      +'<td style="padding:6px 8px;'+bd+'">'
+        +'<input type="number" value="'+String(b.debit||0)+'" min="0" step="0.01" '
+          +'data-i="'+i+'" data-f="debit" onchange="me1Change(this)" '
+          +'style="'+inpStyle+'width:110px;border:1.5px solid #fca5a5;color:#dc2626;background:#fff5f5;"></td>'
+      +'<td style="padding:6px 8px;'+bd+'">'
+        +'<input type="number" value="'+String(b.credit||0)+'" min="0" step="0.01" '
+          +'data-i="'+i+'" data-f="credit" onchange="me1Change(this)" '
+          +'style="'+inpStyle+'width:110px;border:1.5px solid #86efac;color:#059669;background:#f0fdf4;"></td>'
+      +'<td style="padding:9px 12px;text-align:right;font-size:13px;font-weight:700;color:#1e3a8a;'+bd+'">'+fmtBirr(ending)+'</td>'
+      +'<td style="padding:6px 8px;text-align:center;'+bd+'">'
+        +'<button onclick="delMe1Bank('+i+')" style="background:#fee2e2;border:1px solid #fca5a5;border-radius:6px;padding:3px 8px;cursor:pointer;color:#dc2626;font-size:11px;font-weight:700">✕</button>'
+      +'</td>'
+    +'</tr>';
+  }).join('');
+  // Totals
+  ['me1TotBeg','me1TotDeb','me1TotCred','me1TotEnd','me1TotHeader'].forEach(function(id){
+    var el=document.getElementById(id);if(!el)return;
+    if(id==='me1TotDeb') el.textContent=totDeb>0?fmtBirr(totDeb):'-';
+    else if(id==='me1TotCred') el.textContent=totCred>0?fmtBirr(totCred):'-';
+    else if(id==='me1TotEnd') el.textContent=fmtBirr(totBeg-totDeb+totCred);
+    else if(id==='me1TotHeader') el.textContent='ETB '+fmtBirr(totBeg);
+    else el.textContent=fmtBirr(totBeg);
+  });
+  // Sync ME1 opening input
+  var inp=document.getElementById('bIME1'); if(inp) inp.value=Math.round(totBeg);
+  // Refresh payment dropdown
+  populatePayBankDrop();
+}
+
+function me1Change(inp){
+  var banks=getMe1Banks();
+  var i=parseInt(inp.dataset.i), f=inp.dataset.f;
+  banks[i][f]=parseFloat(inp.value)||0;
+  saveMe1Banks(banks);
+  renderMe1Register();
+}
+function delMe1Bank(i){
+  if(!confirm('Delete this bank?'))return;
+  var banks=getMe1Banks(); banks.splice(i,1); saveMe1Banks(banks); renderMe1Register();
+}
+function addMe1Bank(){
+  var n=document.getElementById('newBkName').value.trim();
+  if(!n){alert('Enter bank name');return;}
+  var a=document.getElementById('newBkAcc').value.trim();
+  var br=document.getElementById('newBkBranch').value.trim();
+  var bg=parseFloat(document.getElementById('newBkBal').value)||0;
+  var banks=getMe1Banks();
+  banks.push({no:banks.length+1,name:n,account:a,branch:br,beg:bg,debit:0,credit:0});
+  saveMe1Banks(banks);
+  ['newBkName','newBkAcc','newBkBranch','newBkBal'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  renderMe1Register();
+}
+
+// ══════════════════════════════════
+// FINANCE PAYMENT BANK DROPDOWN
+// ══════════════════════════════════
+function populatePayBankDrop(){
+  var grp=document.getElementById('payBankGrp');
+  if(!grp)return;
+  var banks=getMe1Banks();
+  grp.innerHTML=banks.map(function(b){
+    var val=b.name+'|'+b.account+'|'+b.branch;
+    return '<option value="'+val+'">'+b.name+' · '+b.account+' ('+b.branch+')</option>';
+  }).join('');
+}
+function onPayBankSel(){
+  var sel=document.getElementById('prPayBank');
+  var det=document.getElementById('payBankDetail');
+  if(!sel)return;
+  var parts=sel.value.split('|');
+  if(!sel.value||sel.value==='OTHER'){if(det)det.style.display='none';return;}
+  if(det){
+    det.style.display='block';
+    det.innerHTML='<strong>'+parts[0]+'</strong> &nbsp;·&nbsp; Acc: <code>'+parts[1]+'</code> &nbsp;·&nbsp; Branch: <strong>'+parts[2]+'</strong>';
+  }
+  var m=document.getElementById('prPayMethod'); if(m) m.value='Bank Transfer';
+}
+
 async function saveBalances(){
   const payload = [];
   getAllDivs().forEach(d=>{
@@ -3858,9 +4032,20 @@ function viewPR(id){
     ${pr.transfer_id?`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px"><strong style="color:#166534">Transfer ID:</strong> ${pr.transfer_id} | <strong style="color:#166534">Method:</strong> ${pr.pay_method||'—'}</div>`:''}
 
     <!-- Action area for current step -->
+    ${next==='paid'&&canAct?(setTimeout(populatePayBankDrop,80),'')+'':''}
     ${next==='paid'&&canAct?`
     <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:12px">
       <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:8px">💳 Payment Details — Finance</div>
+      <!-- Paying Bank Selector -->
+      <div style="margin-bottom:10px">
+        <label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Paying Bank Account <span style="color:var(--red)">*</span></label>
+        <select id="prPayBank" onchange="onPayBankSel()" style="width:100%;padding:9px 12px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;outline:none;background:var(--surface)">
+          <option value="">— Select bank account —</option>
+          <optgroup label="ME1 · Matisan Construction" id="payBankGrp"></optgroup>
+          <optgroup label="Other"><option value="OTHER">Other / enter manually</option></optgroup>
+        </select>
+        <div id="payBankDetail" style="display:none;margin-top:5px;padding:7px 12px;background:#f0fdf4;border:1px solid #86efac;border-radius:7px;font-size:12px;color:#166534"></div>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
         <div><label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Cheque / Transfer Number *</label>
           <input type="text" id="prTransferId" placeholder="e.g. CHQ-001234" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;font-weight:700;outline:none"></div>
