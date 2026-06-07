@@ -1454,28 +1454,61 @@ async function showApp(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appLayout').style.display='flex';
 
-  // Block any stray renderAll calls until ALL data is loaded from cloud
-  window._omniLoading = true;
-
-  // Show skeleton/loading state on dashboard immediately
-  const kpiEl = document.getElementById('dashKpis');
-  const subEl = document.getElementById('dashSub');
-  if(kpiEl) kpiEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--muted);font-size:13px">Loading data from cloud…</div>';
-  if(subEl) subEl.textContent = 'Loading…';
-
-  // Await cloud data BEFORE rendering anything
-  await initApp();
-  await loadPayRequests();
-
-  // All data ready — unlock rendering
+  // ── PHASE 1: Render immediately from localStorage cache (instant) ──
   window._omniLoading = false;
-
-  applyAccessLevel();
-  resetInactivityTimer();
+  initAppFromCache();       // load localStorage data into app state
+  applyAccessLevel();       // set nav + page
   loadNotifs();
+  renderAll();              // instant render with cached data
 
-  // Single authoritative render with fresh cloud data
-  renderAll();
+  // ── PHASE 2: Fetch fresh cloud data in background ──
+  showSync('syncing','Syncing with cloud...');
+  try {
+    await initApp();        // fetch from Supabase, updates app state
+    await loadPayRequests();
+    renderAll();            // re-render with fresh data (silent update)
+    showSync('ok','Synced ✓');
+    setTimeout(function(){showSync('','');},2500);
+  } catch(e) {
+    showSync('error','Offline — showing cached data');
+  }
+
+  resetInactivityTimer();
+}
+
+function initAppFromCache(){
+  // Populate app state from localStorage immediately (no network wait)
+  document.getElementById('sbUser').innerHTML=
+    '<div class="sb-avatar">'+(currentUser.initials||'??')+'</div>'
+    +'<div><div class="sb-uname">'+currentUser.username+'</div><div class="sb-urole">'+(currentUser.role||'')+'</div></div>';
+  document.getElementById('sbDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('fDate').value=new Date().toISOString().slice(0,10);
+
+  // Load from cache
+  transactions = ls('omni-tx')||[];
+  balances     = ls('omni-bal')||{...DEFAULT_BAL};
+  outstandings = ls('omni-out')||[];
+  payables     = ls('omni-payables')||[];
+
+  // Load companies from cache
+  const cachedCo = ls('omni-companies');
+  if(cachedCo && Array.isArray(cachedCo) && cachedCo.length){
+    companies = cachedCo;
+  } else {
+    companies = JSON.parse(JSON.stringify(DEFAULT_COMPANIES));
+  }
+
+  // Seed ME1 balance if not set
+  if(!balances['ME1']||balances['ME1']===0){
+    var me1def=getDivBanks?getDivBanks('ME1'):[];
+    if(me1def.length) balances['ME1']=Math.round(me1def.reduce(function(s,b){return s+(b.beg||0);},0));
+  }
+
+  populateCoSelects();
+  updateDivs();
+  setTimeout(populatePayBankDrop,100);
+  showMobileUI();
+  updateOnlineBadge();
 }
 function applyAccessLevel(){
   const allNavItems=document.querySelectorAll('.nav-item');
@@ -1540,7 +1573,7 @@ async function initApp(){
   document.getElementById('sbDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   document.getElementById('fDate').value=new Date().toISOString().slice(0,10);
 
-  showSync('syncing','Loading data from cloud...');
+  // sync status shown by showApp
   
   try {
     // Load all data from cloud in parallel
@@ -1606,7 +1639,7 @@ async function initApp(){
   populateCoSelects();
   updateDivs();
   setTimeout(function(){populatePayBankDrop();},300);
-  // renderAll intentionally not called here — showApp calls it once after all data loads
+  // renderAll called by showApp after this returns
   startRealtime();
   updateOnlineBadge();
   showMobileUI();
