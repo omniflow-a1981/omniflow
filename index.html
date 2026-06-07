@@ -844,10 +844,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       <div style="background:var(--teal-xlight,#f0fdf4);border:1.5px solid var(--teal-light,#86efac);border-radius:12px;padding:14px 16px">
         <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--teal-dark,#065f46);margin-bottom:10px">📍 Site / Subdivision</div>
         <div class="fr fr3" style="margin-bottom:10px">
-          <div class="ff"><label>Site <span style="color:var(--red)">*</span></label>
-            <select id="prSub" onchange="updatePRSubFields()">
-              <option value="">— Select site —</option>
+          <div class="ff"><label>Project Code / Site <span style="color:var(--red)">*</span></label>
+            <select id="prSub" onchange="updatePRSubFields()" style="width:100%;font-size:14px;padding:10px 12px;border:2px solid var(--teal-light);border-radius:10px;outline:none;background:var(--surface)">
+              <option value="">— Select Project Code / Site —</option>
             </select>
+            <div id="prSubDetail" style="display:none;margin-top:8px;padding:10px 14px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:9px;font-size:12px;color:#166534;line-height:1.8"></div>
           </div>
           <div class="ff"><label>Client <span style="font-size:10px;font-weight:400;color:var(--muted)">(auto-filled)</span></label>
             <input type="text" id="prClient" placeholder="Auto-filled · editable">
@@ -1212,14 +1213,14 @@ const DEFAULT_COMPANIES = [
   {id:'ME',name:'Matisan Engineering Plc',code:'ME',color:'blue',
     divisions:[
       {code:'ME1',name:'Construction',subdivisions:[
-        {code:'ME1-S1',name:'Head Office',client:'Matisan Engineering Plc',project:'Head Office Operations',location:'Addis Ababa'},
-        {code:'ME1-S2',name:'G+4 Mixed Use Building',client:'Haji Abdulkadir Aliyye',project:'G+4 Mixed Use Building Construction',location:'Addis Ababa'},
-        {code:'ME1-S3',name:'Warehouse, Weigh Bridge & Guard House',client:'Almaz Yirba',project:'Warehouse, Weigh Bridge & Guard House Construction',location:'Addis Ababa'},
-        {code:'ME1-S4',name:'G+2+T Residential Building',client:'W/rt Rosa Mamuye',project:'G+2+T Residential Building Construction',location:'Addis Ababa'},
-        {code:'ME1-S5',name:'Factory Building, Fence & Guard House',client:'Fenaol Coffee Trading PLC',project:'Factory Building, Fence & Guard House Construction',location:'Addis Ababa'},
-        {code:'ME1-S6',name:'B+G+5 Multi-purpose Hall',client:'ECWC',project:'B+G+5 Multi-purpose Hall Construction',location:'Addis Ababa'},
-        {code:'ME1-S7',name:'Factory Expansion Building',client:'Lampros Trading PLC',project:'Factory Expansion Building Construction',location:'Addis Ababa'},
-        {code:'ME1-S8',name:'BHS Civil Works',client:'CGCOC',project:'BHS Civil Works',location:'Addis Ababa'}
+        {code:'ME1-1',name:'ME1-1',client:'Head Office',project:'Head Office',location:''},
+        {code:'ME1-2',name:'ME1-2',client:'Haji Abdulkadir Aliyye',project:'G+4 Mixed Use Building',location:'Asella'},
+        {code:'ME1-3',name:'ME1-3',client:'Almaz Yirba',project:'Warehouse, Wiught bridge & Guard house',location:'Koye Feche'},
+        {code:'ME1-4',name:'ME1-4',client:'W/rt Rosa Mamuye',project:'G+2+T Residential Building',location:'Gelan'},
+        {code:'ME1-5',name:'ME1-5',client:'Fenaol Coffee Trading PLC',project:'Factory Building, Fence & Guard house',location:'Hollota'},
+        {code:'ME1-6',name:'ME1-6',client:'ECWC',project:'B+G+5 Multi-purpose Hall',location:'Sendafa'},
+        {code:'ME1-7',name:'ME1-7',client:'Lampros Trading PLC',project:'Factory Expansion Building',location:'Kombolcha'},
+        {code:'ME1-8',name:'ME1-8',client:'CGCOC',project:'BHS Civil works',location:'Modjo'}
       ]},
       {code:'ME2',name:'Export',subdivisions:[]},
       {code:'ME3',name:'Import',subdivisions:[]}
@@ -3513,7 +3514,8 @@ function updatePRDiv(){
   populatePRDivision(null);
 }
 function updatePRSub(){
-  var divVal=(document.getElementById('prDiv').value||'').trim();
+  var divRaw=(document.getElementById('prDiv').value||'').trim();
+  var divVal=divRaw.indexOf('.')>-1?divRaw.split('.')[0].trim():divRaw;
   var subs=getSubsForDiv(divVal);
   var hasSubs=subs.length>0;
   var isME1=divVal.toUpperCase().startsWith('ME1');
@@ -3525,44 +3527,51 @@ function updatePRSub(){
     var s=document.getElementById('prSub');
     if(!s) return;
     var prevVal=s.value;
-    s.innerHTML='<option value="">— Select site / subdivision —</option>';
+    s.innerHTML='<option value="">— Select Project Code / Site —</option>';
     subs.forEach(function(x){
       var o=document.createElement('option');
-      o.value=x.name;
-      o.textContent=x.name+(x.client&&x.client!==x.name?'  ·  '+x.client:'');
+      o.value=x.code||x.name;
+      var label=(x.code||x.name);
+      if(x.client) label+=' — '+x.client;
+      if(x.location) label+=' ('+x.location+')';
+      o.textContent=label;
+      o.dataset.code=x.code||x.name;
       o.dataset.client=x.client||'';
       o.dataset.location=x.location||'';
       o.dataset.project=x.project||'';
-      if(x.name===prevVal) o.selected=true;
+      if(x.code===prevVal||x.name===prevVal) o.selected=true;
       s.appendChild(o);
     });
     if(prevVal) updatePRSubFields();
   }
 }
-function updatePRSubClient(){ updatePRSubFields(); } // alias kept for backward compat
+
+function updatePRSubClient(){ updatePRSubFields(); } // alias
 function updatePRSubFields(){
   var s=document.getElementById('prSub');
   var opt=s&&s.selectedOptions[0];
   if(!opt||!opt.value) return;
-  // Auto-fill Client
-  var clientEl=document.getElementById('prClient');
-  if(clientEl&&opt.dataset.client) clientEl.value=opt.dataset.client;
-  // Auto-fill Location
-  var locEl=document.getElementById('prSubLocation');
-  if(locEl&&opt.dataset.location) locEl.value=opt.dataset.location;
-  // Auto-fill Project (into prSubProject AND prProject)
-  var subProjEl=document.getElementById('prSubProject');
-  var projEl=document.getElementById('prProject');
-  if(opt.dataset.project){
-    if(subProjEl) subProjEl.value=opt.dataset.project;
-    if(projEl&&!projEl.value) projEl.value=opt.dataset.project;
+  var client=opt.dataset.client||'';
+  var location=opt.dataset.location||'';
+  var project=opt.dataset.project||'';
+  var code=opt.dataset.code||opt.value;
+  // Show detail badge under the dropdown
+  var badge=document.getElementById('prSubDetail');
+  if(badge){
+    badge.style.display='block';
+    badge.innerHTML=
+      '<div style="display:flex;flex-wrap:wrap;gap:10px">'
+      +'<span><strong style="color:#047857">Code:</strong> '+code+'</span>'
+      +(client?'<span><strong style="color:#047857">Client:</strong> '+client+'</span>':'')
+      +(location?'<span><strong style="color:#047857">Location:</strong> '+location+'</span>':'')
+      +(project?'<span><strong style="color:#047857">Project:</strong> '+project+'</span>':'')
+      +'</div>';
   }
-  // Also fill prClientAlt (secondary client field shown below)
-  var clientAlt=document.getElementById('prClientAlt');
-  if(clientAlt&&opt.dataset.client&&!clientAlt.value) clientAlt.value=opt.dataset.client;
-  // Fill location into prLocation too
-  var prLocEl=document.getElementById('prLocation');
-  if(prLocEl&&opt.dataset.location&&!prLocEl.value) prLocEl.value=opt.dataset.location;
+  // Fill all related fields
+  var fill=function(id,val){var el=document.getElementById(id);if(el&&val)el.value=val;};
+  fill('prClient',client); fill('prClientAlt',client);
+  fill('prSubLocation',location); fill('prLocation',location);
+  fill('prSubProject',project); fill('prProject',project);
 }
 
 function calcPRTotals(){
