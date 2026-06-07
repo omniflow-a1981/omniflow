@@ -720,7 +720,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 <div id="pgCompanies" class="page">
   <div class="page-header">
     <div><div class="page-title">Companies & <em>Divisions</em></div><div class="page-subtitle">Manage companies, divisions and subdivisions (sites)</div></div>
-    <button class="btn-primary" onclick="showAddCoForm()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Company</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-secondary" onclick="restoreMe1Defaults()" style="font-size:12px;padding:8px 14px;background:#fef3c7;border-color:#fcd34d;color:#92400e" title="Restore ME1 Construction sites if accidentally deleted">
+        ↺ Restore ME1 Sites
+      </button>
+      <button class="btn-primary" onclick="showAddCoForm()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Company</button>
+    </div>
   </div>
   <div class="flash-bar" id="coFlash"><span id="coFlashMsg"></span></div>
   <div class="card add-out-form" id="addCoForm">
@@ -2978,110 +2983,68 @@ function editSubdivision(coId,divCode,subCode){
   showFlash('✓ Site updated: '+sub.name,'coFlash','coFlashMsg');
 }
 function deleteSubdivision(coId,divCode,subCode){
-  if(!confirm('Delete this site?'))return;
   var co=companies.find(function(c){return c.id===coId;});if(!co)return;
   var div=co.divisions.find(function(d){return d.code===divCode;});if(!div||!div.subdivisions)return;
+  var sub=div.subdivisions.find(function(s){return s.code===subCode;});
+  var subName=sub?sub.name:'this site';
+  if(!confirm('Delete site: '+subName+'?')) return;
   div.subdivisions=div.subdivisions.filter(function(s){return s.code!==subCode;});
   ls('omni-companies',companies);populateCoSelects();renderCompanies();
+  showFlash('✓ Site "'+subName+'" removed','coFlash','coFlashMsg');
 }
+function restoreMe1Defaults(){
+  if(!confirm('Restore all ME1 Construction subdivisions from defaults? This will add any missing project codes back.')) return;
+  var banks = getDivBanks('ME1');
+  // Find ME company and ME1 division
+  var meCo = companies.find(function(c){ return c.code==='ME'; });
+  if(!meCo){
+    alert('Matisan Engineering Plc not found. Please check Companies & Divisions.');
+    return;
+  }
+  var me1 = meCo.divisions.find(function(d){ return d.code==='ME1'; });
+  if(!me1){
+    meCo.divisions.push({code:'ME1',name:'Construction',subdivisions:[]});
+    me1 = meCo.divisions[meCo.divisions.length-1];
+  }
+  if(!me1.subdivisions) me1.subdivisions = [];
+  var defaults = [
+    {code:'ME1-1',name:'ME1-1',client:'Head Office',project:'Head Office',location:''},
+    {code:'ME1-2',name:'ME1-2',client:'Haji Abdulkadir Aliyye',project:'G+4 Mixed Use Building',location:'Asella'},
+    {code:'ME1-3',name:'ME1-3',client:'Almaz Yirba',project:'Warehouse, Wiught bridge & Guard house',location:'Koye Feche'},
+    {code:'ME1-4',name:'ME1-4',client:'W/rt Rosa Mamuye',project:'G+2+T Residential Building',location:'Gelan'},
+    {code:'ME1-5',name:'ME1-5',client:'Fenaol Coffee Trading PLC',project:'Factory Building, Fence & Guard house',location:'Hollota'},
+    {code:'ME1-6',name:'ME1-6',client:'ECWC',project:'B+G+5 Multi-purpose Hall',location:'Sendafa'},
+    {code:'ME1-7',name:'ME1-7',client:'Lampros Trading PLC',project:'Factory Expansion Building',location:'Kombolcha'},
+    {code:'ME1-8',name:'ME1-8',client:'CGCOC',project:'BHS Civil works',location:'Modjo'}
+  ];
+  // Add missing ones only
+  var added = 0;
+  defaults.forEach(function(d){
+    if(!me1.subdivisions.find(function(s){ return s.code===d.code; })){
+      me1.subdivisions.push(d);
+      added++;
+    }
+  });
+  ls('omni-companies', companies);
+  populateCoSelects();
+  renderCompanies();
+  showFlash('✓ ME1 restored — '+added+' project code(s) added back','coFlash','coFlashMsg');
+}
+
 function deleteCompany(coId){
-  if(!confirm('Delete this company? Transaction data will be kept.'))return;
+  var co=companies.find(function(c){return c.id===coId;});
+  if(!co) return;
+  var typed=prompt('To delete "'+co.name+'", type DELETE to confirm:','');
+  if(typed===null) return;
+  if(typed.trim().toUpperCase()!=='DELETE'){
+    alert('You must type DELETE to confirm. Company not deleted.');
+    return;
+  }
   companies=companies.filter(function(c){return c.id!==coId;});
   ls('omni-companies',companies);populateCoSelects();renderCompanies();renderAll();
+  showFlash('✓ Company removed','coFlash','coFlashMsg');
 }
-function getCoPillColorHex(c){return {teal:'#0ea87a',blue:'#2563eb',purple:'#8b5cf6',amber:'#f59e0b',red:'#ef4444'}[c]||'#0ea87a';}
-function renderCompanies(){
-  var grid=document.getElementById('coMgmtGrid');if(!grid)return;
-  grid.innerHTML='';
-  if(!companies.length){grid.innerHTML='<div class="empty-state">No companies yet.</div>';return;}
-  companies.forEach(function(co){
-    var accent=getCoPillColorHex(co.color);
-    var totalSubs=co.divisions.reduce(function(s,d){return s+(d.subdivisions||[]).length;},0);
-    var divHtml='';
-    (co.divisions||[]).forEach(function(div){
-      var subs=div.subdivisions||[];
-      var cid=co.id, dc=div.code;
-      divHtml+='<div style="border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden">'
-        +'<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:var(--bg);flex-wrap:wrap;gap:6px">'
-          +'<div style="display:flex;align-items:center;gap:8px">'
-            +'<span style="font-size:10px;font-weight:800;color:'+accent+';background:'+accent+'18;border:1px solid '+accent+'44;border-radius:6px;padding:2px 8px">'+div.code+'</span>'
-            +'<span style="font-size:13px;font-weight:700;color:var(--ink2)">'+div.name+'</span>'
-            +(subs.length?'<span style="font-size:10px;color:var(--muted2)">'+subs.length+' site'+(subs.length!==1?'s':'')+'</span>':'')
-          +'</div>'
-          +'<div style="display:flex;gap:5px">'
-            +'<button onclick="renameDivisionBtn(this)" data-coid="'+cid+'" data-dc="'+dc+'" style="font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;color:var(--blue)">✏ Rename</button>'
-            +'<button onclick="deleteDivisionBtn(this)" data-coid="'+cid+'" data-dc="'+dc+'" style="font-size:10px;padding:3px 8px;border:1px solid #fecaca;border-radius:6px;background:none;cursor:pointer;color:var(--red)">× Remove</button>'
-          +'</div>'
-        +'</div>';
-      if(subs.length){
-        divHtml+='<div style="padding:8px 14px 6px;display:flex;flex-direction:column;gap:6px">';
-        subs.forEach(function(s){
-          var meta='';
-          if(s.client) meta+='<span style="color:#166534;opacity:.8">· '+s.client+'</span> ';
-          if(s.location) meta+='<span style="color:#166534;opacity:.7">📍 '+s.location+'</span> ';
-          if(s.project) meta+='<span style="color:#166534;opacity:.65;font-style:italic">'+s.project+'</span>';
-          divHtml+='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:7px 12px">'
-            +'<div>'
-              +'<div style="font-size:12px;font-weight:700;color:#166534">📍 '+s.name+'</div>'
-              +(meta?'<div style="font-size:11px;margin-top:2px;display:flex;flex-wrap:wrap;gap:6px">'+meta+'</div>':'')
-            +'</div>'
-            +'<div style="display:flex;gap:4px;flex-shrink:0">'
-              +'<button onclick="editSubdivisionBtn(this)" data-coid="'+cid+'" data-dc="'+dc+'" data-sc="'+s.code+'" style="background:none;border:1px solid #86efac;border-radius:6px;cursor:pointer;font-size:11px;color:#166534;padding:2px 8px">✏ Edit</button>'
-              +'<button onclick="deleteSubdivisionBtn(this)" data-coid="'+cid+'" data-dc="'+dc+'" data-sc="'+s.code+'" style="background:none;border:1px solid #fecaca;border-radius:6px;cursor:pointer;font-size:11px;color:var(--red);padding:2px 8px">×</button>'
-            +'</div>'
-          +'</div>';
-        });
-        divHtml+='</div>';
-      }
-      divHtml+='<div style="margin-top:8px;border:2px solid #86efac;border-radius:12px;background:#f0fdf4;overflow:hidden">'
-        +'<div style="background:#059669;padding:10px 16px">'
-          +'<span style="font-size:12px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.4px">📍 Add New Site / Subdivision</span>'
-        +'</div>'
-        +'<div style="padding:14px 16px">'
-          +'<div style="margin-bottom:10px">'
-            +'<label style="display:block;font-size:10px;font-weight:700;color:#047857;margin-bottom:5px;text-transform:uppercase">Project Code / Site ID <span style="color:#ef4444">*</span></label>'
-            +'<input type="text" id="subInput_'+cid+'_'+dc+'" placeholder="e.g. ME1-S9, HQ-001, SITE-A..." '
-              +'style="width:100%;padding:11px 14px;border:2px solid #86efac;border-radius:9px;font-size:14px;font-weight:600;outline:none;background:#fff;box-sizing:border-box;font-family:inherit">'
-          +'</div>'
-          +'<div style="margin-bottom:10px">'
-            +'<label style="display:block;font-size:10px;font-weight:700;color:#047857;margin-bottom:5px;text-transform:uppercase">Client</label>'
-            +'<input type="text" id="subClient_'+cid+'_'+dc+'" placeholder="e.g. Haji Abdulkadir Aliyye" '
-              +'style="width:100%;padding:11px 14px;border:1.5px solid #86efac;border-radius:9px;font-size:13px;outline:none;background:#fff;box-sizing:border-box;font-family:inherit">'
-          +'</div>'
-          +'<div style="margin-bottom:10px">'
-            +'<label style="display:block;font-size:10px;font-weight:700;color:#047857;margin-bottom:5px;text-transform:uppercase">Location</label>'
-            +'<input type="text" id="subLocation_'+cid+'_'+dc+'" placeholder="e.g. Addis Ababa, Asella..." '
-              +'style="width:100%;padding:11px 14px;border:1.5px solid #86efac;border-radius:9px;font-size:13px;outline:none;background:#fff;box-sizing:border-box;font-family:inherit">'
-          +'</div>'
-          +'<div style="margin-bottom:14px">'
-            +'<label style="display:block;font-size:10px;font-weight:700;color:#047857;margin-bottom:5px;text-transform:uppercase">Project / Description</label>'
-            +'<input type="text" id="subProject_'+cid+'_'+dc+'" placeholder="e.g. G+4 Mixed Use Building Construction" '
-              +'style="width:100%;padding:11px 14px;border:1.5px solid #86efac;border-radius:9px;font-size:13px;outline:none;background:#fff;box-sizing:border-box;font-family:inherit">'
-          +'</div>'
-          +'<button onclick="addSubdivisionBtn(this)" data-coid="'+cid+'" data-dc="'+dc+'" '
-            +'style="width:100%;padding:13px;border-radius:10px;background:#059669;border:none;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit">+ Save Site</button>'
-        +'</div>'
-      +'</div>'+'</div>';
-    });
-    grid.innerHTML+='<div style="background:var(--surface);border-radius:16px;border:2px solid '+accent+'33;box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden">'
-      +'<div style="background:linear-gradient(135deg,'+accent+'22,'+accent+'0a);border-bottom:2px solid '+accent+'33;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">'
-        +'<div style="display:flex;align-items:center;gap:12px">'
-          +'<div style="width:40px;height:40px;border-radius:12px;background:'+accent+';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0">'+co.code+'</div>'
-          +'<div><div style="font-size:16px;font-weight:700;color:var(--ink)">'+co.name+'</div>'
-            +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+co.divisions.length+' division'+(co.divisions.length!==1?'s':'')+(totalSubs?' · '+totalSubs+' site'+(totalSubs!==1?'s':''):'')+'</div>'
-          +'</div>'
-        +'</div>'
-        +'<button onclick="deleteCompanyBtn(this)" data-coid="'+co.id+'" class="btn-danger" style="font-size:11px;padding:6px 12px">Delete Company</button>'
-      +'</div>'
-      +'<div style="padding:16px 20px">'+divHtml
-        +'<div style="display:flex;gap:8px;align-items:center;padding:10px 0 2px;border-top:1px dashed var(--border);margin-top:6px">'
-          +'<span style="font-size:11px;color:var(--muted);font-weight:700;flex-shrink:0">+ Division:</span>'
-          +'<input type="text" id="divInput_'+co.id+'" placeholder="Division name" style="flex:1;font-size:12px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;outline:none">'
-          +'<button onclick="addDivisionBtn(this)" data-coid="'+co.id+'" class="btn-secondary" style="padding:7px 14px;font-size:12px;white-space:nowrap">+ Add Division</button>'
-        +'</div>'
-      +'</div>'+'</div>';
-  });
-}
+
 
 function renderAdminSettings(){
   if(!isAdmin()){document.getElementById('pgAdminSettings').innerHTML='<div style="padding:40px;text-align:center;color:var(--muted2)">Admin access only.</div>';return;}
