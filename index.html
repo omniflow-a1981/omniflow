@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="OmniFlow">
   <meta name="application-name" content="OmniFlow">
   <meta name="description" content="OmniFlow — Integrated Cash Management for Wanofi & Matisan Engineering">
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="./manifest.json">
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f172a'/><text y='68' x='50' text-anchor='middle' font-size='60' font-family='serif' font-weight='bold' fill='%230ea87a'>O</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OmniFlow — Cash Management</title>
@@ -545,6 +545,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   </a>
   <a class="nav-item" id="adminNav" href="#" onclick="nav('AdminSettings',this)" style="display:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Admin Settings
+  </a>
+  <a id="installAppBtn" href="#" onclick="installApp()" class="nav-item" style="color:#34d399;margin-top:4px;display:none">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    <span id="installBtnLabel">Install OmniFlow App</span>
   </a>
   <a class="nav-item" href="#" onclick="doSignOut()" style="color:rgba(255,100,100,.7);margin-top:4px" id="signoutNav">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign Out
@@ -1339,14 +1343,8 @@ function showMobileUI(){
 
 // PWA install prompt
 let deferredPWAPrompt = null;
-window.addEventListener('beforeinstallprompt', e=>{
-  e.preventDefault();
-  deferredPWAPrompt = e;
-  if(!localStorage.getItem('omni-pwa-dismissed')){
-    setTimeout(()=>document.getElementById('pwaBanner').classList.add('show'), 3000);
-  }
-});
-async function installPWA(){
+async function installPWA(){ installApp(); }
+async function installPWA_orig(){
   if(!deferredPWAPrompt)return;
   deferredPWAPrompt.prompt();
   const {outcome}=await deferredPWAPrompt.userChoice;
@@ -5222,7 +5220,7 @@ function deleteSubdivisionBtn(btn){deleteSubdivision(btn.dataset.coid,btn.datase
   // Register service worker for offline use
   if('serviceWorker' in navigator){
     window.addEventListener('load', function(){
-      navigator.serviceWorker.register('sw.js').then(function(reg){
+      navigator.serviceWorker.register('./sw.js').then(function(reg){
         console.log('SW registered:', reg.scope);
       }).catch(function(e){ console.log('SW error:', e); });
     });
@@ -5233,25 +5231,70 @@ function deleteSubdivisionBtn(btn){deleteSubdivision(btn.dataset.coid,btn.datase
   window.addEventListener('beforeinstallprompt', function(e){
     e.preventDefault();
     deferredPrompt = e;
-    // Show install button in sidebar
+    // Also hook the PWA banner
+    if(typeof deferredPWAPrompt === 'undefined') window.deferredPWAPrompt = e;
     var btn = document.getElementById('installAppBtn');
-    if(btn) btn.style.display = 'flex';
+    if(btn){ btn.style.display = 'flex'; }
+    // Show PWA banner too
+    var banner = document.getElementById('pwaBanner');
+    if(banner) banner.classList.add('show');
+    updateInstallBtn();
   });
 
   function installApp(){
     if(deferredPrompt){
+      // Chrome/Edge/Android — native install prompt
       deferredPrompt.prompt();
       deferredPrompt.userChoice.then(function(r){
         deferredPrompt = null;
-        var btn = document.getElementById('installAppBtn');
-        if(btn) btn.style.display = 'none';
+        updateInstallBtn();
       });
+    } else {
+      // Fallback instructions for other browsers
+      var ua = navigator.userAgent.toLowerCase();
+      var isIOS = /iphone|ipad|ipod/.test(ua);
+      var isSafari = /safari/.test(ua) && !/chrome/.test(ua);
+      var isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      if(isInstalled){
+        alert('OmniFlow is already installed on this device!');
+      } else if(isIOS || isSafari){
+        alert('To install OmniFlow on iPhone/iPad/Safari:\n\n1. Tap the Share button (box with arrow)\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add" — done!');
+      } else {
+        alert('To install OmniFlow:\n\nChrome/Edge: Click the install icon (⊕) in the address bar\n\nOr: Menu (⋮) → "Install OmniFlow" or "Add to Home Screen"');
+      }
+    }
+  }
+
+  function updateInstallBtn(){
+    var btn = document.getElementById('installAppBtn');
+    var lbl = document.getElementById('installBtnLabel');
+    if(!btn) return;
+    var isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    if(isInstalled){
+      if(lbl) lbl.textContent = '✓ App Installed';
+      btn.style.display = 'flex';
+      btn.style.opacity = '0.5';
+      btn.style.cursor = 'default';
+    } else if(deferredPrompt){
+      if(lbl) lbl.textContent = '↓ Install OmniFlow App';
+      btn.style.display = 'flex';
+      btn.style.opacity = '1';
+    } else {
+      // Always show "How to Install" so users know they can install
+      if(lbl) lbl.textContent = 'ℹ How to Install';
+      btn.style.display = 'flex';
+      btn.style.opacity = '0.8';
     }
   }
 
   window.addEventListener('appinstalled', function(){
-    var btn = document.getElementById('installAppBtn');
-    if(btn) btn.style.display = 'none';
+    deferredPrompt = null;
+    updateInstallBtn();
+  });
+
+  // Check install state on load
+  window.addEventListener('load', function(){
+    setTimeout(updateInstallBtn, 1000);
   });
   </script>
 </body>
