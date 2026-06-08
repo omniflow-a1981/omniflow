@@ -693,7 +693,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   <!-- NAC section injected here by renderBalances() -->
   <div id="balNacSlot"></div>
   <div class="card">
-    <div class="card-title">Edit opening balances</div>
+    <div class="card-title">Opening Balances — Bank Register</div>
     <div id="balEditGrid"></div>
     <button class="btn-primary" style="margin-top:4px" onclick="saveBalances()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save Opening Balances</button>
   </div>
@@ -977,10 +977,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 <div id="pgAdminSettings" class="page">
   <div class="page-header">
     <div><div class="page-title">Admin <em>Settings</em></div><div class="page-subtitle">Manage user passwords — admin access only</div></div>
-    <button class="btn-secondary" onclick="runDiagnostics()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      Test Connection
-    </button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="clearAllPRHistory()" style="padding:9px 16px;background:#fff5f5;border:1.5px solid #fca5a5;color:#dc2626;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px">
+        🗑 Clear PR History
+      </button>
+      <button class="btn-secondary" onclick="runDiagnostics()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Test Connection
+      </button>
+    </div>
   </div>
   <div id="diagResult" style="display:none;margin-bottom:12px"></div>
   <div class="flash-bar" id="adminFlash"><span id="adminFlashMsg"></span></div>
@@ -2517,203 +2522,20 @@ function renderBalances(){
 
   // edit grid — landscape card grid matching the original dashboard style
   renderAllDivBanks();
+  // Bank registers (below) are the source of truth for opening balances
+  // The old manual edit grid is replaced by the per-division bank registers
   const eg=document.getElementById('balEditGrid');
-  eg.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:12px;margin-bottom:4px">';
-  getAllDivs().forEach(d=>{
-    const colorStyle=d.color==='teal'?'color:var(--teal-dark)':d.color==='blue'?'color:var(--blue-dark)':'color:#5b21b6';
-    const usdDiv=isUsdDiv(d.code);
-    eg.innerHTML+=`<div style="background:var(--surface);border-radius:10px;border:1px solid var(--border);padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.05)">
-      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;${colorStyle};margin-bottom:10px;display:flex;align-items:center;gap:5px">
-        ${d.code} · ${d.name}${usdDiv?'<span class="usd-badge">USD</span>':''}</div>
-      <div style="margin-bottom:${usdDiv?'8px':'0'}">
-        <div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:4px">Opening (ETB)</div>
-        <input type="number" id="bI${d.code}" value="${Math.round(balances[d.code]||0)}"
-          style="padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;width:100%;font-family:inherit;outline:none;color:var(--ink);background:var(--surface);transition:border-color .15s"
-          onfocus="this.style.borderColor='var(--teal)'" onblur="this.style.borderColor='var(--border)'">
-      </div>
-      ${usdDiv?`<div>
-        <div style="font-size:10px;color:#92400e;font-weight:600;margin-bottom:4px">Opening (USD)</div>
-        <input type="number" id="bIUsd${d.code}" value="${+(balances[d.code+'_usd']||0).toFixed(2)}" step="0.01"
-          style="padding:7px 9px;border:1.5px solid #fed7aa;border-radius:7px;font-size:13px;width:100%;font-family:inherit;outline:none;color:var(--ink);background:var(--surface);transition:border-color .15s"
-          onfocus="this.style.borderColor='var(--amber)'" onblur="this.style.borderColor='#fed7aa'">
-      </div>`:''}
-    </div>`;
-  });
-  eg.innerHTML+='</div>';
-}
-// ══════════════════════════════════
-// ME1 BANK REGISTER FUNCTIONS
-// ══════════════════════════════════
-function fmtBirr(v){return (v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
-
-function renderAllDivBanks(){
-  var container=document.getElementById('divBankRegisters');
-  if(!container) return;
-  container.innerHTML='';
-  // Render each division that has bank data defined
-  ['WE1','WE2','WE3','ME1','ME2','ME3'].forEach(function(div){
-    if(!DIV_BANKS_DEFAULT[div]) return;
-    container.appendChild(buildDivBankRegister(div));
-  });
-}
-
-// keep backward compat
-function renderMe1Register(){ renderAllDivBanks(); }
-
-function buildDivBankRegister(div){
-  var banks=getDivBanks(div);
-  var col=DIV_BANK_COLORS[div]||'#1e3a8a';
-  var light=DIV_BANK_LIGHT[div]||'#dbeafe';
-  var border=DIV_BANK_BORDER[div]||'#93c5fd';
-  var title=DIV_BANK_TITLES[div]||div+' CASH AND BANK BOOK BALANCE';
-
-  // For ME2: track totals per section separately
-  var sectionTotals={};
-  banks.forEach(function(b){
-    var sec=b.section||'';
-    if(!sectionTotals[sec]) sectionTotals[sec]={beg:0,deb:0,cred:0};
-    sectionTotals[sec].beg+=(b.beg||0);
-    sectionTotals[sec].deb+=(b.debit||0);
-    sectionTotals[sec].cred+=(b.credit||0);
-  });
-  var hasSections=banks.some(function(b){return b.section;});
-
-  var totBeg=0,totDeb=0,totCred=0;
-  var lastSection='';
-  var rows=banks.map(function(b,i){
-    var ending=(b.beg||0)-(b.debit||0)+(b.credit||0);
-    totBeg+=(b.beg||0); totDeb+=(b.debit||0); totCred+=(b.credit||0);
-    var bg=i%2===0?'#fff':light+'44';
-    var bd='border:1px solid '+light;
-    var inp='padding:5px 8px;font-family:inherit;outline:none;border-radius:6px;text-align:right;font-size:13px;font-weight:700;';
-    var sectionRow='';
-    if(b.section && b.section!==lastSection){
-      if(lastSection && sectionTotals[lastSection]){
-        var ps=sectionTotals[lastSection];
-        var isUSD=lastSection.indexOf('USD')>=0;
-        var curr=isUSD?'USD':'ETB';
-        sectionRow+='<tr style="background:'+light+';border-top:2px solid '+col+'">'
-          +'<td colspan="4" style="padding:8px 12px;font-size:12px;font-weight:800;color:'+col+';text-align:center;border:1px solid '+border+'">Sub-Total ('+curr+') — '+lastSection+'</td>'
-          +'<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:800;color:'+col+';border:1px solid '+border+'">'+fmtBirr(ps.beg)+' '+curr+'</td>'
-          +'<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:800;color:#dc2626;border:1px solid '+border+'">'+(ps.deb>0?fmtBirr(ps.deb)+' '+curr:'-')+'</td>'
-          +'<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:800;color:#059669;border:1px solid '+border+'">'+(ps.cred>0?fmtBirr(ps.cred)+' '+curr:'-')+'</td>'
-          +'<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:800;color:'+col+';border:1px solid '+border+'">'+fmtBirr(ps.beg-ps.deb+ps.cred)+' '+curr+'</td>'
-          +'<td style="border:1px solid '+border+'"></td>'
-        +'</tr>';
-      }
-      lastSection=b.section;
-      sectionRow+='<tr style="background:'+col+';"><td colspan="9" style="padding:7px 14px;font-size:11px;font-weight:800;color:#fff;text-align:center;letter-spacing:.3px">'+b.section+'</td></tr>';
-    }
-    return sectionRow+'<tr style="background:'+bg+';'+bd+'">'
-      +'<td style="padding:8px 8px;text-align:center;font-size:12px;font-weight:800;color:'+col+';border:1px solid '+light+'">'+(b.no||i+1)+'</td>'
-      +'<td style="padding:8px 12px;font-size:13px;font-weight:600;color:#1e293b;border:1px solid '+light+'">'+b.name+'</td>'
-      +'<td style="padding:8px 12px;font-size:12px;font-family:monospace;color:#374151;border:1px solid '+light+'">'+b.account+'</td>'
-      +'<td style="padding:8px 12px;font-size:12px;color:#374151;border:1px solid '+light+'">'+b.branch+'</td>'
-      +'<td style="padding:5px 8px;border:1px solid '+light+'">'
-        +'<input type="number" value="'+String(b.beg||0)+'" min="0" step="0.01" '
-          +'data-div="'+div+'" data-i="'+i+'" data-f="beg" onchange="divBankChange(this)" '
-          +'style="'+inp+'width:120px;border:1.5px solid '+border+';color:'+col+';background:'+light+'44;"></td>'
-      +'<td style="padding:5px 8px;border:1px solid '+light+'">'
-        +'<input type="number" value="'+String(b.debit||0)+'" min="0" step="0.01" '
-          +'data-div="'+div+'" data-i="'+i+'" data-f="debit" onchange="divBankChange(this)" '
-          +'style="'+inp+'width:110px;border:1.5px solid #fca5a5;color:#dc2626;background:#fff5f5;"></td>'
-      +'<td style="padding:5px 8px;border:1px solid '+light+'">'
-        +'<input type="number" value="'+String(b.credit||0)+'" min="0" step="0.01" '
-          +'data-div="'+div+'" data-i="'+i+'" data-f="credit" onchange="divBankChange(this)" '
-          +'style="'+inp+'width:110px;border:1.5px solid #86efac;color:#059669;background:#f0fdf4;"></td>'
-      +'<td style="padding:8px 12px;text-align:right;font-size:13px;font-weight:700;color:'+col+';border:1px solid '+light+'">'+fmtBirr(ending)+'</td>'
-      +'<td style="padding:5px 8px;text-align:center;border:1px solid '+light+'">'
-      +'<td style="padding:5px 8px;text-align:center;border:1px solid '+light+'"><button onclick="delDivBankBtn(this)" data-div="'+div+'" data-i="'+i+'" style="background:#fee2e2;border:1px solid #fca5a5;border-radius:6px;padding:3px 8px;cursor:pointer;color:#dc2626;font-size:11px;font-weight:700">✕</button></td>'
-      +'</td>'
-    +'</tr>';
-  }).join('');
-
-  var totEnd=totBeg-totDeb+totCred;
-  var uid='reg_'+div;
-  var wrap=document.createElement('div');
-  wrap.style.cssText='margin-top:20px;border-radius:12px;overflow:hidden;border:2px solid '+col;
-  wrap.innerHTML=
-    // Clickable header — always visible
-    '<div onclick="toggleBankReg(\''+uid+'\')" style="background:'+col+';padding:12px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer">'
-      +'<span style="font-size:13px;font-weight:800;color:#fff;letter-spacing:.3px">'+title+'</span>'
-      +'<span id="'+uid+'_icon" style="color:#fff;font-size:18px;font-weight:700;line-height:1">−</span>'
-    +'</div>'
-    // Always-visible total strip
-    +'<div style="background:'+light+';padding:8px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid '+border+'">'
-      +'<span style="font-size:11px;font-weight:700;color:'+col+'">SUMMARY OF ALL BANK BALANCE</span>'
-      +'<span style="font-size:14px;font-weight:800;color:'+col+'" id="tot_hdr_'+div+'">Total: ETB '+fmtBirr(totBeg)+'</span>'
-    +'</div>'
-    // Collapsible detail section
-    +'<div id="'+uid+'_body">'
-    +'<div style="overflow-x:auto">'
-    +'<table style="width:100%;border-collapse:collapse;min-width:860px">'
-    +'<thead><tr style="background:'+light+';border-bottom:2px solid '+col+'">'
-      +'<th style="padding:9px 8px;font-size:11px;font-weight:800;color:'+col+';border:1px solid '+border+';text-align:center;width:36px">#</th>'
-      +'<th style="padding:9px 12px;font-size:11px;font-weight:800;color:'+col+';border:1px solid '+border+';text-align:center">BANK LIST</th>'
-      +'<th style="padding:9px 12px;font-size:11px;font-weight:800;color:'+col+';border:1px solid '+border+';text-align:center">ACCOUNT NO</th>'
-      +'<th style="padding:9px 12px;font-size:11px;font-weight:800;color:'+col+';border:1px solid '+border+';text-align:center">BANK BRANCH</th>'
-      +'<th style="padding:9px 12px;font-size:11px;font-weight:800;color:'+col+';border:1px solid '+border+';text-align:center">Big.Balance<br><em style="font-weight:400;font-style:italic;font-size:10px">Birr</em></th>'
-      +'<th style="padding:9px 12px;font-size:11px;font-weight:800;color:'+col+';border:1px solid '+border+';text-align:center"><em>DEBIT</em><br><em style="font-weight:400;font-style:italic;font-size:10px">Birr</em></th>'
-      +'<th style="padding:9px 12px;font-size:11px;font-weight:800;color:'+col+';border:1px solid '+border+';text-align:center"><em>CREDIT</em><br><em style="font-weight:400;font-style:italic;font-size:10px">Birr</em></th>'
-      +'<th style="padding:9px 12px;font-size:11px;font-weight:800;color:'+col+';border:1px solid '+border+';text-align:center"><em>ENDING Balance</em><br><em style="font-weight:400;font-style:italic;font-size:10px">Birr</em></th>'
-      +'<th style="padding:9px 6px;font-size:11px;font-weight:800;color:'+col+';border:1px solid '+border+';text-align:center;width:36px">Del</th>'
-    +'</tr></thead>'
-    +'<tbody id="tbody_'+div+'">'+rows+'</tbody>'
-    // For ME2: build two total rows (ETB + USD); for others: single total
-    var tfootHtml='';
-    if(hasSections && Object.keys(sectionTotals).length>1){
-      // Separate total rows per section currency
-      Object.keys(sectionTotals).forEach(function(sec){
-        var st=sectionTotals[sec];
-        var isUSD=sec.indexOf('USD')>=0;
-        var curr=isUSD?'USD':'ETB';
-        var rowBg=isUSD?'#eff6ff':'#dbeafe';
-        tfootHtml+='<tr style="background:'+rowBg+';border-top:2px solid '+col+'">'
-          +'<td colspan="4" style="padding:10px 14px;text-align:center;font-size:13px;font-weight:800;color:'+col+';border:1px solid '+border+'">Total Bank Balance ('+curr+') — '+sec+'</td>'
-          +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:'+col+';border:1px solid '+border+'">'+fmtBirr(st.beg)+' '+curr+'</td>'
-          +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:#dc2626;border:1px solid '+border+'">'+(st.deb>0?fmtBirr(st.deb)+' '+curr:'-')+'</td>'
-          +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:#059669;border:1px solid '+border+'">'+(st.cred>0?fmtBirr(st.cred)+' '+curr:'-')+'</td>'
-          +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:'+col+';border:1px solid '+border+'">'+fmtBirr(st.beg-st.deb+st.cred)+' '+curr+'</td>'
-          +'<td style="border:1px solid '+border+'"></td>'
-        +'</tr>';
-      });
-    } else {
-      tfootHtml='<tr style="background:'+light+';border-top:2px solid '+col+'">'
-        +'<td colspan="4" style="padding:10px 14px;text-align:center;font-size:13px;font-weight:800;color:'+col+';border:1px solid '+border+'">Total Bank Balance</td>'
-        +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:'+col+';border:1px solid '+border+'" id="tot_beg_'+div+'">'+fmtBirr(totBeg)+'</td>'
-        +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:#dc2626;border:1px solid '+border+'" id="tot_deb_'+div+'">'+(totDeb>0?fmtBirr(totDeb):'-')+'</td>'
-        +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:#059669;border:1px solid '+border+'" id="tot_cred_'+div+'">'+(totCred>0?fmtBirr(totCred):'-')+'</td>'
-        +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:'+col+';border:1px solid '+border+'" id="tot_end_'+div+'">'+fmtBirr(totEnd)+'</td>'
-        +'<td style="border:1px solid '+border+'"></td>'
-        +'</tr>';
-    }
-    +'<tfoot>'+tfootHtml+'</tfoot>'
-    +'</table></div>'
-    // Add bank section
-    +'<div style="background:#f8faff;border-top:2px dashed '+border+';padding:14px 18px">'
-      +'<div style="font-size:12px;font-weight:800;color:'+col+';margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">+ Add New Bank Account to '+div+'</div>'
-      +'<div style="display:grid;grid-template-columns:2fr 2fr 1.5fr 1.5fr;gap:10px;margin-bottom:10px">'
-        +'<div><label style="font-size:10px;font-weight:700;color:'+col+';display:block;margin-bottom:4px">Bank Name *</label>'
-          +'<input type="text" id="newBk_name_'+div+'" placeholder="e.g. WEP CBE" style="width:100%;padding:8px 12px;border:1.5px solid '+border+';border-radius:8px;font-size:13px;outline:none;font-family:inherit;box-sizing:border-box"></div>'
-        +'<div><label style="font-size:10px;font-weight:700;color:'+col+';display:block;margin-bottom:4px">Account No.</label>'
-          +'<input type="text" id="newBk_acc_'+div+'" placeholder="Account number" style="width:100%;padding:8px 12px;border:1.5px solid '+border+';border-radius:8px;font-size:13px;outline:none;font-family:monospace;box-sizing:border-box"></div>'
-        +'<div><label style="font-size:10px;font-weight:700;color:'+col+';display:block;margin-bottom:4px">Branch</label>'
-          +'<input type="text" id="newBk_branch_'+div+'" placeholder="Branch" style="width:100%;padding:8px 12px;border:1.5px solid '+border+';border-radius:8px;font-size:13px;outline:none;font-family:inherit;box-sizing:border-box"></div>'
-        +'<div><label style="font-size:10px;font-weight:700;color:'+col+';display:block;margin-bottom:4px">Beg. Balance</label>'
-          +'<input type="number" id="newBk_bal_'+div+'" placeholder="0.00" min="0" step="0.01" style="width:100%;padding:8px 12px;border:1.5px solid '+border+';border-radius:8px;font-size:13px;outline:none;font-family:inherit;box-sizing:border-box"></div>'
+  if(eg){
+    eg.innerHTML='<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:12px;margin-bottom:4px">'
+      +'<span style="font-size:22px">&#x1F4CB;</span>'
+      +'<div>'
+        +'<div style="font-size:13px;font-weight:700;color:#065f46">Opening balances are managed in the Bank Registers below</div>'
+        +'<div style="font-size:12px;color:#047857;margin-top:3px">Edit the <strong>Big.Balance</strong> column in each division register to set the opening balance. The totals auto-sync above.</div>'
       +'</div>'
-      +'<button onclick="addDivBankBtn(this)" data-div="'+div+'" style="padding:9px 22px;background:'+col+';color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">+ Add Bank</button>'
-    +'</div>'
-    +'</div>'; // close collapsible body
-  return wrap;
-}
+    +'</div>';
+  }
 
-function divBankChange(inp){
-  var div=inp.dataset.div, i=parseInt(inp.dataset.i), f=inp.dataset.f;
-  var banks=getDivBanks(div);
-  banks[i][f]=parseFloat(inp.value)||0;
-  saveDivBanks(div,banks);
-  renderAllDivBanks();
+    renderAllDivBanks();
 }
 function toggleBankReg(uid){
   var body=document.getElementById(uid+'_body');
@@ -4226,6 +4048,36 @@ async function savePR(){
   }catch(e){alert('Save failed: '+e.message);}
 }
 
+async function clearAllPRHistory(){
+  if(!isAdmin()){alert('Admin only.');return;}
+  const typed = prompt('This will permanently delete ALL Payment Request history from the database.\n\nType DELETE to confirm:','');
+  if(!typed || typed.trim().toUpperCase()!=='DELETE'){
+    alert('Cancelled — history not deleted.');
+    return;
+  }
+  showFlash('⏳ Deleting all payment requests...','adminFlash','adminFlashMsg');
+  try{
+    // Delete ALL from Supabase
+    const res = await fetch(PR_SB+'/payment_requests?id=neq.00000000-0000-0000-0000-000000000000',{
+      method:'DELETE',
+      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Prefer':'return=minimal'}
+    });
+    if(res.ok||res.status===204){
+      payRequests=[];
+      // Also clear any related ledger entries from local
+      transactions = transactions.filter(function(t){ return !t.pr_id; });
+      ls('omni-tx', transactions);
+      renderAll();
+      showFlash('✓ All PR history cleared. Ready for live use!','adminFlash','adminFlashMsg');
+    } else {
+      const err = await res.text();
+      alert('Error deleting from Supabase: '+err);
+    }
+  } catch(e){
+    alert('Network error: '+e.message);
+  }
+}
+
 async function loadPayRequests(){
   try{
     const res=await fetch(PR_SB+'/payment_requests?select=*&order=created_at.desc',
@@ -5224,6 +5076,13 @@ function deleteSubdivisionBtn(btn){deleteSubdivision(btn.dataset.coid,btn.datase
   // Register service worker for offline use
   if('serviceWorker' in navigator){
     window.addEventListener('load', function(){
+      // Only register SW on real deployment (not preview/localhost/claudeusercontent)
+      var host = window.location.hostname;
+      var isDeployed = host.includes('github.io') || host.includes('github.com');
+      if(!isDeployed){
+        console.log('SW skipped on preview/local host:', host);
+        return;
+      }
       navigator.serviceWorker.register('./sw.js').then(function(reg){
         console.log('SW registered:', reg.scope);
       }).catch(function(e){ console.log('SW error:', e); });
@@ -5245,83 +5104,60 @@ function deleteSubdivisionBtn(btn){deleteSubdivision(btn.dataset.coid,btn.datase
     updateInstallBtn();
   });
 
+  function closeInstallModal(){ var m=document.getElementById('omni-install-modal'); if(m) m.remove(); }
+
   function installApp(){
     if(deferredPrompt){
-      // Native browser install prompt available
       deferredPrompt.prompt();
-      deferredPrompt.userChoice.then(function(r){
-        deferredPrompt = null;
-        updateInstallBtn();
-      });
+      deferredPrompt.userChoice.then(function(r){ deferredPrompt=null; updateInstallBtn(); });
       return;
     }
-    // No native prompt — show elegant install modal
-    var ua = navigator.userAgent.toLowerCase();
-    var isIOS = /iphone|ipad|ipod/.test(ua);
-    var isSafari = /safari/.test(ua) && !/chrome/.test(ua);
-    var isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-
-    var existingModal = document.getElementById('installModal');
-    if(existingModal) existingModal.remove();
-
-    var steps = '';
+    var existing=document.getElementById('omni-install-modal');
+    if(existing) existing.remove();
+    var ua=navigator.userAgent.toLowerCase();
+    var isIOS=/iphone|ipad|ipod/.test(ua);
+    var isSafari=/safari/.test(ua)&&!/chrome/.test(ua);
+    var isInstalled=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone;
+    var steps='';
     if(isInstalled){
-      steps = '<div style="text-align:center;padding:20px 0">'
-        + '<div style="font-size:48px;margin-bottom:12px">✅</div>'
-        + '<div style="font-size:16px;font-weight:700;color:var(--ink)">OmniFlow is already installed!</div>'
-        + '<div style="font-size:13px;color:var(--muted);margin-top:6px">You can find it on your desktop or taskbar.</div>'
-        + '</div>';
-    } else if(isIOS || isSafari){
-      steps = '<div style="font-size:13px;color:var(--muted);margin-bottom:16px">Follow these steps in <strong>Safari</strong>:</div>'
-        + '<div style="display:flex;flex-direction:column;gap:12px">'
-        + '<div style="display:flex;align-items:center;gap:12px;background:#f8faff;padding:12px;border-radius:10px">'
-          + '<div style="width:32px;height:32px;border-radius:50%;background:#0ea87a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">1</div>'
-          + '<div>Tap the <strong>Share</strong> button <span style="font-size:18px">⎙</span> at the bottom of Safari</div>'
-        + '</div>'
-        + '<div style="display:flex;align-items:center;gap:12px;background:#f8faff;padding:12px;border-radius:10px">'
-          + '<div style="width:32px;height:32px;border-radius:50%;background:#0ea87a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">2</div>'
-          + '<div>Scroll down and tap <strong>"Add to Home Screen"</strong> <span style="font-size:16px">➕</span></div>'
-        + '</div>'
-        + '<div style="display:flex;align-items:center;gap:12px;background:#f8faff;padding:12px;border-radius:10px">'
-          + '<div style="width:32px;height:32px;border-radius:50%;background:#0ea87a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">3</div>'
-          + '<div>Tap <strong>"Add"</strong> — OmniFlow appears on your home screen!</div>'
-        + '</div>'
-        + '</div>';
+      steps='<div style="text-align:center;padding:20px 0">'
+        +'<div style="font-size:48px;margin-bottom:12px">&#x2705;</div>'
+        +'<div style="font-size:16px;font-weight:700">OmniFlow is already installed!</div>'
+        +'</div>';
+    } else if(isIOS||isSafari){
+      steps='<div style="font-size:13px;color:var(--muted);margin-bottom:14px">Follow these steps in <strong>Safari</strong>:</div>'
+        +'<div style="display:flex;flex-direction:column;gap:10px">'
+        +'<div style="display:flex;align-items:center;gap:10px;background:#f8faff;padding:12px;border-radius:10px"><div style="width:28px;height:28px;border-radius:50%;background:#0ea87a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">1</div><div>Tap the <strong>Share &#x23CE;</strong> button at the bottom</div></div>'
+        +'<div style="display:flex;align-items:center;gap:10px;background:#f8faff;padding:12px;border-radius:10px"><div style="width:28px;height:28px;border-radius:50%;background:#0ea87a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">2</div><div>Tap <strong>Add to Home Screen &#xFF0B;</strong></div></div>'
+        +'<div style="display:flex;align-items:center;gap:10px;background:#f8faff;padding:12px;border-radius:10px"><div style="width:28px;height:28px;border-radius:50%;background:#0ea87a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">3</div><div>Tap <strong>Add</strong> &#x2014; done!</div></div>'
+        +'</div>';
     } else {
-      steps = '<div style="font-size:13px;color:var(--muted);margin-bottom:16px">Choose your method:</div>'
-        + '<div style="display:flex;flex-direction:column;gap:12px">'
-        + '<div style="background:#f8faff;padding:14px;border-radius:10px;border:1.5px solid #bfdbfe">'
-          + '<div style="font-size:13px;font-weight:700;color:#1e40af;margin-bottom:8px">🟦 Chrome or Edge (Recommended)</div>'
-          + '<div style="display:flex;flex-direction:column;gap:8px;font-size:13px">'
-            + '<div>1. Look for the <strong>install icon ⊕</strong> at the right of the address bar</div>'
-            + '<div>2. Click it → click <strong>"Install"</strong></div>'
-            + '<div style="color:var(--muted);font-size:12px">Or: Menu (⋮) → <strong>"Install OmniFlow"</strong></div>'
-          + '</div>'
-        + '</div>'
-        + '<div style="background:#fff8f0;padding:14px;border-radius:10px;border:1.5px solid #fcd34d">'
-          + '<div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px">⚠ Not seeing the install icon?</div>'
-          + '<div style="font-size:12px;color:#78350f">Make sure <strong>manifest.json</strong> and <strong>sw.js</strong> are uploaded to your GitHub repo alongside index.html. Then refresh the page once.</div>'
-        + '</div>'
-        + '</div>';
+      steps='<div style="background:#f8faff;padding:14px;border-radius:10px;border:1.5px solid #bfdbfe;margin-bottom:10px">'
+        +'<div style="font-size:13px;font-weight:700;color:#1e40af;margin-bottom:8px">&#x1F7E6; Chrome or Edge</div>'
+        +'<div style="font-size:13px;display:flex;flex-direction:column;gap:6px">'
+        +'<div>1. Look for <strong>install icon &#x2295;</strong> in the address bar</div>'
+        +'<div>2. Click it &#x2192; click <strong>Install</strong></div>'
+        +'<div style="color:var(--muted);font-size:12px">Or: Menu &#x22EE; &#x2192; Install OmniFlow</div>'
+        +'</div></div>'
+        +'<div style="background:#fff8f0;padding:12px;border-radius:10px;border:1.5px solid #fcd34d;font-size:12px;color:#92400e">'
+        +'<strong>Not seeing the icon?</strong> Make sure manifest.json and sw.js are uploaded to your GitHub repo, then refresh.'
+        +'</div>';
     }
-
-    var modal = document.createElement('div');
-    modal.id = 'installModal';
-    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px';
-    modal.innerHTML = '<div style="background:var(--surface);border-radius:18px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
-      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'
-        + '<div style="font-size:18px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px">'
-          + '<span style="font-size:24px">📲</span> Install OmniFlow'
-        + '</div>'
-        + '<button onclick="document.getElementById('installModal').remove()" style="background:none;border:none;cursor:pointer;font-size:22px;color:var(--muted);line-height:1">×</button>'
-      + '</div>'
-      + steps
-      + '<button onclick="document.getElementById('installModal').remove()" class="btn-primary" style="width:100%;margin-top:18px;padding:12px;font-size:14px">Got it</button>'
-    + '</div>';
-
+    var modal=document.createElement('div');
+    modal.id='omni-install-modal';
+    modal.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px';
+    var inner=document.createElement('div');
+    inner.style.cssText='background:var(--surface);border-radius:18px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)';
+    inner.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'
+      +'<div style="font-size:18px;font-weight:800;color:var(--ink)">&#x1F4F2; Install OmniFlow</div>'
+      +'<button onclick="closeInstallModal()" style="background:none;border:none;cursor:pointer;font-size:24px;color:var(--muted);line-height:1">&times;</button>'
+      +'</div>'+steps
+      +'<button onclick="closeInstallModal()" class="btn-primary" style="width:100%;margin-top:16px;padding:12px;font-size:14px">Got it</button>';
+    modal.appendChild(inner);
+    modal.addEventListener('click',function(e){if(e.target===modal)closeInstallModal();});
     document.body.appendChild(modal);
-    modal.addEventListener('click', function(e){ if(e.target===modal) modal.remove(); });
   }
+
 
   function updateInstallBtn(){
     var btn = document.getElementById('installAppBtn');
