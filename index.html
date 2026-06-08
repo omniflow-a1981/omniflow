@@ -1,7 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- OmniFlow build: 1780902014 -->
 <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -5243,26 +5247,80 @@ function deleteSubdivisionBtn(btn){deleteSubdivision(btn.dataset.coid,btn.datase
 
   function installApp(){
     if(deferredPrompt){
-      // Chrome/Edge/Android — native install prompt
+      // Native browser install prompt available
       deferredPrompt.prompt();
       deferredPrompt.userChoice.then(function(r){
         deferredPrompt = null;
         updateInstallBtn();
       });
-    } else {
-      // Fallback instructions for other browsers
-      var ua = navigator.userAgent.toLowerCase();
-      var isIOS = /iphone|ipad|ipod/.test(ua);
-      var isSafari = /safari/.test(ua) && !/chrome/.test(ua);
-      var isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-      if(isInstalled){
-        alert('OmniFlow is already installed on this device!');
-      } else if(isIOS || isSafari){
-        alert('To install OmniFlow on iPhone/iPad/Safari:\n\n1. Tap the Share button (box with arrow)\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add" — done!');
-      } else {
-        alert('To install OmniFlow:\n\nChrome/Edge: Click the install icon (⊕) in the address bar\n\nOr: Menu (⋮) → "Install OmniFlow" or "Add to Home Screen"');
-      }
+      return;
     }
+    // No native prompt — show elegant install modal
+    var ua = navigator.userAgent.toLowerCase();
+    var isIOS = /iphone|ipad|ipod/.test(ua);
+    var isSafari = /safari/.test(ua) && !/chrome/.test(ua);
+    var isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+    var existingModal = document.getElementById('installModal');
+    if(existingModal) existingModal.remove();
+
+    var steps = '';
+    if(isInstalled){
+      steps = '<div style="text-align:center;padding:20px 0">'
+        + '<div style="font-size:48px;margin-bottom:12px">✅</div>'
+        + '<div style="font-size:16px;font-weight:700;color:var(--ink)">OmniFlow is already installed!</div>'
+        + '<div style="font-size:13px;color:var(--muted);margin-top:6px">You can find it on your desktop or taskbar.</div>'
+        + '</div>';
+    } else if(isIOS || isSafari){
+      steps = '<div style="font-size:13px;color:var(--muted);margin-bottom:16px">Follow these steps in <strong>Safari</strong>:</div>'
+        + '<div style="display:flex;flex-direction:column;gap:12px">'
+        + '<div style="display:flex;align-items:center;gap:12px;background:#f8faff;padding:12px;border-radius:10px">'
+          + '<div style="width:32px;height:32px;border-radius:50%;background:#0ea87a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">1</div>'
+          + '<div>Tap the <strong>Share</strong> button <span style="font-size:18px">⎙</span> at the bottom of Safari</div>'
+        + '</div>'
+        + '<div style="display:flex;align-items:center;gap:12px;background:#f8faff;padding:12px;border-radius:10px">'
+          + '<div style="width:32px;height:32px;border-radius:50%;background:#0ea87a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">2</div>'
+          + '<div>Scroll down and tap <strong>"Add to Home Screen"</strong> <span style="font-size:16px">➕</span></div>'
+        + '</div>'
+        + '<div style="display:flex;align-items:center;gap:12px;background:#f8faff;padding:12px;border-radius:10px">'
+          + '<div style="width:32px;height:32px;border-radius:50%;background:#0ea87a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">3</div>'
+          + '<div>Tap <strong>"Add"</strong> — OmniFlow appears on your home screen!</div>'
+        + '</div>'
+        + '</div>';
+    } else {
+      steps = '<div style="font-size:13px;color:var(--muted);margin-bottom:16px">Choose your method:</div>'
+        + '<div style="display:flex;flex-direction:column;gap:12px">'
+        + '<div style="background:#f8faff;padding:14px;border-radius:10px;border:1.5px solid #bfdbfe">'
+          + '<div style="font-size:13px;font-weight:700;color:#1e40af;margin-bottom:8px">🟦 Chrome or Edge (Recommended)</div>'
+          + '<div style="display:flex;flex-direction:column;gap:8px;font-size:13px">'
+            + '<div>1. Look for the <strong>install icon ⊕</strong> at the right of the address bar</div>'
+            + '<div>2. Click it → click <strong>"Install"</strong></div>'
+            + '<div style="color:var(--muted);font-size:12px">Or: Menu (⋮) → <strong>"Install OmniFlow"</strong></div>'
+          + '</div>'
+        + '</div>'
+        + '<div style="background:#fff8f0;padding:14px;border-radius:10px;border:1.5px solid #fcd34d">'
+          + '<div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px">⚠ Not seeing the install icon?</div>'
+          + '<div style="font-size:12px;color:#78350f">Make sure <strong>manifest.json</strong> and <strong>sw.js</strong> are uploaded to your GitHub repo alongside index.html. Then refresh the page once.</div>'
+        + '</div>'
+        + '</div>';
+    }
+
+    var modal = document.createElement('div');
+    modal.id = 'installModal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px';
+    modal.innerHTML = '<div style="background:var(--surface);border-radius:18px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'
+        + '<div style="font-size:18px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px">'
+          + '<span style="font-size:24px">📲</span> Install OmniFlow'
+        + '</div>'
+        + '<button onclick="document.getElementById('installModal').remove()" style="background:none;border:none;cursor:pointer;font-size:22px;color:var(--muted);line-height:1">×</button>'
+      + '</div>'
+      + steps
+      + '<button onclick="document.getElementById('installModal').remove()" class="btn-primary" style="width:100%;margin-top:18px;padding:12px;font-size:14px">Got it</button>'
+    + '</div>';
+
+    document.body.appendChild(modal);
+    modal.addEventListener('click', function(e){ if(e.target===modal) modal.remove(); });
   }
 
   function updateInstallBtn(){
