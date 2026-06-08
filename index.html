@@ -989,6 +989,48 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   </div>
   <div id="diagResult" style="display:none;margin-bottom:12px"></div>
   <div class="flash-bar" id="adminFlash"><span id="adminFlashMsg"></span></div>
+  <!-- Workflow Labels Card -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title" style="display:flex;align-items:center;gap:8px">
+      <div class="dot" style="background:var(--blue)"></div>
+      Rename Workflow Steps
+      <span style="font-size:11px;font-weight:400;color:var(--muted)">— customise the labels shown in payment requests</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:14px">
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Step 1 — Prepare</label>
+        <input type="text" id="wfl_prepare" placeholder="Prepared" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:600;outline:none;font-family:inherit;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Step 2 — Check</label>
+        <input type="text" id="wfl_check" placeholder="Checked" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:600;outline:none;font-family:inherit;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Step 3 — Approve</label>
+        <input type="text" id="wfl_approve" placeholder="Approved" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:600;outline:none;font-family:inherit;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Step 4 — Verify</label>
+        <input type="text" id="wfl_verify" placeholder="Verified" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:600;outline:none;font-family:inherit;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Step 5 — Pay</label>
+        <input type="text" id="wfl_paid" placeholder="Paid" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:600;outline:none;font-family:inherit;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Finance Label</label>
+        <input type="text" id="wfl_finance" placeholder="Finance" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:600;outline:none;font-family:inherit;box-sizing:border-box">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button class="btn-primary" onclick="saveWorkflowLabels()" style="padding:10px 20px">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+        Save Labels
+      </button>
+      <button class="btn-secondary" onclick="resetWorkflowLabels()" style="padding:10px 16px;font-size:12px">↺ Reset to Defaults</button>
+      <span id="wflMsg" style="font-size:12px;color:var(--teal-dark);font-weight:600"></span>
+    </div>
+  </div>
   <div class="card">
     <div class="card-title"><div class="dot" style="background:var(--red)"></div>Change User Passwords</div>
     <div id="pwGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-bottom:16px"></div>
@@ -1214,6 +1256,21 @@ function getUsers(){
   return USER_DEFS.map(u=>({...u,password:pw[u.username]||DEFAULT_PASSWORDS[u.username]}));
 }
 function isLimitedUser(){return currentUser&&currentUser.accessLevel==='limited';}
+// ── Workflow Step Labels (customisable by admin) ──
+const WORKFLOW_LABELS_DEFAULT = {
+  prepare:  'Prepared',
+  check:    'Checked',
+  approve:  'Approved',
+  verify:   'Verified',
+  paid:     'Paid',
+  finance:  'Finance',
+};
+function getWfLabels(){
+  return Object.assign({}, WORKFLOW_LABELS_DEFAULT, ls('omni-wf-labels')||{});
+}
+function wfLabel(key){ return getWfLabels()[key] || WORKFLOW_LABELS_DEFAULT[key] || key; }
+function saveWfLabels(obj){ ls('omni-wf-labels', obj); }
+
 function isAdmin(){return currentUser&&currentUser.username==='admin';}
 // For limited users: allowed date window = today and yesterday
 function getAllowedDateRange(){
@@ -3003,6 +3060,37 @@ function renderCompanies(){
 }
 
 
+function saveWorkflowLabels(){
+  var keys=['prepare','check','approve','verify','paid','finance'];
+  var obj={};
+  keys.forEach(function(k){
+    var el=document.getElementById('wfl_'+k);
+    if(el&&el.value.trim()) obj[k]=el.value.trim();
+  });
+  saveWfLabels(obj);
+  var msg=document.getElementById('wflMsg');
+  if(msg){msg.textContent='✓ Labels saved!';setTimeout(function(){msg.textContent='';},2500);}
+  // Re-render PR list to pick up new labels
+  if(typeof renderPRList==='function') renderPRList();
+}
+
+function resetWorkflowLabels(){
+  saveWfLabels({});
+  fillWorkflowLabelInputs();
+  var msg=document.getElementById('wflMsg');
+  if(msg){msg.textContent='✓ Reset to defaults';setTimeout(function(){msg.textContent='';},2500);}
+  if(typeof renderPRList==='function') renderPRList();
+}
+
+function fillWorkflowLabelInputs(){
+  var labels=getWfLabels();
+  var keys=['prepare','check','approve','verify','paid','finance'];
+  keys.forEach(function(k){
+    var el=document.getElementById('wfl_'+k);
+    if(el) el.value=labels[k]||WORKFLOW_LABELS_DEFAULT[k]||'';
+  });
+}
+
 function renderAdminSettings(){
   if(!isAdmin()){document.getElementById('pgAdminSettings').innerHTML='<div style="padding:40px;text-align:center;color:var(--muted2)">Admin access only.</div>';return;}
   const pw=getPasswords();
@@ -4259,11 +4347,11 @@ function viewPR(id){
 
   // Build signature + action boxes for each step
   const signers=[
-    {key:'prepared', label:'Prepared by',  canComment:true, canEdit:canEdit, canReverse:false},
-    {key:'checked',  label:'Checked by',   canComment:true, canEdit:false,   canReverse:prCanAct(pr,'checked')&&pr.checked_by},
-    {key:'approved', label:'Approved by',  canComment:true, canEdit:false,   canReverse:prCanAct(pr,'approved')&&pr.approved_by},
-    {key:'verified', label:'Verified by',  canComment:true, canEdit:false,   canReverse:false, canPartial:isAdmin&&next==='paid', canReject:isAdmin&&(next==='verified'||next==='paid')},
-    {key:'paid',     label:'Paid by',      canComment:true, canEdit:false,   canReverse:false},
+    {key:'prepared', label:wfLabel('prepare')+' by',  canComment:true, canEdit:canEdit, canReverse:false},
+    {key:'checked',  label:wfLabel('check')+' by',   canComment:true, canEdit:false,   canReverse:prCanAct(pr,'checked')&&pr.checked_by},
+    {key:'approved', label:wfLabel('approve')+' by',  canComment:true, canEdit:false,   canReverse:prCanAct(pr,'approved')&&pr.approved_by},
+    {key:'verified', label:wfLabel('verify')+' by',  canComment:true, canEdit:false,   canReverse:false, canPartial:isAdmin&&next==='paid', canReject:isAdmin&&(next==='verified'||next==='paid')},
+    {key:'paid',     label:wfLabel('paid')+' by',      canComment:true, canEdit:false,   canReverse:false},
   ];
 
   document.getElementById('prDetailContent').innerHTML=`
@@ -4786,7 +4874,7 @@ async function actOnPR(id){
     try{
       await fetch(PR_SB+'/payment_requests?id=eq.'+id,{method:'PATCH',headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(upd)});
       closePRDetail(); await loadPayRequests(); renderPRList();
-      showFlash('✓ Verified'+(partialAmt>0?' — partial amount: '+fmt(partialAmt):''),'prFlash','prFlashMsg');
+      showFlash('✓ '+wfLabel('verify')+(partialAmt>0?' — partial amount: '+fmt(partialAmt):''),'prFlash','prFlashMsg');
     // Link to Outstanding Payables
     try{
       const divCode=(upd.division||pr.division||'').split('.')[0].trim();
