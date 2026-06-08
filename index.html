@@ -534,7 +534,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   <a class="nav-item" href="#" onclick="nav('Balances',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Balances
   </a>
-  <a class="nav-item" href="#" onclick="nav('Outstanding',this)">
+  <a class="nav-item" href="#" onclick="nav('Outstanding',this)" id="outstandingNav">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Outstanding Income
   </a>
   <a class="nav-item" href="#" onclick="nav('Payables',this)" id="payablesNav">
@@ -1622,6 +1622,20 @@ function applyAccessLevel(){
     document.getElementById('limitedBanner').style.display='none';
     document.getElementById('adminNav').style.display='none';
     if(prNav){nav('PayReq',prNav);}else{nav('Dashboard',document.querySelector('.nav-item'));}
+  } else if(currentUser&&currentUser.accessLevel==='pr_out'){
+    // PR access + Outstanding Income (Matisan check/approve)
+    allNavItems.forEach(item=>item.style.display='none');
+    const prNav=document.getElementById('payreqNav');
+    const outNav=document.getElementById('outstandingNav');
+    const soNav=document.getElementById('signoutNav');
+    if(prNav){prNav.style.display='flex';}
+    if(outNav){outNav.style.display='flex';}
+    if(soNav){soNav.style.display='flex';}
+    document.getElementById('limitedBanner').style.display='none';
+    document.getElementById('adminNav').style.display='none';
+    // Filter outstanding to Matisan (ME) company only
+    if(currentUser.company) window._outFilter=currentUser.company;
+    if(prNav){nav('PayReq',prNav);}
   } else {
     allNavItems.forEach(item=>item.style.display='');
     document.getElementById('limitedBanner').style.display='none';
@@ -1727,6 +1741,9 @@ async function initApp(){
 // ══════════════════════════════════════
 function nav(id,el){
   // Limited users can only access Entry and Ledger
+  if(currentUser&&currentUser.accessLevel==='pr_out'&&id!=='PayReq'&&id!=='Outstanding'){
+    return; // pr_out can only see PR and Outstanding
+  }
   if(isLimitedUser()&&!LIMITED_PAGES.includes(id)){
     showAccessDenied();return;
   }
@@ -2098,12 +2115,31 @@ function setType(t){txType=t;document.getElementById('btnIn').classList.toggle('
 async function deleteTx(id){
   if(isLimitedUser()){const tx=transactions.find(t=>t.id===id);if(!tx||!canEditTx(tx)){alert('You can only delete transactions from today or yesterday.');return;}}
   if(!confirm('Delete this transaction?'))return;
-  try{ await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?id=eq.'+id,{method:'DELETE',headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE'}}); }catch(e){}
+  // Remove from local first (instant UI feedback)
   transactions=transactions.filter(t=>t.id!==id);
   ls('omni-tx',transactions);
   renderAll();
+  // Then delete from Supabase
+  try{
+    await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?id=eq.'+id,{
+      method:'DELETE',
+      headers:{
+        'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
+        'Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE'
+      }
+    });
+  }catch(e){ console.warn('Delete from Supabase failed:',e); }
 }
-function clearAll(){transactions=[];ls('omni-tx',transactions);renderAll()}
+async function clearAll(){
+  if(!confirm('Clear ALL transactions from ledger?')) return;
+  transactions=[];ls('omni-tx',[]);renderAll();
+  try{
+    await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?id=neq.00000000-0000-0000-0000-000000000000',{
+      method:'DELETE',
+      headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Prefer':'return=minimal'}
+    });
+  }catch(e){}
+}
 
 // ══════════════════════════════════════
 // EDIT TRANSACTION
@@ -2936,6 +2972,14 @@ async function updateOutPaid(id,val){const o=outstandings.find(x=>x.id===id);if(
 async function deleteOut(id){if(!confirm('Delete this item?'))return;try{await apiCall('DELETE','/outstanding/'+id);}catch(e){}outstandings=outstandings.filter(o=>o.id!==id);ls('omni-out',outstandings);renderOutstanding();renderDashboard()}
 
 function renderOutstanding(){
+  // If pr_out user (me_check/me_approve), only show Matisan outstanding
+  if(currentUser&&currentUser.accessLevel==='pr_out'&&currentUser.company){
+    const coSel=document.getElementById('outCo');
+    if(coSel&&!coSel.value){
+      // Pre-filter to their company
+      coSel.value=currentUser.company;
+    }
+  }
   const tot=outstandings.reduce((s,o)=>s+o.amt,0);
   const col=outstandings.reduce((s,o)=>s+o.paid,0);
   const pend=outstandings.filter(o=>o.status==='pending').length;
@@ -3310,7 +3354,7 @@ function renderAdminSettings(){
   // ── Other users' passwords — admin uses Old/New/Confirm ──
   USER_DEFS.filter(u=>u.username!=='admin').forEach(u=>{
     const isLtd=u.accessLevel==='limited';
-    const isPrOnly=u.accessLevel==='pr_only';
+    const isPrOnly=u.accessLevel==='pr_only'||u.accessLevel==='pr_out';
     const badge=isLtd?'Limited':isPrOnly?'PR Only':'Full';
     const badgeBg=isLtd?'var(--amber-light)':isPrOnly?'var(--blue-light)':'var(--teal-light)';
     const badgeCol=isLtd?'#92400e':isPrOnly?'var(--blue-dark)':'var(--teal-dark)';
@@ -3501,15 +3545,41 @@ async function deleteSinglePR(prId){
   }catch(e){ alert('Network error: '+e.message); }
 }
 
-function clearAllManualTransactions(){
+async function clearAllManualTransactions(){
   if(!isAdmin()){ alert('Admin only.'); return; }
-  const count=transactions.length;
-  if(!count){ alert('No manual transactions to clear.'); return; }
-  if(!confirm('Delete ALL '+count+' manual transactions?\nPR-linked entries will be kept.')) return;
-  transactions=[];
-  ls('omni-tx',transactions);
-  showFlash('✓ All manual transactions cleared','ledFlash','ledFlashMsg');
-  renderAll();
+  if(!confirm('Delete ALL manual transactions from the ledger?\nPR-linked entries will be kept.\nThis cannot be undone.')) return;
+  showFlash('⏳ Deleting manual transactions...','ledFlash','ledFlashMsg');
+  try{
+    // Delete all non-PR transactions from Supabase
+    // Transactions without pr_id are manual
+    const res = await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?pr_id=is.null',{
+      method:'DELETE',
+      headers:{
+        'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
+        'Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
+        'Prefer':'return=minimal'
+      }
+    });
+    if(res.ok||res.status===204){
+      transactions=[];
+      ls('omni-tx',[]);
+      showFlash('✓ All manual transactions deleted','ledFlash','ledFlashMsg');
+      renderAll();
+    } else {
+      const err=await res.text();
+      // Fallback: delete locally only
+      transactions=transactions.filter(t=>t.pr_id);
+      ls('omni-tx',transactions);
+      showFlash('✓ Cleared locally (Supabase: '+res.status+')','ledFlash','ledFlashMsg');
+      renderAll();
+    }
+  }catch(e){
+    // Network error — clear locally
+    transactions=transactions.filter(t=>t.pr_id);
+    ls('omni-tx',transactions);
+    showFlash('✓ Cleared locally (offline)','ledFlash','ledFlashMsg');
+    renderAll();
+  }
 }
 
 async function clearLedgerOfPREntries(){
