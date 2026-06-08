@@ -1218,12 +1218,12 @@ const USER_DEFS = [
   {username:'finance',    role:'finance',    displayRole:'Finance Officer', initials:'FO', accessLevel:'full',    company:null, prRole:'paid'},
   {username:'wanofi',     role:'limited',    displayRole:'Wanofi Manager',  initials:'WE', accessLevel:'limited', company:'WE', prRole:null},
   {username:'matisan',    role:'limited',    displayRole:'Matisan Manager', initials:'ME', accessLevel:'limited', company:'ME', prRole:null},
-  {username:'we_prepare', role:'pr_prepare', displayRole:'WE Preparer',    initials:'WP', accessLevel:'pr_only', company:'WE', prRole:'prepare'},
-  {username:'we_check',   role:'pr_check',   displayRole:'WE Checker',     initials:'WC', accessLevel:'pr_only', company:'WE', prRole:'check'},
-  {username:'we_approve', role:'pr_approve', displayRole:'WE Approver',    initials:'WA', accessLevel:'pr_only', company:'WE', prRole:'approve'},
-  {username:'me_prepare', role:'pr_prepare', displayRole:'ME Preparer',    initials:'MP', accessLevel:'pr_only', company:'ME', prRole:'prepare'},
-  {username:'me_check',   role:'pr_check',   displayRole:'ME Checker',     initials:'MC', accessLevel:'pr_only', company:'ME', prRole:'check'},
-  {username:'me_approve', role:'pr_approve', displayRole:'ME Approver',    initials:'MA', accessLevel:'pr_only', company:'ME', prRole:'approve'},
+  {username:'we_prepare', role:'pr_prepare', displayRole:'WE Preparer',    initials:'HT', accessLevel:'pr_only', company:'WE', prRole:'prepare', realName:'Hareg Tesfaye'},
+  {username:'we_check',   role:'pr_check',   displayRole:'WE Checker',     initials:'TT', accessLevel:'pr_only', company:'WE', prRole:'check',   realName:'Tamrat Tilahun'},
+  {username:'we_approve', role:'pr_approve', displayRole:'WE Approver',    initials:'AF', accessLevel:'pr_only', company:'WE', prRole:'approve', realName:'Ashenafi Fufa'},
+  {username:'me_prepare', role:'pr_prepare', displayRole:'ME Preparer',    initials:'MG', accessLevel:'pr_only', company:'ME', prRole:'prepare', realName:'Meadnesh Gebeyehu'},
+  {username:'me_check',   role:'pr_check',   displayRole:'ME Checker',     initials:'AM', accessLevel:'pr_only', company:'ME', prRole:'check',   realName:'Askale Melese'},
+  {username:'me_approve', role:'pr_approve', displayRole:'ME Approver',    initials:'TT', accessLevel:'pr_only', company:'ME', prRole:'approve', realName:'Tamrat Tilahun'},
 ];
 
 // Limited users: only Entry + Ledger, only today and yesterday
@@ -1422,7 +1422,9 @@ function initLogin(){
       const names=ls('omni-display-names')||{};
       const chip=document.createElement('span');
       chip.className='login-user-chip';
-      chip.textContent=(names[u.username]||u.username)+(u.prRole?' ('+u.prRole+')':'');
+      const realName = u.realName || names[u.username] || u.username;
+        const roleMap = {prepare:'prepare', check:'check', approve:'approve'};
+        chip.textContent = realName + (u.prRole ? ' ('+u.prRole+')' : '');
       chip.style.borderColor=grp.color+'55';
       chip.onclick=()=>{
         document.getElementById('loginUser').value=u.username;
@@ -1562,6 +1564,11 @@ function initAppFromCache(){
 
   populateCoSelects();
   updateDivs();
+  // Seed display names from USER_DEFS realName
+  var dn=ls('omni-display-names')||{};
+  var changed=false;
+  USER_DEFS.forEach(function(u){if(u.realName&&!dn[u.username]){dn[u.username]=u.realName;changed=true;}});
+  if(changed) ls('omni-display-names',dn);
   setTimeout(populatePayBankDrop,100);
   showMobileUI();
   updateOnlineBadge();
@@ -2297,32 +2304,42 @@ function renderDashboard(){
 // LEDGER
 // ══════════════════════════════════════
 function renderLedger(){
-  let filtered=filterByPeriod([...getMergedTransactions()],ledgerPeriod,'ldfbFrom','ldfbTo');
+  // Separate manual vs PR transactions
+  const allMerged = filterByPeriod([...getMergedTransactions()],ledgerPeriod,'ldfbFrom','ldfbTo');
   const co=document.getElementById('fltCo').value;
   const div=document.getElementById('fltDiv').value;
   const type=document.getElementById('fltType').value;
-  filtered=filtered.reverse().filter(t=>{
+  let filtered=allMerged.reverse().filter(t=>{
     if(co&&t.co!==co)return false;
     if(div&&t.divCode!==div)return false;
     if(type&&t.type!==type)return false;
     return true;
   });
-  document.getElementById('ledgerCount').textContent=filtered.length+' of '+transactions.length+' transactions';
+  const manualCount=transactions.length;
+  document.getElementById('ledgerCount').textContent=filtered.length+' entries ('+manualCount+' manual)';
   const body=document.getElementById('ledgerBody');
-  if(!filtered.length){body.innerHTML='<div class="empty-state">'+(transactions.length===0?'No transactions yet. Start adding!':'No transactions match these filters.')+'</div>';return}
-  body.innerHTML=filtered.map(tx=>`<div class="l-row">
-    <span style="color:var(--muted);font-size:11px">${tx.date}</span>
-    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${tx.ref}${tx.note?' — '+tx.note:''}">${tx.ref}</span>
-    <span><span class="chip ${tx.type}">${tx.divCode}</span></span>
-    <span style="color:var(--teal-dark);font-weight:700;font-size:12px">${tx.type==='in'?fmt(tx.amt):'—'}</span>
-    <span style="color:var(--teal-dark);font-size:11px;opacity:.8">${tx.type==='in'&&tx.amtUsd?fmtUsd(tx.amtUsd):'—'}</span>
-    <span style="color:var(--red);font-weight:700;font-size:12px">${tx.type==='out'?fmt(tx.amt):'—'}</span>
-    <span style="color:var(--red);font-size:11px;opacity:.8">${tx.type==='out'&&tx.amtUsd?fmtUsd(tx.amtUsd):'—'}</span>
-    <div class="action-btns">
-      <button class="edit-btn" onclick="openEditModal(${tx.id})" title="Edit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-      <button class="del-btn" onclick="deleteTx(${tx.id})" title="Delete"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
-    </div>
-  </div>`).join('');
+  if(!filtered.length){body.innerHTML='<div class="empty-state">'+(manualCount===0?'No transactions yet. Start adding!':'No transactions match these filters.')+'</div>';return;}
+  body.innerHTML=filtered.map(tx=>{
+    const isManual=!tx.pr_id&&tx.id&&typeof tx.id==='number';
+    const isPR=!!tx.pr_id;
+    const sourceTag=isPR
+      ?'<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#dbeafe;color:#1e40af;font-weight:700;flex-shrink:0">PR</span>'
+      :'<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#f3f4f6;color:#6b7280;font-weight:700;flex-shrink:0">Manual</span>';
+    const editDelBtns=isManual
+      ?'<button class="edit-btn" onclick="openEditModal('+tx.id+')" title="Edit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
+        +'<button class="del-btn" onclick="deleteTx('+tx.id+')" title="Delete"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>'
+      :'<span style="font-size:10px;color:var(--muted)">PR auto</span>';
+    return '<div class="l-row">'
+      +'<span style="color:var(--muted);font-size:11px">'+tx.date+'</span>'
+      +'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;display:flex;align-items:center;gap:4px">'+sourceTag+' '+(tx.ref||'')+'</span>'
+      +'<span><span class="chip '+tx.type+'">'+tx.divCode+'</span></span>'
+      +'<span style="color:var(--teal-dark);font-weight:700;font-size:12px">'+(tx.type==='in'?fmt(tx.amt):'—')+'</span>'
+      +'<span style="color:var(--teal-dark);font-size:11px;opacity:.8">'+(tx.type==='in'&&tx.amtUsd?fmtUsd(tx.amtUsd):'—')+'</span>'
+      +'<span style="color:var(--red);font-weight:700;font-size:12px">'+(tx.type==='out'?fmt(tx.amt):'—')+'</span>'
+      +'<span style="color:var(--red);font-size:11px;opacity:.8">'+(tx.type==='out'&&tx.amtUsd?fmtUsd(tx.amtUsd):'—')+'</span>'
+      +'<div class="action-btns">'+editDelBtns+'</div>'
+    +'</div>';
+  }).join('');
 }
 function clearFilters(){document.getElementById('fltCo').value='';document.getElementById('fltDiv').value='';document.getElementById('fltType').value='';renderLedger()}
 
@@ -3732,7 +3749,14 @@ function getSubsForDiv(divCode){
   return [];
 }
 
-function prDispName(u){const n=ls('omni-display-names')||{};return n[u]||u;}
+function prDispName(u){
+  const n=ls('omni-display-names')||{};
+  if(n[u]) return n[u];
+  // Try realName from USER_DEFS
+  const ud=USER_DEFS.find(function(x){return x.username===u;});
+  if(ud&&ud.realName) return ud.realName;
+  return u;
+}
 
 function prCanAct(pr,step){
   if(!currentUser) return false;
