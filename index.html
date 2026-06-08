@@ -656,6 +656,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     <div class="btn-row">
       <div style="display:flex;gap:8px">
       <button onclick="clearLedgerOfPREntries()" style="padding:8px 14px;background:#fff5f5;border:1.5px solid #fca5a5;color:#dc2626;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">🗑 Clear PR Entries</button>
+      <button onclick="clearAllManualTransactions()" style="padding:8px 14px;background:#fff5f5;border:1.5px solid #fca5a5;color:#dc2626;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">🗑 Clear All Manual</button>
       <button class="btn-secondary" onclick="copyCSV()">Export CSV</button>
     </div>
       <button class="btn-danger" onclick="if(confirm('Clear ALL transactions?'))clearAll()">Clear all</button>
@@ -1283,9 +1284,22 @@ function getDefaultBalances(){
   ['WE1','WE2','WE3','ME1','ME2','ME3'].forEach(function(div){
     var stored=ls('omni-banks-'+div);
     var banks=stored&&stored.length?stored:(DIV_BANKS_DEFAULT&&DIV_BANKS_DEFAULT[div]?DIV_BANKS_DEFAULT[div]:[]);
-    result[div]=Math.round(banks.reduce(function(s,b){return s+(b.beg||0);},0));
+    var total=banks.reduce(function(s,b){return s+(b.beg||0);},0);
+    result[div]=total; // exact ETB total, not rounded
   });
   return result;
+}
+
+function syncBalancesFromBankRegisters(){
+  // Always keep balances[] in sync with bank register totals
+  var changed=false;
+  ['WE1','WE2','WE3','ME1','ME2','ME3'].forEach(function(div){
+    var stored=ls('omni-banks-'+div);
+    var banks=stored&&stored.length?stored:(DIV_BANKS_DEFAULT&&DIV_BANKS_DEFAULT[div]?DIV_BANKS_DEFAULT[div]:[]);
+    var total=banks.reduce(function(s,b){return s+(b.beg||0);},0);
+    if(balances[div]!==total){ balances[div]=total; changed=true; }
+  });
+  if(changed) ls('omni-bal',balances);
 }
 // Keep for backward compat — will be overridden by getDefaultBalances()
 const DEFAULT_BAL = {WE1:0,WE2:0,WE3:0,ME1:0,ME2:0,ME3:0};
@@ -2320,7 +2334,7 @@ function renderLedger(){
   const body=document.getElementById('ledgerBody');
   if(!filtered.length){body.innerHTML='<div class="empty-state">'+(manualCount===0?'No transactions yet. Start adding!':'No transactions match these filters.')+'</div>';return;}
   body.innerHTML=filtered.map(tx=>{
-    const isManual=!tx.pr_id&&tx.id&&typeof tx.id==='number';
+    const isManual=!tx.pr_id; // All non-PR transactions are manual and deletable
     const isPR=!!tx.pr_id;
     const sourceTag=isPR
       ?'<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#dbeafe;color:#1e40af;font-weight:700;flex-shrink:0">PR</span>'
@@ -2459,6 +2473,7 @@ function getMe1Banks(){ return ls('omni-me1-banks') || JSON.parse(JSON.stringify
 function saveMe1Banks(b){ ls('omni-me1-banks',b); var t=b.reduce(function(s,x){return s+(x.beg||0);},0); balances['ME1']=Math.round(t); ls('omni-bal',balances); }
 
 function renderBalances(){
+  syncBalancesFromBankRegisters(); // always sync opening balances from bank registers
   const g=document.getElementById('balGrid');g.innerHTML='';let tB=0,tI=0,tO=0,tBusd=0,tIusd=0,tOusd=0;
   getAllDivs().forEach(d=>{
     const beg=balances[d.code]||0;
@@ -3342,15 +3357,14 @@ async function changeUserPassword(username){
   errEl.style.display='none';
 
   const pw=getPasswords();
-  const currentPw=pw[username]||'';
+  // Fall back to DEFAULT_PASSWORDS if no stored password yet
+  const currentPw=pw[username]||DEFAULT_PASSWORDS[username]||'';
 
-  // Admin can bypass old password check for other users OR must match
-  if(oldEl.value!==currentPw && oldEl.value!==''){
-    errEl.textContent='Current password is incorrect.';
-    errEl.style.display='block';return;
-  }
-  if(oldEl.value==='' && !isAdmin()){
-    errEl.textContent='Please enter the current password.';
+  // Admin can leave old password blank (bypass) OR it must match current
+  if(isAdmin() && oldEl.value===''){
+    // Admin bypass — allowed
+  } else if(oldEl.value!==currentPw){
+    errEl.textContent='Current password is incorrect. Default is: '+currentPw;
     errEl.style.display='block';return;
   }
   if(newEl.value.length<6){
@@ -3485,6 +3499,17 @@ async function deleteSinglePR(prId){
       renderPRList(); renderAll();
     } else { alert('Error: '+await res.text()); }
   }catch(e){ alert('Network error: '+e.message); }
+}
+
+function clearAllManualTransactions(){
+  if(!isAdmin()){ alert('Admin only.'); return; }
+  const count=transactions.length;
+  if(!count){ alert('No manual transactions to clear.'); return; }
+  if(!confirm('Delete ALL '+count+' manual transactions?\nPR-linked entries will be kept.')) return;
+  transactions=[];
+  ls('omni-tx',transactions);
+  showFlash('✓ All manual transactions cleared','ledFlash','ledFlashMsg');
+  renderAll();
 }
 
 async function clearLedgerOfPREntries(){
