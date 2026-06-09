@@ -1395,50 +1395,52 @@ function initLogin(){
 }
 
 async function doLogin(){
-  const username=document.getElementById('loginUser').value.trim();
-  const password=document.getElementById('loginPass').value;
+  const un=document.getElementById('loginUser').value.trim().toLowerCase();
+  const pw=document.getElementById('loginPass').value.trim();
   const errEl=document.getElementById('loginErr');
   const btn=document.querySelector('.login-btn');
   btn.textContent='Signing in...'; btn.disabled=true;
+  errEl.style.display='none';
 
-  // Check local user definitions first
-  const localUsers=getUsers();
-  const localUser=localUsers.find(x=>x.username===username&&x.password===password);
-  if(localUser){
-    authToken=btoa(JSON.stringify({username:localUser.username,role:localUser.role,exp:Date.now()+86400000*30}));
+  // Find user
+  const def=USER_DEFS.find(u=>u.username===un);
+  if(!def){
+    errEl.textContent='Unknown username: '+un;
+    errEl.style.display='block';
+    btn.textContent='Sign In →'; btn.disabled=false;
+    return;
+  }
+
+  // Default password always works
+  const defaultPw=DEFAULT_PASSWORDS[un]||'';
+
+  // Fetch cloud password (admin may have changed it)
+  let cloudPw=null;
+  try{
+    const ctrl=new AbortController();
+    setTimeout(()=>ctrl.abort(),4000);
+    const r=await fetch(SUPA_URL+'/balances?div_code=eq.__pw__'+encodeURIComponent(un)+'&select=note',{
+      headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON},
+      signal:ctrl.signal
+    });
+    if(r.ok){const rows=await r.json();if(rows?.length&&rows[0].note)cloudPw=rows[0].note;}
+  }catch(e){}
+
+  // Accept: default password OR admin-set cloud password
+  const validPws=[defaultPw,cloudPw].filter(Boolean);
+  if(validPws.includes(pw)){
+    authToken=btoa(JSON.stringify({username:def.username,role:def.role,exp:Date.now()+86400000*30}));
     localStorage.setItem('omni-token',authToken);
-    currentUser={...localUser};
+    currentUser={...def};
     localStorage.setItem('omni-session-user',JSON.stringify(currentUser));
-    errEl.style.display='none';
     btn.textContent='Sign In →'; btn.disabled=false;
     showApp();
     return;
   }
 
-  // Try Supabase (for password changes made via admin)
-  try{
-    const res=await fetch(SUPA_URL+'/users?username=eq.'+encodeURIComponent(username)+'&select=*',
-      {headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}});
-    if(res.ok){
-      const users=await res.json();
-      if(users&&users.length&&users[0].password===password){
-        const u=users[0];
-        const def=USER_DEFS.find(x=>x.username===u.username)||{};
-        const pw=getPasswords(); pw[u.username]=password; ls('omni-passwords',pw);
-        authToken=btoa(JSON.stringify({username:u.username,role:def.role||u.role,exp:Date.now()+86400000*30}));
-        localStorage.setItem('omni-token',authToken);
-        currentUser={...def,username:u.username,role:def.role||u.role,initials:u.initials||def.initials||'??'};
-        localStorage.setItem('omni-session-user',JSON.stringify(currentUser));
-        errEl.style.display='none';
-        btn.textContent='Sign In →'; btn.disabled=false;
-        showApp();
-        return;
-      }
-    }
-  }catch(e){console.warn('Supabase login check:',e.message);}
-
+  // Show helpful error with default
+  errEl.textContent='Incorrect password. Default is: '+defaultPw;
   errEl.style.display='block';
-  errEl.textContent='Incorrect username or password.';
   btn.textContent='Sign In →'; btn.disabled=false;
 }
 
