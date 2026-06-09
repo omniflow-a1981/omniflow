@@ -1682,6 +1682,23 @@ function applyAccessLevel(){
   }
 }
 
+function doSignOut(){
+  if(!confirm('Sign out of OmniFlow?')) return;
+  // Clear all session data
+  authToken = null;
+  currentUser = null;
+  localStorage.removeItem('omni-token');
+  localStorage.removeItem('omni-session-user');
+  // Hide app, show login
+  document.getElementById('appLayout').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginErr').style.display = 'none';
+  // Re-init login chips
+  initLogin();
+}
+
 // ══════════════════════════════════════
 // APP INIT
 // ══════════════════════════════════════
