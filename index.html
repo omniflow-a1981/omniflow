@@ -1467,87 +1467,70 @@ function initLogin(){
 }
 
 async function doLogin(){
-  const username=document.getElementById('loginUser').value.trim();
-  const password=document.getElementById('loginPass').value;
-  const errEl=document.getElementById('loginErr');
-  const btn=document.querySelector('.login-btn');
-  btn.textContent='Signing in...'; btn.disabled=true;
+  const username = document.getElementById('loginUser').value.trim().toLowerCase();
+  const password = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginErr');
+  const btn = document.querySelector('.login-btn');
+  btn.textContent = 'Signing in...'; btn.disabled = true;
+  errEl.style.display = 'none';
 
-  // Check local user definitions first
-  const localUsers=getUsers();
-  const localUser=localUsers.find(x=>x.username===username&&x.password===password);
-  if(localUser){
-    authToken=btoa(JSON.stringify({username:localUser.username,role:localUser.role,exp:Date.now()+86400000*30}));
-    localStorage.setItem('omni-token',authToken);
-    currentUser={...localUser};
-    localStorage.setItem('omni-session-user',JSON.stringify(currentUser));
-    errEl.style.display='none';
+  const def = USER_DEFS.find(x => x.username === username);
+  if(!def){
+    errEl.style.display='block';
+    errEl.textContent='Unknown username.';
     btn.textContent='Sign In →'; btn.disabled=false;
-    showApp();
     return;
   }
 
-  // Password not in local — try fetching latest from Supabase cloud
+  // ── STEP 1: Fetch password from Supabase (cloud source of truth) ──
+  let cloudPw = null;
   try{
-    const pwRes=await fetch(SUPA_URL+'/balances?div_code=eq.__pw__'+encodeURIComponent(username)+'&select=note',{
+    const r = await fetch(SUPA_URL+'/balances?div_code=eq.__pw__'+encodeURIComponent(username)+'&select=note',{
       headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}
     });
-    if(pwRes.ok){
-      const rows=await pwRes.json();
-      if(rows&&rows.length&&rows[0].note===password){
-        const pw=getPasswords(); pw[username]=password; ls('omni-passwords',pw);
-        const def=USER_DEFS.find(x=>x.username===username)||{};
-        authToken=btoa(JSON.stringify({username,role:def.role||'user',exp:Date.now()+86400000*30}));
-        localStorage.setItem('omni-token',authToken);
-        currentUser={...def,username,role:def.role||'user'};
-        localStorage.setItem('omni-session-user',JSON.stringify(currentUser));
-        errEl.style.display='none';
-        btn.textContent='Sign In →'; btn.disabled=false;
-        showApp();
-        return;
-      }
+    if(r.ok){
+      const rows = await r.json();
+      if(rows && rows.length && rows[0].note) cloudPw = rows[0].note;
     }
-  }catch(e){ console.warn('Cloud pw check:',e.message); }
+  }catch(e){ console.warn('Cloud pw fetch failed:', e.message); }
 
-  // Try Supabase (for password changes made via admin)
-  try{
-    const res=await fetch(SUPA_URL+'/users?username=eq.'+encodeURIComponent(username)+'&select=*',
-      {headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}});
-    if(res.ok){
-      const users=await res.json();
-      if(users&&users.length&&users[0].password===password){
-        const u=users[0];
-        const def=USER_DEFS.find(x=>x.username===u.username)||{};
-        const pw=getPasswords(); pw[u.username]=password; ls('omni-passwords',pw);
-        authToken=btoa(JSON.stringify({username:u.username,role:def.role||u.role,exp:Date.now()+86400000*30}));
-        localStorage.setItem('omni-token',authToken);
-        currentUser={...def,username:u.username,role:def.role||u.role,initials:u.initials||def.initials||'??'};
-        localStorage.setItem('omni-session-user',JSON.stringify(currentUser));
-        errEl.style.display='none';
-        btn.textContent='Sign In →'; btn.disabled=false;
-        showApp();
-        return;
-      }
-    }
-  }catch(e){console.warn('Supabase login check:',e.message);}
+  // ── STEP 2: Determine active password ──
+  // Cloud password wins over default; if no cloud pw, use default
+  const activePw = cloudPw || DEFAULT_PASSWORDS[username] || '';
 
-  errEl.style.display='block';
-  errEl.textContent='Incorrect username or password.';
-  btn.textContent='Sign In →'; btn.disabled=false;
+  if(password === activePw){
+    // Cache locally for offline use
+    const pw = ls('omni-passwords') || {};
+    pw[username] = activePw;
+    ls('omni-passwords', pw);
+    _loginSuccess(def, btn, errEl);
+    return;
+  }
+
+  // ── STEP 3: Try cached local password (offline fallback) ──
+  const localPw = (ls('omni-passwords')||{})[username] || DEFAULT_PASSWORDS[username] || '';
+  if(password === localPw){
+    _loginSuccess(def, btn, errEl);
+    return;
+  }
+
+  // All failed
+  errEl.style.display = 'block';
+  errEl.textContent = 'Incorrect password.';
+  btn.textContent = 'Sign In →'; btn.disabled = false;
 }
 
-function doSignOut(){
-  if(!confirm('Sign out of OmniFlow?'))return;
-  authToken=null;
-  currentUser=null;
-  localStorage.removeItem('omni-token');
-  localStorage.removeItem('omni-session-user');
-  ls('omni-session',null);
-  document.getElementById('loginScreen').style.display='flex';
-  document.getElementById('appLayout').style.display='none';
-  document.getElementById('loginUser').value='';
-  document.getElementById('loginPass').value='';
+function _loginSuccess(userDef, btn, errEl){
+  authToken = btoa(JSON.stringify({username:userDef.username, role:userDef.role, exp:Date.now()+86400000*30}));
+  localStorage.setItem('omni-token', authToken);
+  currentUser = Object.assign({}, userDef);
+  localStorage.setItem('omni-session-user', JSON.stringify(currentUser));
+  if(errEl) errEl.style.display = 'none';
+  if(btn){ btn.textContent = 'Sign In →'; btn.disabled = false; }
+  showApp();
 }
+
+
 
 async function showApp(){
   document.getElementById('loginScreen').style.display='none';
@@ -1584,25 +1567,25 @@ function initAppFromCache(){
   document.getElementById('fDate').value=new Date().toISOString().slice(0,10);
 
   // Load from cache
-  // Load cloud passwords (cross-device sync) — reads from balances table
+  // Pre-load ALL passwords from Supabase into local cache (background)
   (async function(){
     try{
-      const pwRes=await fetch(SUPA_URL+'/balances?div_code=like.__pw__*&select=div_code,note',{
+      const r = await fetch(SUPA_URL+'/balances?div_code=like.__pw__*&select=div_code,note',{
         headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}
       });
-      if(pwRes.ok){
-        const rows=await pwRes.json();
-        if(rows&&rows.length){
-          const cloudPw={};
-          rows.forEach(function(r){
-            var uname=r.div_code.replace('__pw__','');
-            if(uname&&r.note) cloudPw[uname]=r.note;
+      if(r.ok){
+        const rows = await r.json();
+        if(rows && rows.length){
+          const pw = Object.assign({}, DEFAULT_PASSWORDS);
+          rows.forEach(function(row){
+            const uname = row.div_code.replace('__pw__','');
+            if(uname && row.note) pw[uname] = row.note;
           });
-          ls('omni-passwords',Object.assign({},DEFAULT_PASSWORDS,cloudPw));
-          console.log('Loaded cloud passwords for:',Object.keys(cloudPw).join(', '));
+          ls('omni-passwords', pw);
+          console.log('All passwords synced from cloud:', rows.length, 'users');
         }
       }
-    }catch(e){ console.warn('Cloud pw load failed:',e.message); }
+    }catch(e){ console.warn('Password pre-load failed:', e.message); }
   })();
   transactions = ls('omni-tx')||[];
   balances     = ls('omni-bal')||getDefaultBalances();
@@ -3453,48 +3436,58 @@ function renderAdminSettings(){
 }
 
 async function changeUserPassword(username){
-  const oldEl=document.getElementById('oldpw_'+username);
-  const newEl=document.getElementById('newpw_'+username);
-  const confEl=document.getElementById('confpw_'+username);
-  const errEl=document.getElementById('err_'+username);
-  errEl.style.display='none';
+  const oldEl = document.getElementById('oldpw_'+username);
+  const newEl = document.getElementById('newpw_'+username);
+  const confEl = document.getElementById('confpw_'+username);
+  const errEl = document.getElementById('err_'+username);
+  if(errEl) errEl.style.display = 'none';
 
-  const pw=getPasswords();
-  // Fall back to DEFAULT_PASSWORDS if no stored password yet
-  const currentPw=pw[username]||DEFAULT_PASSWORDS[username]||'';
+  const newPw = newEl ? newEl.value : '';
+  const confPw = confEl ? confEl.value : '';
 
-  // Admin can leave old password blank (bypass) OR it must match current
-  if(isAdmin() && oldEl.value===''){
-    // Admin bypass — allowed
-  } else if(oldEl.value!==currentPw){
-    errEl.textContent='Current password is incorrect. Default is: '+currentPw;
-    errEl.style.display='block';return;
+  // Validate
+  if(newPw.length < 4){
+    if(errEl){ errEl.textContent='Password must be at least 4 characters.'; errEl.style.display='block'; } return;
   }
-  if(newEl.value.length<6){
-    errEl.textContent='New password must be at least 6 characters.';
-    errEl.style.display='block';return;
-  }
-  if(newEl.value!==confEl.value){
-    errEl.textContent='New password and confirmation do not match.';
-    errEl.style.display='block';return;
+  if(newPw !== confPw){
+    if(errEl){ errEl.textContent='Passwords do not match.'; errEl.style.display='block'; } return;
   }
 
-  pw[username]=newEl.value;
-  ls('omni-passwords',pw);
-  // Sync to Supabase balances table so all devices see new password
+  // ── Write to Supabase FIRST (cloud source of truth) ──
+  const savingMsg = document.getElementById('err_'+username);
   try{
-    const hdrs={'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'};
-    // Store as a special row in balances table with div_code = '__pw__username'
-    await fetch(SUPA_URL+'/balances',{
-      method:'POST',
-      headers:hdrs,
-      body:JSON.stringify({div_code:'__pw__'+username, opening:0, note:pw[username]})
+    // Upsert: delete old row then insert new
+    await fetch(SUPA_URL+'/balances?div_code=eq.__pw__'+encodeURIComponent(username),{
+      method:'DELETE',
+      headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Prefer':'return=minimal'}
     });
-    console.log('Password synced to cloud for '+username);
-  }catch(e){ console.warn('Password cloud sync failed (local only):',e.message); }
-  oldEl.value=''; newEl.value=''; confEl.value='';
-  showFlash('✓ Password changed for '+username,'adminFlash','adminFlashMsg');
+    const ins = await fetch(SUPA_URL+'/balances',{
+      method:'POST',
+      headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body: JSON.stringify({div_code:'__pw__'+username, opening:0, note:newPw})
+    });
+    if(ins.ok || ins.status===201 || ins.status===204){
+      // Also update local cache
+      const pw = ls('omni-passwords')||{};
+      pw[username] = newPw;
+      ls('omni-passwords', pw);
+      if(oldEl) oldEl.value='';
+      if(newEl) newEl.value='';
+      if(confEl) confEl.value='';
+      showFlash('✓ Password for '+username+' updated on ALL devices', 'adminFlash', 'adminFlashMsg');
+    } else {
+      const errTxt = await ins.text();
+      if(errEl){ errEl.textContent='Supabase error: '+ins.status+' — '+errTxt; errEl.style.display='block'; }
+    }
+  }catch(e){
+    // Network error — save locally only
+    const pw = ls('omni-passwords')||{};
+    pw[username] = newPw;
+    ls('omni-passwords', pw);
+    if(errEl){ errEl.textContent='⚠ Saved locally only (offline). Reconnect to sync.'; errEl.style.display='block'; }
+  }
 }
+
 
 function togglePwVis(id,btn){
   const el=document.getElementById(id);
