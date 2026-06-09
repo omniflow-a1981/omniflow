@@ -1217,8 +1217,8 @@ const DEFAULT_PASSWORDS = {
 const USER_DEFS = [
   {username:'admin',      role:'admin',      displayRole:'Administrator',   initials:'AD', accessLevel:'full',    company:null, prRole:null},
   {username:'finance',    role:'finance',    displayRole:'Finance Officer',       initials:'BB', accessLevel:'full', company:null, prRole:'paid',   realName:'Blen Bula'},
-  {username:'we_finance', role:'finance', displayRole:'Wanofi Finance Officer',  initials:'AF', accessLevel:'pr_only', company:'WE', prRole:'paid', realName:'Anani Fufa'},
-  {username:'me_finance', role:'finance', displayRole:'Matisan Finance Officer', initials:'AF', accessLevel:'pr_only', company:'ME', prRole:'paid', realName:'Anani Fufa'},
+  {username:'we_finance', role:'finance', displayRole:'Wanofi Finance Officer',  initials:'BA', accessLevel:'pr_only', company:'WE', prRole:'paid', realName:'Blen Abera'},
+  {username:'me_finance', role:'finance', displayRole:'Matisan Finance Officer', initials:'BA', accessLevel:'pr_only', company:'ME', prRole:'paid', realName:'Blen Abera'},
   {username:'wanofi',     role:'limited',    displayRole:'Wanofi Manager',  initials:'WE', accessLevel:'limited', company:'WE', prRole:null},
   {username:'matisan',    role:'limited',    displayRole:'Matisan Manager', initials:'ME', accessLevel:'limited', company:'ME', prRole:null},
   {username:'we_prepare', role:'pr_prepare', displayRole:'WE Preparer',    initials:'HT', accessLevel:'pr_only', company:'WE', prRole:'prepare', realName:'Hareg Tesfaye'},
@@ -1421,6 +1421,76 @@ function dismissPWA(){
 }
 
 // ══════════════════════════════════════
+// ══════════════════════════════════════
+// LOGIN FUNCTIONS
+// ══════════════════════════════════════
+function getPasswords(){
+  const stored=ls('omni-passwords');
+  return Object.assign({},DEFAULT_PASSWORDS,stored||{});
+}
+function getUsers(){
+  const pw=getPasswords();
+  return USER_DEFS.map(function(u){
+    return Object.assign({},u,{password:pw[u.username]||DEFAULT_PASSWORDS[u.username]||''});
+  });
+}
+
+function _loginSuccess(userDef,btn,errEl){
+  authToken=btoa(JSON.stringify({username:userDef.username,role:userDef.role,exp:Date.now()+86400000*30}));
+  localStorage.setItem('omni-token',authToken);
+  currentUser=Object.assign({},userDef);
+  localStorage.setItem('omni-session-user',JSON.stringify(currentUser));
+  if(errEl) errEl.style.display='none';
+  if(btn){btn.textContent='Sign In →';btn.disabled=false;}
+  showApp();
+}
+
+async function doLogin(){
+  const username=document.getElementById('loginUser').value.trim().toLowerCase();
+  const password=document.getElementById('loginPass').value;
+  const errEl=document.getElementById('loginErr');
+  const btn=document.querySelector('.login-btn');
+  btn.textContent='Signing in...'; btn.disabled=true;
+  errEl.style.display='none';
+
+  const def=USER_DEFS.find(function(x){return x.username===username;});
+  if(!def){
+    errEl.textContent='Unknown username.';
+    errEl.style.display='block';
+    btn.textContent='Sign In →'; btn.disabled=false;
+    return;
+  }
+
+  // Step 1: Check against stored/default password immediately (offline-first)
+  const activePw=(ls('omni-passwords')||{})[username]||DEFAULT_PASSWORDS[username]||'';
+  if(password===activePw){
+    _loginSuccess(def,btn,errEl);
+    return;
+  }
+
+  // Step 2: Fetch latest password from Supabase cloud
+  try{
+    const r=await fetch(SUPA_URL+'/balances?div_code=eq.__pw__'+encodeURIComponent(username)+'&select=note',{
+      headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}
+    });
+    if(r.ok){
+      const rows=await r.json();
+      if(rows&&rows.length&&rows[0].note===password){
+        const pw=ls('omni-passwords')||{};
+        pw[username]=password; ls('omni-passwords',pw);
+        _loginSuccess(def,btn,errEl);
+        return;
+      }
+    }
+  }catch(e){console.warn('Cloud pw check:',e.message);}
+
+  // Failed
+  errEl.textContent='Incorrect password.';
+  errEl.style.display='block';
+  btn.textContent='Sign In →'; btn.disabled=false;
+}
+
+
 function initLogin(){
   localStorage.removeItem('omni-token');
   localStorage.removeItem('omni-session-user');
