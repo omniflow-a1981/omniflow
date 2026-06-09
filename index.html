@@ -534,7 +534,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   <a class="nav-item" href="#" onclick="nav('Balances',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Balances
   </a>
-  <a class="nav-item" href="#" onclick="nav('Outstanding',this)">
+  <a class="nav-item" href="#" onclick="nav('Outstanding',this)" id="outstandingNav">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Outstanding Income
   </a>
   <a class="nav-item" href="#" onclick="nav('Payables',this)" id="payablesNav">
@@ -1369,51 +1369,29 @@ function dismissPWA(){
 
 // ══════════════════════════════════════
 function initLogin(){
-  localStorage.removeItem('omni-token');
-  localStorage.removeItem('omni-session-user');
-  authToken=null; currentUser=null;
-  const chips=document.getElementById('userChips');
-  chips.innerHTML='';
-  const teamLabels=ls('omni-team-labels')||{};
+  localStorage.removeItem('omni-token');localStorage.removeItem('omni-session-user');
+  authToken=null;currentUser=null;
+  const chips=document.getElementById('userChips');chips.innerHTML='';
+  const tl=ls('omni-team-labels')||{};
   const groups=[
-    {label:'System',         users:USER_DEFS.filter(function(u){return !u.company&&u.role!=='finance';})},
-    {label:'Finance',        users:USER_DEFS.filter(function(u){return u.role==='finance';})},
-    {label:teamLabels.WE||'Wanofi PR Team',  users:USER_DEFS.filter(function(u){return u.company==='WE'&&u.prRole;})},
-    {label:teamLabels.ME||'Matisan PR Team', users:USER_DEFS.filter(function(u){return u.company==='ME'&&u.prRole;})},
+    {label:'System',users:USER_DEFS.filter(function(u){return !u.company&&u.role!=='finance';})},
+    {label:'Finance',users:USER_DEFS.filter(function(u){return u.role==='finance';})},
+    {label:tl.WE||'Wanofi PR Team',users:USER_DEFS.filter(function(u){return u.company==='WE'&&u.prRole;})},
+    {label:tl.ME||'Matisan PR Team',users:USER_DEFS.filter(function(u){return u.company==='ME'&&u.prRole;})},
   ];
   groups.forEach(function(grp){
-    if(!grp.users.length) return;
-    var wrap=document.createElement('div');
-    wrap.style.cssText='margin-bottom:10px';
-    var lbl=document.createElement('div');
-    lbl.style.cssText='font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px';
-    lbl.textContent=grp.label;
-    wrap.appendChild(lbl);
-    var sel=document.createElement('select');
-    sel.style.cssText='width:100%;padding:9px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-family:inherit;outline:none;cursor:pointer';
-    sel.innerHTML='<option value="" style="background:#1e293b;color:#94a3b8">— Select user —</option>';
-    grp.users.forEach(function(u){
-      var name=u.realName||u.username;
-      var o=document.createElement('option');
-      o.value=u.username;
-      o.textContent=name;
-      o.style.cssText='background:#1e293b;color:#fff';
-      sel.appendChild(o);
-    });
-    sel.addEventListener('change',function(){
-      if(!sel.value) return;
-      document.getElementById('loginUser').value=sel.value;
-      document.getElementById('loginPass').value='';
-      document.getElementById('loginPass').focus();
-      sel.value='';
-    });
-    wrap.appendChild(sel);
-    chips.appendChild(wrap);
+    if(!grp.users.length)return;
+    var w=document.createElement('div');w.style.marginBottom='10px';
+    var l=document.createElement('div');l.style.cssText='font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px';l.textContent=grp.label;w.appendChild(l);
+    var s=document.createElement('select');
+    s.style.cssText='width:100%;padding:9px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-family:inherit;outline:none;cursor:pointer';
+    s.innerHTML='<option value="" style="background:#1e293b">— Select user —</option>';
+    grp.users.forEach(function(u){var o=document.createElement('option');o.value=u.username;o.textContent=u.realName||u.username;o.style.background='#1e293b';s.appendChild(o);});
+    s.addEventListener('change',function(){if(!s.value)return;document.getElementById('loginUser').value=s.value;document.getElementById('loginPass').value='';document.getElementById('loginPass').focus();s.value='';});
+    w.appendChild(s);chips.appendChild(w);
   });
-  var passEl=document.getElementById('loginPass');
-  if(passEl) passEl.onkeydown=function(e){if(e.key==='Enter')doLogin();};
-  var userEl=document.getElementById('loginUser');
-  if(userEl) userEl.onkeydown=function(e){if(e.key==='Enter')document.getElementById('loginPass').focus();};
+  var p=document.getElementById('loginPass');if(p)p.onkeydown=function(e){if(e.key==='Enter')doLogin();};
+  var u=document.getElementById('loginUser');if(u)u.onkeydown=function(e){if(e.key==='Enter')document.getElementById('loginPass').focus();};
 }
 
 async function doLogin(){
@@ -1572,6 +1550,18 @@ function applyAccessLevel(){
     document.getElementById('limitedBanner').style.display='none';
     document.getElementById('adminNav').style.display='none';
     if(prNav){nav('PayReq',prNav);}else{nav('Dashboard',document.querySelector('.nav-item'));}
+  } else if(currentUser&&currentUser.accessLevel==='pr_out'){
+    // PR + ME1 Outstanding Income (me_check, me_approve)
+    allNavItems.forEach(item=>item.style.display='none');
+    const prNav2=document.getElementById('payreqNav');
+    const outNav2=document.getElementById('outstandingNav');
+    const soNav2=document.getElementById('signoutNav');
+    if(prNav2) prNav2.style.display='flex';
+    if(outNav2) outNav2.style.display='flex';
+    if(soNav2) soNav2.style.display='flex';
+    document.getElementById('limitedBanner').style.display='none';
+    document.getElementById('adminNav').style.display='none';
+    if(prNav2) nav('PayReq',prNav2);
   } else {
     allNavItems.forEach(item=>item.style.display='');
     document.getElementById('limitedBanner').style.display='none';
@@ -1677,6 +1667,7 @@ async function initApp(){
 // ══════════════════════════════════════
 function nav(id,el){
   // Limited users can only access Entry and Ledger
+  if(currentUser&&currentUser.accessLevel==='pr_out'&&id!=='PayReq'&&id!=='Outstanding'){return;}
   if(isLimitedUser()&&!LIMITED_PAGES.includes(id)){
     showAccessDenied();return;
   }
@@ -2875,9 +2866,15 @@ async function updateOutPaid(id,val){const o=outstandings.find(x=>x.id===id);if(
 async function deleteOut(id){if(!confirm('Delete this item?'))return;try{await apiCall('DELETE','/outstanding/'+id);}catch(e){}outstandings=outstandings.filter(o=>o.id!==id);ls('omni-out',outstandings);renderOutstanding();renderDashboard()}
 
 function renderOutstanding(){
-  const tot=outstandings.reduce((s,o)=>s+o.amt,0);
-  const col=outstandings.reduce((s,o)=>s+o.paid,0);
-  const pend=outstandings.filter(o=>o.status==='pending').length;
+  const isPrOut=currentUser&&currentUser.accessLevel==='pr_out';
+  const visOut=isPrOut?visOut.filter(function(o){
+    const d=(o.div||'').toUpperCase().trim();
+    return d==='ME1'||d.startsWith('ME1.')||d.startsWith('ME1 ');
+  }):outstandings;
+  if(isPrOut){const ib=document.getElementById('outPrOutBanner');if(!ib){const b=document.createElement('div');b.id='outPrOutBanner';b.style.cssText='margin-bottom:10px;padding:8px 14px;background:#dbeafe;border-radius:8px;font-size:12px;color:#1e40af;font-weight:600';b.textContent='Showing ME1 Construction outstanding items only';document.getElementById('outKpis').before(b);}}
+  const tot=visOut.reduce((s,o)=>s+o.amt,0);
+  const col=visOut.reduce((s,o)=>s+o.paid,0);
+  const pend=visOut.filter(o=>o.status==='pending').length;
   document.getElementById('outKpis').innerHTML=`<div class="out-kpi"><div class="ok-label">Total Outstanding</div><div class="ok-val">${fmt(tot)}</div></div><div class="out-kpi"><div class="ok-label">Collected</div><div class="ok-val" style="color:var(--teal-dark)">${fmt(col)}</div></div><div class="out-kpi"><div class="ok-label">Still to Collect</div><div class="ok-val">${fmt(tot-col)}</div></div><div class="out-kpi"><div class="ok-label">Pending Items</div><div class="ok-val" style="color:var(--red)">${pend}</div></div>`;
 
   const sorted=[...outstandings].filter(o=>o.status!=='collected').sort((a,b)=>(b.amt-b.paid)-(a.amt-a.paid));
@@ -2887,7 +2884,7 @@ function renderOutstanding(){
   // group by company
   const grid=document.getElementById('outGrid');grid.innerHTML='';
   companies.forEach(co=>{
-    const items=outstandings.filter(o=>o.co===co.id);
+    const items=visOut.filter(o=>o.co===co.id);
     const t=items.reduce((s,o)=>s+o.amt,0);
     const badgeStyle=getCoPillClass(co.color);
     let cardHtml=`<div class="out-card" style="margin-bottom:14px">
@@ -5263,9 +5260,11 @@ function deleteSubdivisionBtn(btn){deleteSubdivision(btn.dataset.coid,btn.datase
   <!-- PWA Service Worker + Install prompt -->
   <script>
   // Register service worker for offline use
-  if('serviceWorker' in navigator && window.location.hostname.includes('github.io')){
+  if('serviceWorker' in navigator){
     window.addEventListener('load', function(){
-      navigator.serviceWorker.register('./sw.js').catch(function(){});
+      navigator.serviceWorker.register('./sw.js').then(function(reg){
+        console.log('SW registered:', reg.scope);
+      }).catch(function(e){ console.log('SW error:', e); });
     });
   }
 
