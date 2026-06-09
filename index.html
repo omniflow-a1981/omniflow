@@ -1487,6 +1487,28 @@ async function doLogin(){
     return;
   }
 
+  // Password not in local — try fetching latest from Supabase cloud
+  try{
+    const pwRes=await fetch(SUPA_URL+'/balances?div_code=eq.__pw__'+encodeURIComponent(username)+'&select=note',{
+      headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}
+    });
+    if(pwRes.ok){
+      const rows=await pwRes.json();
+      if(rows&&rows.length&&rows[0].note===password){
+        const pw=getPasswords(); pw[username]=password; ls('omni-passwords',pw);
+        const def=USER_DEFS.find(x=>x.username===username)||{};
+        authToken=btoa(JSON.stringify({username,role:def.role||'user',exp:Date.now()+86400000*30}));
+        localStorage.setItem('omni-token',authToken);
+        currentUser={...def,username,role:def.role||'user'};
+        localStorage.setItem('omni-session-user',JSON.stringify(currentUser));
+        errEl.style.display='none';
+        btn.textContent='Sign In →'; btn.disabled=false;
+        showApp();
+        return;
+      }
+    }
+  }catch(e){ console.warn('Cloud pw check:',e.message); }
+
   // Try Supabase (for password changes made via admin)
   try{
     const res=await fetch(SUPA_URL+'/users?username=eq.'+encodeURIComponent(username)+'&select=*',
@@ -1562,20 +1584,25 @@ function initAppFromCache(){
   document.getElementById('fDate').value=new Date().toISOString().slice(0,10);
 
   // Load from cache
-  // Load cloud passwords async (cross-device sync)
+  // Load cloud passwords (cross-device sync) — reads from balances table
   (async function(){
     try{
-      const pwRes=await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/balances?key=eq.omni_passwords&select=value',{
-        headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON}
+      const pwRes=await fetch(SUPA_URL+'/balances?div_code=like.__pw__*&select=div_code,note',{
+        headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}
       });
       if(pwRes.ok){
-        const pwData=await pwRes.json();
-        if(pwData&&pwData[0]&&pwData[0].value){
-          const cloudPw=JSON.parse(pwData[0].value);
+        const rows=await pwRes.json();
+        if(rows&&rows.length){
+          const cloudPw={};
+          rows.forEach(function(r){
+            var uname=r.div_code.replace('__pw__','');
+            if(uname&&r.note) cloudPw[uname]=r.note;
+          });
           ls('omni-passwords',Object.assign({},DEFAULT_PASSWORDS,cloudPw));
+          console.log('Loaded cloud passwords for:',Object.keys(cloudPw).join(', '));
         }
       }
-    }catch(e){}
+    }catch(e){ console.warn('Cloud pw load failed:',e.message); }
   })();
   transactions = ls('omni-tx')||[];
   balances     = ls('omni-bal')||getDefaultBalances();
@@ -3454,18 +3481,17 @@ async function changeUserPassword(username){
 
   pw[username]=newEl.value;
   ls('omni-passwords',pw);
-  // Sync to Supabase so all devices see the new password
+  // Sync to Supabase balances table so all devices see new password
   try{
-    await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/balances?key=eq.omni_passwords',{
-      method:'DELETE',
-      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Prefer':'return=minimal'}
-    });
-    await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/balances',{
+    const hdrs={'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'};
+    // Store as a special row in balances table with div_code = '__pw__username'
+    await fetch(SUPA_URL+'/balances',{
       method:'POST',
-      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body:JSON.stringify({key:'omni_passwords', value:JSON.stringify(pw)})
+      headers:hdrs,
+      body:JSON.stringify({div_code:'__pw__'+username, opening:0, note:pw[username]})
     });
-  }catch(e){ console.warn('Password sync failed (will work locally):',e); }
+    console.log('Password synced to cloud for '+username);
+  }catch(e){ console.warn('Password cloud sync failed (local only):',e.message); }
   oldEl.value=''; newEl.value=''; confEl.value='';
   showFlash('✓ Password changed for '+username,'adminFlash','adminFlashMsg');
 }
