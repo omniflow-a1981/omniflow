@@ -1211,12 +1211,14 @@ function startRealtime(){
 const DEFAULT_PASSWORDS = {
   admin:'omni2024', finance:'finance123',
   wanofi:'wanofi123', matisan:'matisan123',
-  we_prepare:'we123', we_check:'we123', we_approve:'we123',
-  me_prepare:'me123', me_check:'me123', me_approve:'me123'
+  we_prepare:'we123', we_check:'we123', we_approve:'we123', we_finance:'wefinance123',
+  me_prepare:'me123', me_check:'me123', me_approve:'me123', me_finance:'mefinance123'
 };
 const USER_DEFS = [
   {username:'admin',      role:'admin',      displayRole:'Administrator',   initials:'AD', accessLevel:'full',    company:null, prRole:null},
-  {username:'finance',    role:'finance',    displayRole:'Finance Officer', initials:'FO', accessLevel:'full',    company:null, prRole:'paid'},
+  {username:'finance',    role:'finance',    displayRole:'Finance Officer',       initials:'BB', accessLevel:'full', company:null, prRole:'paid',   realName:'Blen Bula'},
+  {username:'we_finance', role:'finance', displayRole:'Wanofi Finance Officer',  initials:'AF', accessLevel:'pr_only', company:'WE', prRole:'paid', realName:'Anani Fufa'},
+  {username:'me_finance', role:'finance', displayRole:'Matisan Finance Officer', initials:'AF', accessLevel:'pr_only', company:'ME', prRole:'paid', realName:'Anani Fufa'},
   {username:'wanofi',     role:'limited',    displayRole:'Wanofi Manager',  initials:'WE', accessLevel:'limited', company:'WE', prRole:null},
   {username:'matisan',    role:'limited',    displayRole:'Matisan Manager', initials:'ME', accessLevel:'limited', company:'ME', prRole:null},
   {username:'we_prepare', role:'pr_prepare', displayRole:'WE Preparer',    initials:'HT', accessLevel:'pr_only', company:'WE', prRole:'prepare', realName:'Hareg Tesfaye'},
@@ -1425,32 +1427,33 @@ function initLogin(){
   authToken=null; currentUser=null;
 
   const chips=document.getElementById('userChips');
-  chips.innerHTML=''; // clear first — prevent duplicates
+  chips.innerHTML=''; // prevent duplicates
 
   const teamLabels=ls('omni-team-labels')||{};
   const names=ls('omni-display-names')||{};
 
-  // ── Quick sign-in as DROPDOWNS ──
   const groups=[
-    {label:'System',          users:USER_DEFS.filter(u=>!u.company)},
-    {label:teamLabels.WE||'Wanofi Team',   users:USER_DEFS.filter(u=>u.company==='WE'&&u.prRole)},
-    {label:teamLabels.ME||'Matisan Team',  users:USER_DEFS.filter(u=>u.company==='ME'&&u.prRole)},
+    {label:'System',
+     users:USER_DEFS.filter(function(u){return !u.company&&u.role!=='finance';})},
+    {label:'Finance',
+     users:USER_DEFS.filter(function(u){return u.role==='finance';})},
+    {label:teamLabels.WE||'Wanofi PR Team',
+     users:USER_DEFS.filter(function(u){return u.company==='WE'&&u.prRole;})},
+    {label:teamLabels.ME||'Matisan PR Team',
+     users:USER_DEFS.filter(function(u){return u.company==='ME'&&u.prRole;})},
   ];
 
   groups.forEach(function(grp){
     if(!grp.users.length) return;
-
     const wrap=document.createElement('div');
     wrap.style.cssText='margin-bottom:10px';
-
     const lbl=document.createElement('div');
     lbl.style.cssText='font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px';
     lbl.textContent=grp.label;
     wrap.appendChild(lbl);
 
-    // Build select dropdown
     const sel=document.createElement('select');
-    sel.style.cssText='width:100%;padding:9px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-family:inherit;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none';
+    sel.style.cssText='width:100%;padding:9px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-family:inherit;outline:none;cursor:pointer';
     sel.innerHTML='<option value="" style="background:#1e293b;color:#94a3b8">— Select user —</option>';
 
     grp.users.forEach(function(u){
@@ -1465,16 +1468,32 @@ function initLogin(){
 
     sel.addEventListener('change',function(){
       if(!sel.value) return;
-      // Fill username and focus password
       document.getElementById('loginUser').value=sel.value;
       document.getElementById('loginPass').value='';
       document.getElementById('loginPass').focus();
-      sel.value=''; // reset dropdown
+      sel.value='';
     });
 
     wrap.appendChild(sel);
     chips.appendChild(wrap);
   });
+
+  // Fix Enter key on password field → trigger login
+  const passEl=document.getElementById('loginPass');
+  if(passEl){
+    passEl.onkeydown=null;
+    passEl.addEventListener('keydown',function(e){
+      if(e.key==='Enter') doLogin();
+    });
+  }
+  // Fix Enter key on username field → move to password
+  const userEl=document.getElementById('loginUser');
+  if(userEl){
+    userEl.onkeydown=null;
+    userEl.addEventListener('keydown',function(e){
+      if(e.key==='Enter') document.getElementById('loginPass').focus();
+    });
+  }
 }
 
 function doSignOut(){
