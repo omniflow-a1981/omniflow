@@ -1396,7 +1396,7 @@ function initLogin(){
 }
 
 async function doLogin(){
-  const un=document.getElementById('loginUser').value.trim().toLowerCase();
+  const un=document.getElementById('loginUser').value.trim().toLowerCase().replace(/\s+/g,'_');
   const pw=document.getElementById('loginPass').value.trim();
   const errEl=document.getElementById('loginErr');
   const btn=document.querySelector('.login-btn');
@@ -3706,8 +3706,11 @@ function prStatusInfo(pr){
 function prVisible(pr){
   if(!currentUser) return false;
   const co=currentUser.company||'';
-  if(!co) return true;
-  return (pr.company_id||'').toUpperCase().slice(0,2)===co;
+  if(!co) return true; // admin/finance sees all
+  // Match by company_id OR division code prefix
+  const cid=(pr.company_id||'').toUpperCase();
+  const div=(pr.division||'').toUpperCase();
+  return cid.startsWith(co) || div.startsWith(co);
 }
 
 function setPRType(type,btn){
@@ -5102,6 +5105,25 @@ function pushNotif(targetUser, type, title, message, prId){
   });
   // Keep last 50
   ls(key, notifs.slice(0,50));
+}
+
+function playNotifSound(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    // Bell-like tone: two notes
+    [523.25, 659.25].forEach(function(freq, i){
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value=freq;
+      osc.type='sine';
+      gain.gain.setValueAtTime(0,ctx.currentTime+i*0.15);
+      gain.gain.linearRampToValueAtTime(0.3,ctx.currentTime+i*0.15+0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.15+0.6);
+      osc.start(ctx.currentTime+i*0.15);
+      osc.stop(ctx.currentTime+i*0.15+0.6);
+    });
+  }catch(e){}
 }
 
 function loadNotifs(){
