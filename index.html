@@ -550,9 +550,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   <a class="nav-item" id="adminNav" href="#" onclick="nav('AdminSettings',this)" style="display:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Admin Settings
   </a>
-  <a id="installAppBtn" href="#" onclick="installApp()" class="nav-item" style="color:#34d399;margin-top:4px;display:none">
+  <a id="installAppBtn" href="#" onclick="installApp()" class="nav-item" style="color:#34d399;margin-top:4px;display:flex">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-    <span id="installBtnLabel">Install OmniFlow App</span>
+    <span id="installBtnLabel">&#x2139; How to Install</span>
   </a>
   <a class="nav-item" href="#" onclick="doSignOut()" style="color:rgba(255,100,100,.7);margin-top:4px" id="signoutNav">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign Out
@@ -1223,18 +1223,17 @@ const USER_DEFS = [
   {username:'we_check',   role:'pr_check',   displayRole:'WE Checker',     initials:'TT', accessLevel:'pr_only', company:'WE', prRole:'check',   realName:'Tamrat Tilahun'},
   {username:'we_approve', role:'pr_approve', displayRole:'WE Approver',    initials:'AF', accessLevel:'pr_only', company:'WE', prRole:'approve', realName:'Ashenafi Fufa'},
   {username:'me_prepare', role:'pr_prepare', displayRole:'ME Preparer',    initials:'MG', accessLevel:'pr_only', company:'ME', prRole:'prepare', realName:'Meadnesh Gebeyehu'},
-  {username:'me_check',   role:'pr_check',   displayRole:'ME Checker',     initials:'AM', accessLevel:'pr_only', company:'ME', prRole:'check',   realName:'Askale Melese'},
-  {username:'me_approve', role:'pr_approve', displayRole:'ME Approver',    initials:'TT', accessLevel:'pr_only', company:'ME', prRole:'approve', realName:'Tamrat Tilahun'},
+  {username:'me_check',   role:'pr_check',   displayRole:'ME Checker',     initials:'AM', accessLevel:'pr_out',  company:'ME', prRole:'check',   realName:'Askale Melese'},
+  {username:'me_approve', role:'pr_approve', displayRole:'ME Approver',    initials:'TT', accessLevel:'pr_out',  company:'ME', prRole:'approve', realName:'Tamrat Tilahun'},
 ];
 
 // Limited users: only Entry + Ledger, only today and yesterday
 const LIMITED_PAGES = ['Entry','Ledger'];
 const LIMITED_NAV_LABELS = ['Add Transaction','Ledger'];
 
-function getPasswords(){return ls('omni-passwords')||{...DEFAULT_PASSWORDS};}
-function getUsers(){
-  const pw=getPasswords();
-  return USER_DEFS.map(u=>({...u,password:pw[u.username]||DEFAULT_PASSWORDS[u.username]}));
+function getPasswords(){
+  const stored=ls('omni-passwords');
+  return Object.assign({},DEFAULT_PASSWORDS,stored||{});
 }
 function isLimitedUser(){return currentUser&&currentUser.accessLevel==='limited';}
 function isAdmin(){return currentUser&&currentUser.username==='admin';}
@@ -1557,6 +1556,21 @@ function initAppFromCache(){
   document.getElementById('fDate').value=new Date().toISOString().slice(0,10);
 
   // Load from cache
+  // Load cloud passwords async (cross-device sync)
+  (async function(){
+    try{
+      const pwRes=await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/balances?key=eq.omni_passwords&select=value',{
+        headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON}
+      });
+      if(pwRes.ok){
+        const pwData=await pwRes.json();
+        if(pwData&&pwData[0]&&pwData[0].value){
+          const cloudPw=JSON.parse(pwData[0].value);
+          ls('omni-passwords',Object.assign({},DEFAULT_PASSWORDS,cloudPw));
+        }
+      }
+    }catch(e){}
+  })();
   transactions = ls('omni-tx')||[];
   balances     = ls('omni-bal')||getDefaultBalances();
   outstandings = ls('omni-out')||[];
@@ -3422,7 +3436,18 @@ async function changeUserPassword(username){
 
   pw[username]=newEl.value;
   ls('omni-passwords',pw);
-  try{ await apiCall('PATCH','/users/'+username+'/password',{password:newEl.value}); }catch(e){}
+  // Sync to Supabase so all devices see the new password
+  try{
+    await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/balances?key=eq.omni_passwords',{
+      method:'DELETE',
+      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Prefer':'return=minimal'}
+    });
+    await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/balances',{
+      method:'POST',
+      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({key:'omni_passwords', value:JSON.stringify(pw)})
+    });
+  }catch(e){ console.warn('Password sync failed (will work locally):',e); }
   oldEl.value=''; newEl.value=''; confEl.value='';
   showFlash('✓ Password changed for '+username,'adminFlash','adminFlashMsg');
 }
@@ -5498,6 +5523,8 @@ function deleteSubdivisionBtn(btn){deleteSubdivision(btn.dataset.coid,btn.datase
     var isSafari=/safari/.test(ua)&&!/chrome/.test(ua);
     var isInstalled=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone;
     var steps='';
+    var isEdge=ua.indexOf('edg/')>=0;
+    var isChrome=ua.indexOf('chrome')>=0&&!isEdge;
     if(isInstalled){
       steps='<div style="text-align:center;padding:20px 0">'
         +'<div style="font-size:48px;margin-bottom:12px">&#x2705;</div>'
@@ -5511,15 +5538,32 @@ function deleteSubdivisionBtn(btn){deleteSubdivision(btn.dataset.coid,btn.datase
         +'<div style="display:flex;align-items:center;gap:10px;background:#f8faff;padding:12px;border-radius:10px"><div style="width:28px;height:28px;border-radius:50%;background:#0ea87a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">3</div><div>Tap <strong>Add</strong> &#x2014; done!</div></div>'
         +'</div>';
     } else {
-      steps='<div style="background:#f8faff;padding:14px;border-radius:10px;border:1.5px solid #bfdbfe;margin-bottom:10px">'
-        +'<div style="font-size:13px;font-weight:700;color:#1e40af;margin-bottom:8px">&#x1F7E6; Chrome or Edge</div>'
-        +'<div style="font-size:13px;display:flex;flex-direction:column;gap:6px">'
-        +'<div>1. Look for <strong>install icon &#x2295;</strong> in the address bar</div>'
-        +'<div>2. Click it &#x2192; click <strong>Install</strong></div>'
-        +'<div style="color:var(--muted);font-size:12px">Or: Menu &#x22EE; &#x2192; Install OmniFlow</div>'
+      steps='<div style="background:#f0fdf4;padding:14px;border-radius:10px;border:1.5px solid #86efac;margin-bottom:12px">'
+        +'<div style="font-size:14px;font-weight:800;color:#065f46;margin-bottom:10px">&#x1F5A5; Install on Computer (Windows/Mac)</div>'
+        +'<div style="display:flex;flex-direction:column;gap:8px;font-size:13px">'
+        +'<div style="display:flex;align-items:center;gap:8px;background:#fff;padding:8px 12px;border-radius:8px;border:1px solid #86efac">'
+          +'<span style="font-size:18px">1&#xFE0F;&#x20E3;</span>'
+          +'<div>In Chrome/Edge, look for <strong style="color:#1e40af">&#x22B3; Open in app</strong> button in the top-right of the browser, OR the install icon <strong>&#x2295;</strong> in the address bar</div>'
+        +'</div>'
+        +'<div style="display:flex;align-items:center;gap:8px;background:#fff;padding:8px 12px;border-radius:8px;border:1px solid #86efac">'
+          +'<span style="font-size:18px">2&#xFE0F;&#x20E3;</span>'
+          +'<div>Click it &#x2192; click <strong>Install</strong> &#x2192; OmniFlow opens as a desktop app!</div>'
+        +'</div>'
         +'</div></div>'
-        +'<div style="background:#fff8f0;padding:12px;border-radius:10px;border:1.5px solid #fcd34d;font-size:12px;color:#92400e">'
-        +'<strong>Not seeing the icon?</strong> Make sure manifest.json and sw.js are uploaded to your GitHub repo, then refresh.'
+        +'<div style="background:#f8faff;padding:14px;border-radius:10px;border:1.5px solid #bfdbfe;margin-bottom:12px">'
+          +'<div style="font-size:14px;font-weight:800;color:#1e40af;margin-bottom:10px">&#x1F4F1; Install on iPhone</div>'
+          +'<div style="font-size:13px;display:flex;flex-direction:column;gap:6px">'
+            +'<div>1. Open in <strong>Safari</strong></div>'
+            +'<div>2. Tap <strong>Share &#x1F4E4;</strong> button at bottom</div>'
+            +'<div>3. Tap <strong>Add to Home Screen</strong> &#x2192; <strong>Add</strong></div>'
+          +'</div>'
+        +'</div>'
+        +'<div style="background:#f8faff;padding:14px;border-radius:10px;border:1.5px solid #bfdbfe">'
+          +'<div style="font-size:14px;font-weight:800;color:#1e40af;margin-bottom:10px">&#x1F4F1; Install on Android</div>'
+          +'<div style="font-size:13px;display:flex;flex-direction:column;gap:6px">'
+            +'<div>1. Open in <strong>Chrome</strong></div>'
+            +'<div>2. Tap menu <strong>&#x22EE;</strong> &#x2192; <strong>Add to Home Screen</strong> or <strong>Install app</strong></div>'
+          +'</div>'
         +'</div>';
     }
     var modal=document.createElement('div');
