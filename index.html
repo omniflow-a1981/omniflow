@@ -534,7 +534,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   <a class="nav-item" href="#" onclick="nav('Balances',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Balances
   </a>
-  <a class="nav-item" href="#" onclick="nav('Outstanding',this)" id="outstandingNav">
+  <a class="nav-item" href="#" onclick="nav('Outstanding',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Outstanding Income
   </a>
   <a class="nav-item" href="#" onclick="nav('Payables',this)" id="payablesNav">
@@ -550,9 +550,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   <a class="nav-item" id="adminNav" href="#" onclick="nav('AdminSettings',this)" style="display:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Admin Settings
   </a>
-  <a id="installAppBtn" href="#" onclick="installApp()" class="nav-item" style="color:#34d399;margin-top:4px;display:flex">
+  <a id="installAppBtn" href="#" onclick="installApp()" class="nav-item" style="color:#34d399;margin-top:4px;display:none">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-    <span id="installBtnLabel">&#x2139; How to Install</span>
+    <span id="installBtnLabel">Install OmniFlow App</span>
   </a>
   <a class="nav-item" href="#" onclick="doSignOut()" style="color:rgba(255,100,100,.7);margin-top:4px" id="signoutNav">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign Out
@@ -654,11 +654,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   <div class="page-header">
     <div><div class="page-title">Transaction <em>Ledger</em></div><div class="page-subtitle" id="ledgerCount">All entries</div></div>
     <div class="btn-row">
-      <div style="display:flex;gap:8px">
-      <button onclick="clearLedgerOfPREntries()" style="padding:8px 14px;background:#fff5f5;border:1.5px solid #fca5a5;color:#dc2626;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">🗑 Clear PR Entries</button>
-      <button onclick="clearAllManualTransactions()" style="padding:8px 14px;background:#fff5f5;border:1.5px solid #fca5a5;color:#dc2626;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">🗑 Clear All Manual</button>
       <button class="btn-secondary" onclick="copyCSV()">Export CSV</button>
-    </div>
       <button class="btn-danger" onclick="if(confirm('Clear ALL transactions?'))clearAll()">Clear all</button>
     </div>
   </div>
@@ -993,25 +989,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   </div>
   <div id="diagResult" style="display:none;margin-bottom:12px"></div>
   <div class="flash-bar" id="adminFlash"><span id="adminFlashMsg"></span></div>
-  <!-- Team Label Rename Card -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title" style="display:flex;align-items:center;gap:8px">
-      <div class="dot" style="background:var(--teal)"></div>
-      Rename PR Teams
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-      <div><label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;display:block;margin-bottom:5px">Wanofi Team Label</label>
-        <input type="text" id="teamLabel_WE" placeholder="Wanofi PR Team" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:600;outline:none;font-family:inherit;box-sizing:border-box"></div>
-      <div><label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;display:block;margin-bottom:5px">Matisan Team Label</label>
-        <input type="text" id="teamLabel_ME" placeholder="Matisan PR Team" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:600;outline:none;font-family:inherit;box-sizing:border-box"></div>
-    </div>
-    <div style="display:flex;gap:10px;align-items:center">
-      <button class="btn-primary" onclick="saveTeamLabels()" style="padding:10px 20px">Save Team Labels</button>
-      <button class="btn-secondary" onclick="resetTeamLabels()" style="padding:10px 14px;font-size:12px">&#x21BA; Reset</button>
-      <span id="teamLabelMsg" style="font-size:12px;color:var(--teal-dark);font-weight:600"></span>
-    </div>
-  </div>
-
   <div class="card">
     <div class="card-title"><div class="dot" style="background:var(--red)"></div>Change User Passwords</div>
     <div id="pwGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-bottom:16px"></div>
@@ -1214,14 +1191,11 @@ const DEFAULT_PASSWORDS = {
   we_prepare:'we123', we_check:'we123', we_approve:'we123', we_finance:'wefinance123',
   me_prepare:'me123', me_check:'me123', me_approve:'me123', me_finance:'mefinance123'
 };
-// Force use of DEFAULT_PASSWORDS — clear any previously stored passwords
-(function(){ ls('omni-passwords', {}); })();
-
 const USER_DEFS = [
   {username:'admin',      role:'admin',      displayRole:'Administrator',   initials:'AD', accessLevel:'full',    company:null, prRole:null},
-  {username:'finance',    role:'finance',    displayRole:'Finance Officer',       initials:'BB', accessLevel:'full', company:null, prRole:'paid',   realName:'Blen Abera'},
-  {username:'we_finance', role:'finance', displayRole:'Wanofi Finance Officer',  initials:'BA', accessLevel:'pr_only', company:'WE', prRole:null,   realName:'WE-Anani'},
-  {username:'me_finance', role:'finance', displayRole:'Matisan Finance Officer', initials:'BA', accessLevel:'pr_only', company:'ME', prRole:null,   realName:'ME-Anani'},
+  {username:'finance',    role:'finance',    displayRole:'Finance Officer',       initials:'BA', accessLevel:'full',    company:null, prRole:'paid',   realName:'Blen Abera'},
+  {username:'we_finance', role:'finance',    displayRole:'Wanofi Finance Officer',  initials:'BA', accessLevel:'pr_only', company:'WE',  prRole:null,   realName:'WE-Anani'},
+  {username:'me_finance', role:'finance',    displayRole:'Matisan Finance Officer', initials:'BA', accessLevel:'pr_only', company:'ME',  prRole:null,   realName:'ME-Anani'},
   {username:'wanofi',     role:'limited',    displayRole:'Wanofi Manager',  initials:'WE', accessLevel:'limited', company:'WE', prRole:null},
   {username:'matisan',    role:'limited',    displayRole:'Matisan Manager', initials:'ME', accessLevel:'limited', company:'ME', prRole:null},
   {username:'we_prepare', role:'pr_prepare', displayRole:'WE Preparer',    initials:'HT', accessLevel:'pr_only', company:'WE', prRole:'prepare', realName:'Hareg Tesfaye'},
@@ -1236,15 +1210,10 @@ const USER_DEFS = [
 const LIMITED_PAGES = ['Entry','Ledger'];
 const LIMITED_NAV_LABELS = ['Add Transaction','Ledger'];
 
-function getPasswords(){
-  const stored=ls('omni-passwords');
-  return Object.assign({},DEFAULT_PASSWORDS,stored||{});
-}
+function getPasswords(){return ls('omni-passwords')||{...DEFAULT_PASSWORDS};}
 function getUsers(){
   const pw=getPasswords();
-  return USER_DEFS.map(function(u){
-    return Object.assign({},u,{password:pw[u.username]||DEFAULT_PASSWORDS[u.username]||''});
-  });
+  return USER_DEFS.map(u=>({...u,password:pw[u.username]||DEFAULT_PASSWORDS[u.username]}));
 }
 function isLimitedUser(){return currentUser&&currentUser.accessLevel==='limited';}
 function isAdmin(){return currentUser&&currentUser.username==='admin';}
@@ -1287,32 +1256,7 @@ const DEFAULT_COMPANIES = [
     ]}
 ];
 
-// Opening balances are sourced from bank registers (DIV_BANKS_DEFAULT)
-// This function computes totals from each division's bank register
-function getDefaultBalances(){
-  var result={};
-  ['WE1','WE2','WE3','ME1','ME2','ME3'].forEach(function(div){
-    var stored=ls('omni-banks-'+div);
-    var banks=stored&&stored.length?stored:(DIV_BANKS_DEFAULT&&DIV_BANKS_DEFAULT[div]?DIV_BANKS_DEFAULT[div]:[]);
-    var total=banks.reduce(function(s,b){return s+(b.beg||0);},0);
-    result[div]=total; // exact ETB total, not rounded
-  });
-  return result;
-}
-
-function syncBalancesFromBankRegisters(){
-  // Always keep balances[] in sync with bank register totals
-  var changed=false;
-  ['WE1','WE2','WE3','ME1','ME2','ME3'].forEach(function(div){
-    var stored=ls('omni-banks-'+div);
-    var banks=stored&&stored.length?stored:(DIV_BANKS_DEFAULT&&DIV_BANKS_DEFAULT[div]?DIV_BANKS_DEFAULT[div]:[]);
-    var total=banks.reduce(function(s,b){return s+(b.beg||0);},0);
-    if(balances[div]!==total){ balances[div]=total; changed=true; }
-  });
-  if(changed) ls('omni-bal',balances);
-}
-// Keep for backward compat — will be overridden by getDefaultBalances()
-const DEFAULT_BAL = {WE1:0,WE2:0,WE3:0,ME1:0,ME2:0,ME3:0};
+const DEFAULT_BAL = {WE1:1,WE2:349258.72,WE3:1,ME1:3272756.58,ME2:1,ME3:8649766.46};
 
 const DEFAULT_OUT = [
   {id:1,co:'Wanofi',div:'WE1. Design',client:'Jijiga & Jinka',project:'Design Review & Check',amt:4608400,paid:0,status:'pending'},
@@ -1387,6 +1331,26 @@ function navMob(id, el){
   nav(id, null);
 }
 
+function showMobileUI(){
+  if(isMobile()){
+    document.getElementById('mobHeader').style.display='flex';
+    document.getElementById('bottomTabs').style.display='block';
+    // Sync dot colour
+    setInterval(()=>{
+      const dot=document.getElementById('mobSyncDot');
+      if(dot) dot.style.color=isOnline?'var(--teal)':'var(--red)';
+    },2000);
+    // Hide limited tabs if limited user
+    if(isLimitedUser()){
+      ['bt-Dashboard','bt-Balances','bt-Outstanding'].forEach(id=>{
+        const el=document.getElementById(id);
+        if(el) el.style.display='none';
+      });
+      // Reduce to 2 tabs — center them
+      document.querySelector('.bottom-tabs-inner').style.gridTemplateColumns='1fr 1fr';
+    }
+  }
+}
 
 // PWA install prompt
 let deferredPWAPrompt = null;
@@ -1398,114 +1362,44 @@ async function installPWA_orig(){
   deferredPWAPrompt=null;
   document.getElementById('pwaBanner').classList.remove('show');
 }
-
-// ══════════════════════════════════════
-// ══════════════════════════════════════
-// LOGIN FUNCTIONS
-// ══════════════════════════════════════
-
-function _loginSuccess(userDef,btn,errEl){
-  authToken=btoa(JSON.stringify({username:userDef.username,role:userDef.role,exp:Date.now()+86400000*30}));
-  localStorage.setItem('omni-token',authToken);
-  currentUser=Object.assign({},userDef);
-  localStorage.setItem('omni-session-user',JSON.stringify(currentUser));
-  if(errEl) errEl.style.display='none';
-  if(btn){btn.textContent='Sign In →';btn.disabled=false;}
-  showApp();
+function dismissPWA(){
+  document.getElementById('pwaBanner').classList.remove('show');
+  localStorage.setItem('omni-pwa-dismissed','1');
 }
 
-async function doLogin(){
-  const username=document.getElementById('loginUser').value.trim().toLowerCase();
-  const password=document.getElementById('loginPass').value;
-  const errEl=document.getElementById('loginErr');
-  const btn=document.querySelector('.login-btn');
-  btn.textContent='Signing in...'; btn.disabled=true;
-  errEl.style.display='none';
-
-  const def=USER_DEFS.find(function(x){return x.username===username;});
-  if(!def){
-    errEl.textContent='Unknown username.';
-    errEl.style.display='block';
-    btn.textContent='Sign In →'; btn.disabled=false;
-    return;
-  }
-
-  // Step 1: Check against stored/default password immediately (offline-first)
-  const activePw=(ls('omni-passwords')||{})[username]||DEFAULT_PASSWORDS[username]||'';
-  if(password===activePw){
-    _loginSuccess(def,btn,errEl);
-    return;
-  }
-
-  // Step 2: Fetch latest password from Supabase cloud
-  try{
-    const r=await fetch(SUPA_URL+'/balances?div_code=eq.__pw__'+encodeURIComponent(username)+'&select=note',{
-      headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}
-    });
-    if(r.ok){
-      const rows=await r.json();
-      if(rows&&rows.length&&rows[0].note===password){
-        const pw=ls('omni-passwords')||{};
-        pw[username]=password; ls('omni-passwords',pw);
-        _loginSuccess(def,btn,errEl);
-        return;
-      }
-    }
-  }catch(e){console.warn('Cloud pw check:',e.message);}
-
-  // Failed
-  errEl.textContent='Incorrect password.';
-  errEl.style.display='block';
-  btn.textContent='Sign In →'; btn.disabled=false;
-}
-
-
+// ══════════════════════════════════════
 function initLogin(){
   localStorage.removeItem('omni-token');
   localStorage.removeItem('omni-session-user');
   authToken=null; currentUser=null;
-
   const chips=document.getElementById('userChips');
-  chips.innerHTML=''; // prevent duplicates
-
+  chips.innerHTML='';
   const teamLabels=ls('omni-team-labels')||{};
-  const names=ls('omni-display-names')||{};
-
   const groups=[
-    {label:'System',
-     users:USER_DEFS.filter(function(u){return !u.company&&u.role!=='finance';})},
-    {label:'Finance',
-     users:USER_DEFS.filter(function(u){return u.role==='finance';})},
-    {label:teamLabels.WE||'Wanofi PR Team',
-     users:USER_DEFS.filter(function(u){return u.company==='WE'&&u.prRole;})},
-    {label:teamLabels.ME||'Matisan PR Team',
-     users:USER_DEFS.filter(function(u){return u.company==='ME'&&u.prRole;})},
+    {label:'System',         users:USER_DEFS.filter(function(u){return !u.company&&u.role!=='finance';})},
+    {label:'Finance',        users:USER_DEFS.filter(function(u){return u.role==='finance';})},
+    {label:teamLabels.WE||'Wanofi PR Team',  users:USER_DEFS.filter(function(u){return u.company==='WE'&&u.prRole;})},
+    {label:teamLabels.ME||'Matisan PR Team', users:USER_DEFS.filter(function(u){return u.company==='ME'&&u.prRole;})},
   ];
-
   groups.forEach(function(grp){
     if(!grp.users.length) return;
-    const wrap=document.createElement('div');
+    var wrap=document.createElement('div');
     wrap.style.cssText='margin-bottom:10px';
-    const lbl=document.createElement('div');
+    var lbl=document.createElement('div');
     lbl.style.cssText='font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px';
     lbl.textContent=grp.label;
     wrap.appendChild(lbl);
-
-    const sel=document.createElement('select');
+    var sel=document.createElement('select');
     sel.style.cssText='width:100%;padding:9px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-family:inherit;outline:none;cursor:pointer';
     sel.innerHTML='<option value="" style="background:#1e293b;color:#94a3b8">— Select user —</option>';
-
     grp.users.forEach(function(u){
-      const dispName=u.realName||(names[u.username])||u.username;
-      // Don't show role in parentheses for cleaner display
-      const roleLabel='';
-      const o=document.createElement('option');
+      var name=u.realName||u.username;
+      var o=document.createElement('option');
       o.value=u.username;
-      o.textContent=dispName+(roleLabel?' '+roleLabel:'');
+      o.textContent=name;
       o.style.cssText='background:#1e293b;color:#fff';
       sel.appendChild(o);
     });
-
     sel.addEventListener('change',function(){
       if(!sel.value) return;
       document.getElementById('loginUser').value=sel.value;
@@ -1513,44 +1407,185 @@ function initLogin(){
       document.getElementById('loginPass').focus();
       sel.value='';
     });
-
     wrap.appendChild(sel);
     chips.appendChild(wrap);
   });
+  var passEl=document.getElementById('loginPass');
+  if(passEl) passEl.onkeydown=function(e){if(e.key==='Enter')doLogin();};
+  var userEl=document.getElementById('loginUser');
+  if(userEl) userEl.onkeydown=function(e){if(e.key==='Enter')document.getElementById('loginPass').focus();};
+}
 
-  // Fix Enter key on password field → trigger login
-  const passEl=document.getElementById('loginPass');
-  if(passEl){
-    passEl.onkeydown=null;
-    passEl.addEventListener('keydown',function(e){
-      if(e.key==='Enter') doLogin();
-    });
+async function doLogin(){
+  const username=document.getElementById('loginUser').value.trim();
+  const password=document.getElementById('loginPass').value;
+  const errEl=document.getElementById('loginErr');
+  const btn=document.querySelector('.login-btn');
+  btn.textContent='Signing in...'; btn.disabled=true;
+
+  // Check local user definitions first
+  const localUsers=getUsers();
+  const localUser=localUsers.find(x=>x.username===username&&x.password===password);
+  if(localUser){
+    authToken=btoa(JSON.stringify({username:localUser.username,role:localUser.role,exp:Date.now()+86400000*30}));
+    localStorage.setItem('omni-token',authToken);
+    currentUser={...localUser};
+    localStorage.setItem('omni-session-user',JSON.stringify(currentUser));
+    errEl.style.display='none';
+    btn.textContent='Sign In →'; btn.disabled=false;
+    showApp();
+    return;
   }
-  // Fix Enter key on username field → move to password
-  const userEl=document.getElementById('loginUser');
-  if(userEl){
-    userEl.onkeydown=null;
-    userEl.addEventListener('keydown',function(e){
-      if(e.key==='Enter') document.getElementById('loginPass').focus();
-    });
-  }
+
+  // Try Supabase (for password changes made via admin)
+  try{
+    const res=await fetch(SUPA_URL+'/users?username=eq.'+encodeURIComponent(username)+'&select=*',
+      {headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}});
+    if(res.ok){
+      const users=await res.json();
+      if(users&&users.length&&users[0].password===password){
+        const u=users[0];
+        const def=USER_DEFS.find(x=>x.username===u.username)||{};
+        const pw=getPasswords(); pw[u.username]=password; ls('omni-passwords',pw);
+        authToken=btoa(JSON.stringify({username:u.username,role:def.role||u.role,exp:Date.now()+86400000*30}));
+        localStorage.setItem('omni-token',authToken);
+        currentUser={...def,username:u.username,role:def.role||u.role,initials:u.initials||def.initials||'??'};
+        localStorage.setItem('omni-session-user',JSON.stringify(currentUser));
+        errEl.style.display='none';
+        btn.textContent='Sign In →'; btn.disabled=false;
+        showApp();
+        return;
+      }
+    }
+  }catch(e){console.warn('Supabase login check:',e.message);}
+
+  errEl.style.display='block';
+  errEl.textContent='Incorrect username or password.';
+  btn.textContent='Sign In →'; btn.disabled=false;
 }
 
 function doSignOut(){
-  if(!confirm('Sign out of OmniFlow?')) return;
-  // Clear all session data
-  authToken = null;
-  currentUser = null;
+  if(!confirm('Sign out of OmniFlow?'))return;
+  authToken=null;
+  currentUser=null;
   localStorage.removeItem('omni-token');
   localStorage.removeItem('omni-session-user');
-  // Hide app, show login
-  document.getElementById('appLayout').style.display = 'none';
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('loginUser').value = '';
-  document.getElementById('loginPass').value = '';
-  document.getElementById('loginErr').style.display = 'none';
-  // Re-init login chips
-  initLogin();
+  ls('omni-session',null);
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('appLayout').style.display='none';
+  document.getElementById('loginUser').value='';
+  document.getElementById('loginPass').value='';
+}
+
+async function showApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appLayout').style.display='flex';
+
+  // ── PHASE 1: Render immediately from localStorage cache (instant) ──
+  window._omniLoading = false;
+  initAppFromCache();       // load localStorage data into app state
+  applyAccessLevel();       // set nav + page
+  loadNotifs();
+  renderAll();              // instant render with cached data
+
+  // ── PHASE 2: Fetch fresh cloud data in background ──
+  showSync('syncing','Syncing with cloud...');
+  try {
+    await initApp();        // fetch from Supabase, updates app state
+    await loadPayRequests();
+    renderAll();            // re-render with fresh data (silent update)
+    showSync('ok','Synced ✓');
+    setTimeout(function(){showSync('','');},2500);
+  } catch(e) {
+    showSync('error','Offline — showing cached data');
+  }
+
+  resetInactivityTimer();
+}
+
+function initAppFromCache(){
+  // Populate app state from localStorage immediately (no network wait)
+  document.getElementById('sbUser').innerHTML=
+    '<div class="sb-avatar">'+(currentUser.initials||'??')+'</div>'
+    +'<div><div class="sb-uname">'+currentUser.username+'</div><div class="sb-urole">'+(currentUser.role||'')+'</div></div>';
+  document.getElementById('sbDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('fDate').value=new Date().toISOString().slice(0,10);
+
+  // Load from cache
+  transactions = ls('omni-tx')||[];
+  balances     = ls('omni-bal')||{...DEFAULT_BAL};
+  outstandings = ls('omni-out')||[];
+  payables     = ls('omni-payables')||[];
+
+  // Load companies from cache
+  const cachedCo = ls('omni-companies');
+  if(cachedCo && Array.isArray(cachedCo) && cachedCo.length){
+    companies = cachedCo;
+  } else {
+    companies = JSON.parse(JSON.stringify(DEFAULT_COMPANIES));
+  }
+
+  // Seed ME1 balance if not set
+  if(!balances['ME1']||balances['ME1']===0){
+    var me1def=getDivBanks?getDivBanks('ME1'):[];
+    if(me1def.length) balances['ME1']=Math.round(me1def.reduce(function(s,b){return s+(b.beg||0);},0));
+  }
+
+  populateCoSelects();
+  updateDivs();
+  setTimeout(populatePayBankDrop,100);
+  showMobileUI();
+  updateOnlineBadge();
+}
+function applyAccessLevel(){
+  const allNavItems=document.querySelectorAll('.nav-item');
+  if(isLimitedUser()){
+    // Hide nav items not in LIMITED_PAGES
+    allNavItems.forEach(item=>{
+      const label=item.textContent.trim();
+      item.style.display=LIMITED_NAV_LABELS.includes(label)?'flex':'none';
+    });
+    // Show limited access banner
+    document.getElementById('limitedBanner').style.display='flex';
+    const rng=getAllowedDateRange();
+    const lbl=document.getElementById('allowedRangeLabel');
+    if(lbl)lbl.textContent=rng.min+' and '+rng.max;
+    document.getElementById('adminNav').style.display='none';
+    // Sign out always visible for limited users too
+    const soNavL=document.getElementById('signoutNav');
+    if(soNavL) soNavL.style.display='flex';
+    // Restrict date input to today/yesterday
+    const range=getAllowedDateRange();
+    const dateInput=document.getElementById('fDate');
+    if(dateInput){dateInput.min=range.min;dateInput.max=range.max;}
+    // Navigate to Entry by default
+    nav('Entry',null);
+    document.querySelectorAll('.nav-item').forEach(n=>{
+      if(n.textContent.trim()==='Add Transaction')n.classList.add('active');
+    });
+  } else if(currentUser&&currentUser.accessLevel==='pr_only'){
+    allNavItems.forEach(item=>item.style.display='none');
+    const prNav=document.getElementById('payreqNav');
+    if(prNav){prNav.style.display='flex';}
+    const soNav=document.getElementById('signoutNav');
+    if(soNav){soNav.style.display='flex';}
+    document.getElementById('limitedBanner').style.display='none';
+    document.getElementById('adminNav').style.display='none';
+    if(prNav){nav('PayReq',prNav);}else{nav('Dashboard',document.querySelector('.nav-item'));}
+  } else {
+    allNavItems.forEach(item=>item.style.display='');
+    document.getElementById('limitedBanner').style.display='none';
+    if(isAdmin()){document.getElementById('adminNav').style.display='flex';}
+    else{document.getElementById('adminNav').style.display='none';}
+    // Payables — admin and finance only
+    const payNav=document.getElementById('payablesNav');
+    if(payNav) payNav.style.display=(isAdmin()||currentUser.username==='finance')?'flex':'none';
+    // Sign out always visible
+    const soNav=document.getElementById('signoutNav');
+    if(soNav) soNav.style.display='flex';
+    nav('Dashboard',document.querySelector('.nav-item'));
+    document.querySelector('.nav-item').classList.add('active');
+  }
 }
 
 // ══════════════════════════════════════
@@ -1591,7 +1626,7 @@ async function initApp(){
         balances[b.div_code] = parseFloat(b.opening_etb)||0;
         balances[b.div_code+'_usd'] = parseFloat(b.opening_usd)||0;
       });
-    } else { balances = ls('omni-bal')||getDefaultBalances(); }
+    } else { balances = ls('omni-bal')||{...DEFAULT_BAL}; }
 
     outstandings = Array.isArray(outData) ? outData.map(o=>({
       id: o.id, co: o.company_id, div: o.division,
@@ -1621,7 +1656,7 @@ async function initApp(){
   } catch(e){
     console.warn('Cloud load failed, using local cache:', e);
     transactions = ls('omni-tx')||[];
-    balances     = ls('omni-bal')||getDefaultBalances();
+    balances     = ls('omni-bal')||{...DEFAULT_BAL};
     outstandings = ls('omni-out')||JSON.parse(JSON.stringify(DEFAULT_OUT));
     companies    = ls('omni-companies')||JSON.parse(JSON.stringify(DEFAULT_COMPANIES));
     payables     = ls('omni-payables')||[];
@@ -1642,9 +1677,6 @@ async function initApp(){
 // ══════════════════════════════════════
 function nav(id,el){
   // Limited users can only access Entry and Ledger
-  if(currentUser&&currentUser.accessLevel==='pr_out'&&id!=='PayReq'&&id!=='Outstanding'){
-    return; // pr_out can only see PR and Outstanding
-  }
   if(isLimitedUser()&&!LIMITED_PAGES.includes(id)){
     showAccessDenied();return;
   }
@@ -2016,31 +2048,12 @@ function setType(t){txType=t;document.getElementById('btnIn').classList.toggle('
 async function deleteTx(id){
   if(isLimitedUser()){const tx=transactions.find(t=>t.id===id);if(!tx||!canEditTx(tx)){alert('You can only delete transactions from today or yesterday.');return;}}
   if(!confirm('Delete this transaction?'))return;
-  // Remove from local first (instant UI feedback)
+  try{ await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?id=eq.'+id,{method:'DELETE',headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE'}}); }catch(e){}
   transactions=transactions.filter(t=>t.id!==id);
   ls('omni-tx',transactions);
   renderAll();
-  // Then delete from Supabase
-  try{
-    await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?id=eq.'+id,{
-      method:'DELETE',
-      headers:{
-        'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
-        'Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE'
-      }
-    });
-  }catch(e){ console.warn('Delete from Supabase failed:',e); }
 }
-async function clearAll(){
-  if(!confirm('Clear ALL transactions from ledger?')) return;
-  transactions=[];ls('omni-tx',[]);renderAll();
-  try{
-    await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?id=neq.00000000-0000-0000-0000-000000000000',{
-      method:'DELETE',
-      headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Prefer':'return=minimal'}
-    });
-  }catch(e){}
-}
+function clearAll(){transactions=[];ls('omni-tx',transactions);renderAll()}
 
 // ══════════════════════════════════════
 // EDIT TRANSACTION
@@ -2255,42 +2268,32 @@ function renderDashboard(){
 // LEDGER
 // ══════════════════════════════════════
 function renderLedger(){
-  // Separate manual vs PR transactions
-  const allMerged = filterByPeriod([...getMergedTransactions()],ledgerPeriod,'ldfbFrom','ldfbTo');
+  let filtered=filterByPeriod([...getMergedTransactions()],ledgerPeriod,'ldfbFrom','ldfbTo');
   const co=document.getElementById('fltCo').value;
   const div=document.getElementById('fltDiv').value;
   const type=document.getElementById('fltType').value;
-  let filtered=allMerged.reverse().filter(t=>{
+  filtered=filtered.reverse().filter(t=>{
     if(co&&t.co!==co)return false;
     if(div&&t.divCode!==div)return false;
     if(type&&t.type!==type)return false;
     return true;
   });
-  const manualCount=transactions.length;
-  document.getElementById('ledgerCount').textContent=filtered.length+' entries ('+manualCount+' manual)';
+  document.getElementById('ledgerCount').textContent=filtered.length+' of '+transactions.length+' transactions';
   const body=document.getElementById('ledgerBody');
-  if(!filtered.length){body.innerHTML='<div class="empty-state">'+(manualCount===0?'No transactions yet. Start adding!':'No transactions match these filters.')+'</div>';return;}
-  body.innerHTML=filtered.map(tx=>{
-    const isManual=!tx.pr_id; // All non-PR transactions are manual and deletable
-    const isPR=!!tx.pr_id;
-    const sourceTag=isPR
-      ?'<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#dbeafe;color:#1e40af;font-weight:700;flex-shrink:0">PR</span>'
-      :'<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#f3f4f6;color:#6b7280;font-weight:700;flex-shrink:0">Manual</span>';
-    const editDelBtns=isManual
-      ?'<button class="edit-btn" onclick="openEditModal('+tx.id+')" title="Edit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
-        +'<button class="del-btn" onclick="deleteTx('+tx.id+')" title="Delete"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>'
-      :'<span style="font-size:10px;color:var(--muted)">PR auto</span>';
-    return '<div class="l-row">'
-      +'<span style="color:var(--muted);font-size:11px">'+tx.date+'</span>'
-      +'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;display:flex;align-items:center;gap:4px">'+sourceTag+' '+(tx.ref||'')+'</span>'
-      +'<span><span class="chip '+tx.type+'">'+tx.divCode+'</span></span>'
-      +'<span style="color:var(--teal-dark);font-weight:700;font-size:12px">'+(tx.type==='in'?fmt(tx.amt):'—')+'</span>'
-      +'<span style="color:var(--teal-dark);font-size:11px;opacity:.8">'+(tx.type==='in'&&tx.amtUsd?fmtUsd(tx.amtUsd):'—')+'</span>'
-      +'<span style="color:var(--red);font-weight:700;font-size:12px">'+(tx.type==='out'?fmt(tx.amt):'—')+'</span>'
-      +'<span style="color:var(--red);font-size:11px;opacity:.8">'+(tx.type==='out'&&tx.amtUsd?fmtUsd(tx.amtUsd):'—')+'</span>'
-      +'<div class="action-btns">'+editDelBtns+'</div>'
-    +'</div>';
-  }).join('');
+  if(!filtered.length){body.innerHTML='<div class="empty-state">'+(transactions.length===0?'No transactions yet. Start adding!':'No transactions match these filters.')+'</div>';return}
+  body.innerHTML=filtered.map(tx=>`<div class="l-row">
+    <span style="color:var(--muted);font-size:11px">${tx.date}</span>
+    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${tx.ref}${tx.note?' — '+tx.note:''}">${tx.ref}</span>
+    <span><span class="chip ${tx.type}">${tx.divCode}</span></span>
+    <span style="color:var(--teal-dark);font-weight:700;font-size:12px">${tx.type==='in'?fmt(tx.amt):'—'}</span>
+    <span style="color:var(--teal-dark);font-size:11px;opacity:.8">${tx.type==='in'&&tx.amtUsd?fmtUsd(tx.amtUsd):'—'}</span>
+    <span style="color:var(--red);font-weight:700;font-size:12px">${tx.type==='out'?fmt(tx.amt):'—'}</span>
+    <span style="color:var(--red);font-size:11px;opacity:.8">${tx.type==='out'&&tx.amtUsd?fmtUsd(tx.amtUsd):'—'}</span>
+    <div class="action-btns">
+      <button class="edit-btn" onclick="openEditModal(${tx.id})" title="Edit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+      <button class="del-btn" onclick="deleteTx(${tx.id})" title="Delete"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+    </div>
+  </div>`).join('');
 }
 function clearFilters(){document.getElementById('fltCo').value='';document.getElementById('fltDiv').value='';document.getElementById('fltType').value='';renderLedger()}
 
@@ -2410,7 +2413,6 @@ function getMe1Banks(){ return ls('omni-me1-banks') || JSON.parse(JSON.stringify
 function saveMe1Banks(b){ ls('omni-me1-banks',b); var t=b.reduce(function(s,x){return s+(x.beg||0);},0); balances['ME1']=Math.round(t); ls('omni-bal',balances); }
 
 function renderBalances(){
-  syncBalancesFromBankRegisters(); // always sync opening balances from bank registers
   const g=document.getElementById('balGrid');g.innerHTML='';let tB=0,tI=0,tO=0,tBusd=0,tIusd=0,tOusd=0;
   getAllDivs().forEach(d=>{
     const beg=balances[d.code]||0;
@@ -2873,39 +2875,19 @@ async function updateOutPaid(id,val){const o=outstandings.find(x=>x.id===id);if(
 async function deleteOut(id){if(!confirm('Delete this item?'))return;try{await apiCall('DELETE','/outstanding/'+id);}catch(e){}outstandings=outstandings.filter(o=>o.id!==id);ls('omni-out',outstandings);renderOutstanding();renderDashboard()}
 
 function renderOutstanding(){
-  // pr_out users (me_check, me_approve) see ONLY ME1 Construction items
-  const isPrOut = currentUser&&currentUser.accessLevel==='pr_out';
-  const ME1_DIV_CODES = ['ME1','ME1. Construction','ME1.Construction'];
-  function visibleOut(o){
-    if(!isPrOut) return true;
-    // ONLY show ME1 Construction items — exact match on division code starting with ME1
-    if(!o.div) return false;
-    const divStr = (o.div||'').toString().toUpperCase().trim();
-    // Allow: "ME1", "ME1.", "ME1. Construction", "ME1.Construction", "ME1 Construction"
-    return divStr==='ME1' || divStr.startsWith('ME1.') || divStr.startsWith('ME1 ');
-  }
-  const visOutstandings = outstandings.filter(visibleOut);
+  const tot=outstandings.reduce((s,o)=>s+o.amt,0);
+  const col=outstandings.reduce((s,o)=>s+o.paid,0);
+  const pend=outstandings.filter(o=>o.status==='pending').length;
+  document.getElementById('outKpis').innerHTML=`<div class="out-kpi"><div class="ok-label">Total Outstanding</div><div class="ok-val">${fmt(tot)}</div></div><div class="out-kpi"><div class="ok-label">Collected</div><div class="ok-val" style="color:var(--teal-dark)">${fmt(col)}</div></div><div class="out-kpi"><div class="ok-label">Still to Collect</div><div class="ok-val">${fmt(tot-col)}</div></div><div class="out-kpi"><div class="ok-label">Pending Items</div><div class="ok-val" style="color:var(--red)">${pend}</div></div>`;
 
-  const tot=visOutstandings.reduce((s,o)=>s+o.amt,0);
-  const col=visOutstandings.reduce((s,o)=>s+o.paid,0);
-  const pend=visOutstandings.filter(o=>o.status==='pending').length;
-
-  // Hide Add Item and Delete buttons for pr_out users
-  const addBtn=document.querySelector('#pgOutstanding .btn-primary');
-  if(addBtn) addBtn.style.display=isPrOut?'none':'';
-
-  document.getElementById('outKpis').innerHTML=`<div class="out-kpi"><div class="ok-label">Total Outstanding</div><div class="ok-val">${fmt(tot)}</div></div><div class="out-kpi"><div class="ok-label">Collected</div><div class="ok-val" style="color:var(--teal-dark)">${fmt(col)}</div></div><div class="out-kpi"><div class="ok-label">Still to Collect</div><div class="ok-val">${fmt(tot-col)}</div></div><div class="out-kpi"><div class="ok-label">Pending Items</div><div class="ok-val" style="color:var(--red)">${pend}</div></div>`
-  +(isPrOut?'<div style="margin-top:8px;padding:8px 12px;background:#dbeafe;border-radius:8px;font-size:12px;color:#1e40af;font-weight:600">📋 Showing ME1 Construction outstanding items only</div>':'');
-
-  const sorted=[...visOutstandings].filter(o=>o.status!=='collected').sort((a,b)=>(b.amt-b.paid)-(a.amt-a.paid));
+  const sorted=[...outstandings].filter(o=>o.status!=='collected').sort((a,b)=>(b.amt-b.paid)-(a.amt-a.paid));
   const rnks=['r1','r2','r3','r4'];
   document.getElementById('priorityBar').innerHTML=sorted.length===0?'<div style="color:var(--muted2);font-size:13px;padding:8px 0">All items collected!</div>':sorted.map((o,i)=>`<div class="pi"><div class="pi-rank ${rnks[Math.min(i,3)]}">${i+1}</div><div class="pi-info"><div class="pi-name">${o.client} — ${o.project}</div><div class="pi-sub">${o.div} · ${o.co}</div></div><span class="badge ${o.status}" style="margin-right:8px">${o.status}</span><div class="pi-amt">${fmt(o.amt-o.paid)}</div></div>`).join('');
 
-  // group by company — pr_out only sees Matisan with ME1 items
+  // group by company
   const grid=document.getElementById('outGrid');grid.innerHTML='';
-  const cosToShow=isPrOut?companies.filter(function(co){return co.name.toLowerCase().includes('matisan')||co.code==='ME'||co.id==='Matisan';  }):companies;
-  cosToShow.forEach(co=>{
-    const items=visOutstandings.filter(o=>o.co===co.id);
+  companies.forEach(co=>{
+    const items=outstandings.filter(o=>o.co===co.id);
     const t=items.reduce((s,o)=>s+o.amt,0);
     const badgeStyle=getCoPillClass(co.color);
     let cardHtml=`<div class="out-card" style="margin-bottom:14px">
@@ -2923,7 +2905,7 @@ function renderOutstanding(){
             <option value="partial" ${o.status==='partial'?'selected':''}>Partial</option>
             <option value="collected" ${o.status==='collected'?'selected':''}>Collected</option>
           </select>
-          ${!isPrOut?`<button class="del-btn" onclick="deleteOut(${o.id})" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button>`:""}
+          <button class="del-btn" onclick="deleteOut(${o.id})" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button>
         </div>
         ${o.status==='partial'?`<input type="number" placeholder="Paid so far" value="${o.paid}" onchange="updateOutPaid(${o.id},this.value)" style="width:110px;font-size:10px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;margin-top:2px">`:''}
       </div>
@@ -3210,26 +3192,6 @@ function renderCompanies(){
 }
 
 
-
-function saveTeamLabels(){
-  var obj=ls('omni-team-labels')||{};
-  var we=document.getElementById('teamLabel_WE');
-  var me=document.getElementById('teamLabel_ME');
-  if(we&&we.value.trim())obj.WE=we.value.trim(); else delete obj.WE;
-  if(me&&me.value.trim())obj.ME=me.value.trim(); else delete obj.ME;
-  ls('omni-team-labels',obj);
-  var msg=document.getElementById('teamLabelMsg');
-  if(msg){msg.textContent='✓ Saved!';setTimeout(function(){msg.textContent='';},2000);}
-}
-function resetTeamLabels(){ls('omni-team-labels',{});fillTeamLabelInputs();}
-function fillTeamLabelInputs(){
-  var obj=ls('omni-team-labels')||{};
-  var we=document.getElementById('teamLabel_WE');
-  var me=document.getElementById('teamLabel_ME');
-  if(we)we.value=obj.WE||'';
-  if(me)me.value=obj.ME||'';
-}
-
 function renderAdminSettings(){
   if(!isAdmin()){document.getElementById('pgAdminSettings').innerHTML='<div style="padding:40px;text-align:center;color:var(--muted2)">Admin access only.</div>';return;}
   const pw=getPasswords();
@@ -3267,7 +3229,7 @@ function renderAdminSettings(){
   // ── Other users' passwords — admin uses Old/New/Confirm ──
   USER_DEFS.filter(u=>u.username!=='admin').forEach(u=>{
     const isLtd=u.accessLevel==='limited';
-    const isPrOnly=u.accessLevel==='pr_only'||u.accessLevel==='pr_out';
+    const isPrOnly=u.accessLevel==='pr_only';
     const badge=isLtd?'Limited':isPrOnly?'PR Only':'Full';
     const badgeBg=isLtd?'var(--amber-light)':isPrOnly?'var(--blue-light)':'var(--teal-light)';
     const badgeCol=isLtd?'#92400e':isPrOnly?'var(--blue-dark)':'var(--teal-dark)';
@@ -3307,58 +3269,39 @@ function renderAdminSettings(){
 }
 
 async function changeUserPassword(username){
-  const oldEl = document.getElementById('oldpw_'+username);
-  const newEl = document.getElementById('newpw_'+username);
-  const confEl = document.getElementById('confpw_'+username);
-  const errEl = document.getElementById('err_'+username);
-  if(errEl) errEl.style.display = 'none';
+  const oldEl=document.getElementById('oldpw_'+username);
+  const newEl=document.getElementById('newpw_'+username);
+  const confEl=document.getElementById('confpw_'+username);
+  const errEl=document.getElementById('err_'+username);
+  errEl.style.display='none';
 
-  const newPw = newEl ? newEl.value : '';
-  const confPw = confEl ? confEl.value : '';
+  const pw=getPasswords();
+  const currentPw=pw[username]||'';
 
-  // Validate
-  if(newPw.length < 4){
-    if(errEl){ errEl.textContent='Password must be at least 4 characters.'; errEl.style.display='block'; } return;
+  // Admin can bypass old password check for other users OR must match
+  if(oldEl.value!==currentPw && oldEl.value!==''){
+    errEl.textContent='Current password is incorrect.';
+    errEl.style.display='block';return;
   }
-  if(newPw !== confPw){
-    if(errEl){ errEl.textContent='Passwords do not match.'; errEl.style.display='block'; } return;
+  if(oldEl.value==='' && !isAdmin()){
+    errEl.textContent='Please enter the current password.';
+    errEl.style.display='block';return;
+  }
+  if(newEl.value.length<6){
+    errEl.textContent='New password must be at least 6 characters.';
+    errEl.style.display='block';return;
+  }
+  if(newEl.value!==confEl.value){
+    errEl.textContent='New password and confirmation do not match.';
+    errEl.style.display='block';return;
   }
 
-  // ── Write to Supabase FIRST (cloud source of truth) ──
-  const savingMsg = document.getElementById('err_'+username);
-  try{
-    // Upsert: delete old row then insert new
-    await fetch(SUPA_URL+'/balances?div_code=eq.__pw__'+encodeURIComponent(username),{
-      method:'DELETE',
-      headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Prefer':'return=minimal'}
-    });
-    const ins = await fetch(SUPA_URL+'/balances',{
-      method:'POST',
-      headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body: JSON.stringify({div_code:'__pw__'+username, opening:0, note:newPw})
-    });
-    if(ins.ok || ins.status===201 || ins.status===204){
-      // Also update local cache
-      const pw = ls('omni-passwords')||{};
-      pw[username] = newPw;
-      ls('omni-passwords', pw);
-      if(oldEl) oldEl.value='';
-      if(newEl) newEl.value='';
-      if(confEl) confEl.value='';
-      showFlash('✓ Password for '+username+' updated on ALL devices', 'adminFlash', 'adminFlashMsg');
-    } else {
-      const errTxt = await ins.text();
-      if(errEl){ errEl.textContent='Supabase error: '+ins.status+' — '+errTxt; errEl.style.display='block'; }
-    }
-  }catch(e){
-    // Network error — save locally only
-    const pw = ls('omni-passwords')||{};
-    pw[username] = newPw;
-    ls('omni-passwords', pw);
-    if(errEl){ errEl.textContent='⚠ Saved locally only (offline). Reconnect to sync.'; errEl.style.display='block'; }
-  }
+  pw[username]=newEl.value;
+  ls('omni-passwords',pw);
+  try{ await apiCall('PATCH','/users/'+username+'/password',{password:newEl.value}); }catch(e){}
+  oldEl.value=''; newEl.value=''; confEl.value='';
+  showFlash('✓ Password changed for '+username,'adminFlash','adminFlashMsg');
 }
-
 
 function togglePwVis(id,btn){
   const el=document.getElementById(id);
@@ -3459,71 +3402,6 @@ function updatePayPaid(id,val){
   const o=payables.find(x=>x.id===id);
   if(o){o.paid=Math.round(parseFloat(val)||0);if(o.paid>=o.amt)o.status='paid';ls('omni-payables',payables);renderPayables();}
 }
-async function deleteSinglePR(prId){
-  if(!isAdmin()){ alert('Admin only.'); return; }
-  if(!confirm('Delete this Payment Request permanently?\nThis will also remove any related ledger entries.')) return;
-  try{
-    const res=await fetch(PR_SB+'/payment_requests?id=eq.'+prId,{
-      method:'DELETE',
-      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Prefer':'return=minimal'}
-    });
-    if(res.ok||res.status===204){
-      payRequests=payRequests.filter(p=>p.id!==prId);
-      // Remove linked ledger entries
-      transactions=transactions.filter(t=>t.pr_id!==prId);
-      ls('omni-tx',transactions);
-      showFlash('✓ Payment request deleted','prFlash','prFlashMsg');
-      renderPRList(); renderAll();
-    } else { alert('Error: '+await res.text()); }
-  }catch(e){ alert('Network error: '+e.message); }
-}
-
-async function clearAllManualTransactions(){
-  if(!isAdmin()){ alert('Admin only.'); return; }
-  if(!confirm('Delete ALL manual transactions from the ledger?\nPR-linked entries will be kept.\nThis cannot be undone.')) return;
-  showFlash('⏳ Deleting manual transactions...','ledFlash','ledFlashMsg');
-  try{
-    // Delete all non-PR transactions from Supabase
-    // Transactions without pr_id are manual
-    const res = await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?pr_id=is.null',{
-      method:'DELETE',
-      headers:{
-        'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
-        'Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
-        'Prefer':'return=minimal'
-      }
-    });
-    if(res.ok||res.status===204){
-      transactions=[];
-      ls('omni-tx',[]);
-      showFlash('✓ All manual transactions deleted','ledFlash','ledFlashMsg');
-      renderAll();
-    } else {
-      const err=await res.text();
-      // Fallback: delete locally only
-      transactions=transactions.filter(t=>t.pr_id);
-      ls('omni-tx',transactions);
-      showFlash('✓ Cleared locally (Supabase: '+res.status+')','ledFlash','ledFlashMsg');
-      renderAll();
-    }
-  }catch(e){
-    // Network error — clear locally
-    transactions=transactions.filter(t=>t.pr_id);
-    ls('omni-tx',transactions);
-    showFlash('✓ Cleared locally (offline)','ledFlash','ledFlashMsg');
-    renderAll();
-  }
-}
-
-async function clearLedgerOfPREntries(){
-  if(!isAdmin()){ alert('Admin only.'); return; }
-  if(!confirm('Remove all PR-linked entries from the Ledger?\nManual transactions will be kept.')) return;
-  transactions=transactions.filter(t=>!t.pr_id);
-  ls('omni-tx',transactions);
-  showFlash('✓ PR ledger entries cleared','ledFlash','ledFlashMsg');
-  renderAll();
-}
-
 function deletePay(id){
   if(!confirm('Delete this payable?'))return;
   payables=payables.filter(p=>p.id!==id);
@@ -3777,14 +3655,7 @@ function getSubsForDiv(divCode){
   return [];
 }
 
-function prDispName(u){
-  const n=ls('omni-display-names')||{};
-  if(n[u]) return n[u];
-  // Try realName from USER_DEFS
-  const ud=USER_DEFS.find(function(x){return x.username===u;});
-  if(ud&&ud.realName) return ud.realName;
-  return u;
-}
+function prDispName(u){const n=ls('omni-display-names')||{};return n[u]||u;}
 
 function prCanAct(pr,step){
   if(!currentUser) return false;
@@ -5392,12 +5263,9 @@ function deleteSubdivisionBtn(btn){deleteSubdivision(btn.dataset.coid,btn.datase
   <!-- PWA Service Worker + Install prompt -->
   <script>
   // Register service worker for offline use
-  if('serviceWorker' in navigator){
+  if('serviceWorker' in navigator && window.location.hostname.includes('github.io')){
     window.addEventListener('load', function(){
-      if(!window.location.hostname.includes('github.io')) return;
-      navigator.serviceWorker.register('./sw.js').then(function(reg){
-        console.log('SW registered:', reg.scope);
-      }).catch(function(e){ console.log('SW error:', e); });
+      navigator.serviceWorker.register('./sw.js').catch(function(){});
     });
   }
 
@@ -5431,8 +5299,6 @@ function deleteSubdivisionBtn(btn){deleteSubdivision(btn.dataset.coid,btn.datase
     var isSafari=/safari/.test(ua)&&!/chrome/.test(ua);
     var isInstalled=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone;
     var steps='';
-    var isEdge=ua.indexOf('edg/')>=0;
-    var isChrome=ua.indexOf('chrome')>=0&&!isEdge;
     if(isInstalled){
       steps='<div style="text-align:center;padding:20px 0">'
         +'<div style="font-size:48px;margin-bottom:12px">&#x2705;</div>'
@@ -5446,32 +5312,15 @@ function deleteSubdivisionBtn(btn){deleteSubdivision(btn.dataset.coid,btn.datase
         +'<div style="display:flex;align-items:center;gap:10px;background:#f8faff;padding:12px;border-radius:10px"><div style="width:28px;height:28px;border-radius:50%;background:#0ea87a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">3</div><div>Tap <strong>Add</strong> &#x2014; done!</div></div>'
         +'</div>';
     } else {
-      steps='<div style="background:#f0fdf4;padding:14px;border-radius:10px;border:1.5px solid #86efac;margin-bottom:12px">'
-        +'<div style="font-size:14px;font-weight:800;color:#065f46;margin-bottom:10px">&#x1F5A5; Install on Computer (Windows/Mac)</div>'
-        +'<div style="display:flex;flex-direction:column;gap:8px;font-size:13px">'
-        +'<div style="display:flex;align-items:center;gap:8px;background:#fff;padding:8px 12px;border-radius:8px;border:1px solid #86efac">'
-          +'<span style="font-size:18px">1&#xFE0F;&#x20E3;</span>'
-          +'<div>In Chrome/Edge, look for <strong style="color:#1e40af">&#x22B3; Open in app</strong> button in the top-right of the browser, OR the install icon <strong>&#x2295;</strong> in the address bar</div>'
-        +'</div>'
-        +'<div style="display:flex;align-items:center;gap:8px;background:#fff;padding:8px 12px;border-radius:8px;border:1px solid #86efac">'
-          +'<span style="font-size:18px">2&#xFE0F;&#x20E3;</span>'
-          +'<div>Click it &#x2192; click <strong>Install</strong> &#x2192; OmniFlow opens as a desktop app!</div>'
-        +'</div>'
+      steps='<div style="background:#f8faff;padding:14px;border-radius:10px;border:1.5px solid #bfdbfe;margin-bottom:10px">'
+        +'<div style="font-size:13px;font-weight:700;color:#1e40af;margin-bottom:8px">&#x1F7E6; Chrome or Edge</div>'
+        +'<div style="font-size:13px;display:flex;flex-direction:column;gap:6px">'
+        +'<div>1. Look for <strong>install icon &#x2295;</strong> in the address bar</div>'
+        +'<div>2. Click it &#x2192; click <strong>Install</strong></div>'
+        +'<div style="color:var(--muted);font-size:12px">Or: Menu &#x22EE; &#x2192; Install OmniFlow</div>'
         +'</div></div>'
-        +'<div style="background:#f8faff;padding:14px;border-radius:10px;border:1.5px solid #bfdbfe;margin-bottom:12px">'
-          +'<div style="font-size:14px;font-weight:800;color:#1e40af;margin-bottom:10px">&#x1F4F1; Install on iPhone</div>'
-          +'<div style="font-size:13px;display:flex;flex-direction:column;gap:6px">'
-            +'<div>1. Open in <strong>Safari</strong></div>'
-            +'<div>2. Tap <strong>Share &#x1F4E4;</strong> button at bottom</div>'
-            +'<div>3. Tap <strong>Add to Home Screen</strong> &#x2192; <strong>Add</strong></div>'
-          +'</div>'
-        +'</div>'
-        +'<div style="background:#f8faff;padding:14px;border-radius:10px;border:1.5px solid #bfdbfe">'
-          +'<div style="font-size:14px;font-weight:800;color:#1e40af;margin-bottom:10px">&#x1F4F1; Install on Android</div>'
-          +'<div style="font-size:13px;display:flex;flex-direction:column;gap:6px">'
-            +'<div>1. Open in <strong>Chrome</strong></div>'
-            +'<div>2. Tap menu <strong>&#x22EE;</strong> &#x2192; <strong>Add to Home Screen</strong> or <strong>Install app</strong></div>'
-          +'</div>'
+        +'<div style="background:#fff8f0;padding:12px;border-radius:10px;border:1.5px solid #fcd34d;font-size:12px;color:#92400e">'
+        +'<strong>Not seeing the icon?</strong> Make sure manifest.json and sw.js are uploaded to your GitHub repo, then refresh.'
         +'</div>';
     }
     var modal=document.createElement('div');
