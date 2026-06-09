@@ -1420,266 +1420,61 @@ function dismissPWA(){
 
 // ══════════════════════════════════════
 function initLogin(){
-  // Clear any old session — user must sign in every time
   localStorage.removeItem('omni-token');
   localStorage.removeItem('omni-session-user');
   authToken=null; currentUser=null;
+
   const chips=document.getElementById('userChips');
-    const teamLabels=ls('omni-team-labels')||{};
-  const chipGroups=[
-    {label:'System',color:'#0ea87a',users:USER_DEFS.filter(u=>!u.company)},
-    {label:teamLabels.WE||'Wanofi PR Team',color:'#1d4ed8',users:USER_DEFS.filter(u=>u.company==='WE'&&u.prRole)},
-    {label:teamLabels.ME||'Matisan PR Team',color:'#7c3aed',users:USER_DEFS.filter(u=>u.company==='ME'&&u.prRole)},
+  chips.innerHTML=''; // clear first — prevent duplicates
+
+  const teamLabels=ls('omni-team-labels')||{};
+  const names=ls('omni-display-names')||{};
+
+  // ── Quick sign-in as DROPDOWNS ──
+  const groups=[
+    {label:'System',          users:USER_DEFS.filter(u=>!u.company)},
+    {label:teamLabels.WE||'Wanofi Team',   users:USER_DEFS.filter(u=>u.company==='WE'&&u.prRole)},
+    {label:teamLabels.ME||'Matisan Team',  users:USER_DEFS.filter(u=>u.company==='ME'&&u.prRole)},
   ];
-  chipGroups.forEach(grp=>{
+
+  groups.forEach(function(grp){
     if(!grp.users.length) return;
+
+    const wrap=document.createElement('div');
+    wrap.style.cssText='margin-bottom:10px';
+
     const lbl=document.createElement('div');
-    lbl.style.cssText='width:100%;font-size:9px;color:rgba(255,255,255,.3);margin:8px 0 3px;text-transform:uppercase;letter-spacing:.6px';
+    lbl.style.cssText='font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px';
     lbl.textContent=grp.label;
-    chips.appendChild(lbl);
-    grp.users.forEach(u=>{
-      const names=ls('omni-display-names')||{};
-      const chip=document.createElement('span');
-      chip.className='login-user-chip';
-      const realName = u.realName || names[u.username] || u.username;
-        const roleMap = {prepare:'prepare', check:'check', approve:'approve'};
-        chip.textContent = realName + (u.prRole ? ' ('+u.prRole+')' : '');
-      chip.style.borderColor=grp.color+'55';
-      chip.onclick=()=>{
-        document.getElementById('loginUser').value=u.username;
-        document.getElementById('loginPass').value='';
-        document.getElementById('loginPass').focus();
-      };
-      chips.appendChild(chip);
+    wrap.appendChild(lbl);
+
+    // Build select dropdown
+    const sel=document.createElement('select');
+    sel.style.cssText='width:100%;padding:9px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-family:inherit;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none';
+    sel.innerHTML='<option value="" style="background:#1e293b;color:#94a3b8">— Select user —</option>';
+
+    grp.users.forEach(function(u){
+      const dispName=u.realName||(names[u.username])||u.username;
+      const roleLabel=u.prRole?'('+u.prRole+')':'';
+      const o=document.createElement('option');
+      o.value=u.username;
+      o.textContent=dispName+(roleLabel?' '+roleLabel:'');
+      o.style.cssText='background:#1e293b;color:#fff';
+      sel.appendChild(o);
     });
+
+    sel.addEventListener('change',function(){
+      if(!sel.value) return;
+      // Fill username and focus password
+      document.getElementById('loginUser').value=sel.value;
+      document.getElementById('loginPass').value='';
+      document.getElementById('loginPass').focus();
+      sel.value=''; // reset dropdown
+    });
+
+    wrap.appendChild(sel);
+    chips.appendChild(wrap);
   });
-  document.getElementById('loginPass').onkeydown=e=>{if(e.key==='Enter')doLogin()};
-  // Auto-restore session from saved token
-  authToken = localStorage.getItem('omni-token');
-  const savedUser = localStorage.getItem('omni-session-user');
-  if(authToken && savedUser){
-    try{
-      currentUser = JSON.parse(savedUser);
-      showApp();
-      return;
-    }catch(e){ localStorage.removeItem('omni-token'); }
-  }
-}
-
-async function doLogin(){
-  const username = document.getElementById('loginUser').value.trim().toLowerCase();
-  const password = document.getElementById('loginPass').value;
-  const errEl = document.getElementById('loginErr');
-  const btn = document.querySelector('.login-btn');
-  btn.textContent = 'Signing in...'; btn.disabled = true;
-  errEl.style.display = 'none';
-
-  const def = USER_DEFS.find(x => x.username === username);
-  if(!def){
-    errEl.style.display='block';
-    errEl.textContent='Unknown username.';
-    btn.textContent='Sign In →'; btn.disabled=false;
-    return;
-  }
-
-  // ── STEP 1: Fetch password from Supabase (cloud source of truth) ──
-  let cloudPw = null;
-  try{
-    const r = await fetch(SUPA_URL+'/balances?div_code=eq.__pw__'+encodeURIComponent(username)+'&select=note',{
-      headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}
-    });
-    if(r.ok){
-      const rows = await r.json();
-      if(rows && rows.length && rows[0].note) cloudPw = rows[0].note;
-    }
-  }catch(e){ console.warn('Cloud pw fetch failed:', e.message); }
-
-  // ── STEP 2: Determine active password ──
-  // Cloud password wins over default; if no cloud pw, use default
-  const activePw = cloudPw || DEFAULT_PASSWORDS[username] || '';
-
-  if(password === activePw){
-    // Cache locally for offline use
-    const pw = ls('omni-passwords') || {};
-    pw[username] = activePw;
-    ls('omni-passwords', pw);
-    _loginSuccess(def, btn, errEl);
-    return;
-  }
-
-  // ── STEP 3: Try cached local password (offline fallback) ──
-  const localPw = (ls('omni-passwords')||{})[username] || DEFAULT_PASSWORDS[username] || '';
-  if(password === localPw){
-    _loginSuccess(def, btn, errEl);
-    return;
-  }
-
-  // All failed
-  errEl.style.display = 'block';
-  errEl.textContent = 'Incorrect password.';
-  btn.textContent = 'Sign In →'; btn.disabled = false;
-}
-
-function _loginSuccess(userDef, btn, errEl){
-  authToken = btoa(JSON.stringify({username:userDef.username, role:userDef.role, exp:Date.now()+86400000*30}));
-  localStorage.setItem('omni-token', authToken);
-  currentUser = Object.assign({}, userDef);
-  localStorage.setItem('omni-session-user', JSON.stringify(currentUser));
-  if(errEl) errEl.style.display = 'none';
-  if(btn){ btn.textContent = 'Sign In →'; btn.disabled = false; }
-  showApp();
-}
-
-
-
-async function showApp(){
-  document.getElementById('loginScreen').style.display='none';
-  document.getElementById('appLayout').style.display='flex';
-
-  // ── PHASE 1: Render immediately from localStorage cache (instant) ──
-  window._omniLoading = false;
-  initAppFromCache();       // load localStorage data into app state
-  applyAccessLevel();       // set nav + page
-  loadNotifs();
-  renderAll();              // instant render with cached data
-
-  // ── PHASE 2: Fetch fresh cloud data in background ──
-  showSync('syncing','Syncing with cloud...');
-  try {
-    await initApp();        // fetch from Supabase, updates app state
-    await loadPayRequests();
-    renderAll();            // re-render with fresh data (silent update)
-    showSync('ok','Synced ✓');
-    setTimeout(function(){showSync('','');},2500);
-  } catch(e) {
-    showSync('error','Offline — showing cached data');
-  }
-
-  resetInactivityTimer();
-}
-
-function initAppFromCache(){
-  // Populate app state from localStorage immediately (no network wait)
-  document.getElementById('sbUser').innerHTML=
-    '<div class="sb-avatar">'+(currentUser.initials||'??')+'</div>'
-    +'<div><div class="sb-uname">'+currentUser.username+'</div><div class="sb-urole">'+(currentUser.role||'')+'</div></div>';
-  document.getElementById('sbDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  document.getElementById('fDate').value=new Date().toISOString().slice(0,10);
-
-  // Load from cache
-  // Pre-load ALL passwords from Supabase into local cache (background)
-  (async function(){
-    try{
-      const r = await fetch(SUPA_URL+'/balances?div_code=like.__pw__*&select=div_code,note',{
-        headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}
-      });
-      if(r.ok){
-        const rows = await r.json();
-        if(rows && rows.length){
-          const pw = Object.assign({}, DEFAULT_PASSWORDS);
-          rows.forEach(function(row){
-            const uname = row.div_code.replace('__pw__','');
-            if(uname && row.note) pw[uname] = row.note;
-          });
-          ls('omni-passwords', pw);
-          console.log('All passwords synced from cloud:', rows.length, 'users');
-        }
-      }
-    }catch(e){ console.warn('Password pre-load failed:', e.message); }
-  })();
-  transactions = ls('omni-tx')||[];
-  balances     = ls('omni-bal')||getDefaultBalances();
-  outstandings = ls('omni-out')||[];
-  payables     = ls('omni-payables')||[];
-
-  // Load companies from cache
-  const cachedCo = ls('omni-companies');
-  if(cachedCo && Array.isArray(cachedCo) && cachedCo.length){
-    companies = cachedCo;
-  } else {
-    companies = JSON.parse(JSON.stringify(DEFAULT_COMPANIES));
-  }
-
-  // Seed ME1 balance if not set
-  if(!balances['ME1']||balances['ME1']===0){
-    var me1def=getDivBanks?getDivBanks('ME1'):[];
-    if(me1def.length) balances['ME1']=Math.round(me1def.reduce(function(s,b){return s+(b.beg||0);},0));
-  }
-
-  populateCoSelects();
-  updateDivs();
-  // Seed display names from USER_DEFS realName
-  var dn=ls('omni-display-names')||{};
-  var changed=false;
-  USER_DEFS.forEach(function(u){if(u.realName&&!dn[u.username]){dn[u.username]=u.realName;changed=true;}});
-  if(changed) ls('omni-display-names',dn);
-  setTimeout(populatePayBankDrop,100);
-  showMobileUI();
-  updateOnlineBadge();
-}
-function applyAccessLevel(){
-  const allNavItems=document.querySelectorAll('.nav-item');
-  if(isLimitedUser()){
-    // Hide nav items not in LIMITED_PAGES
-    allNavItems.forEach(item=>{
-      const label=item.textContent.trim();
-      item.style.display=LIMITED_NAV_LABELS.includes(label)?'flex':'none';
-    });
-    // Show limited access banner
-    document.getElementById('limitedBanner').style.display='flex';
-    const rng=getAllowedDateRange();
-    const lbl=document.getElementById('allowedRangeLabel');
-    if(lbl)lbl.textContent=rng.min+' and '+rng.max;
-    document.getElementById('adminNav').style.display='none';
-    // Sign out always visible for limited users too
-    const soNavL=document.getElementById('signoutNav');
-    if(soNavL) soNavL.style.display='flex';
-    // Restrict date input to today/yesterday
-    const range=getAllowedDateRange();
-    const dateInput=document.getElementById('fDate');
-    if(dateInput){dateInput.min=range.min;dateInput.max=range.max;}
-    // Navigate to Entry by default
-    nav('Entry',null);
-    document.querySelectorAll('.nav-item').forEach(n=>{
-      if(n.textContent.trim()==='Add Transaction')n.classList.add('active');
-    });
-  } else if(currentUser&&currentUser.accessLevel==='pr_only'){
-    allNavItems.forEach(item=>item.style.display='none');
-    const prNav=document.getElementById('payreqNav');
-    if(prNav){prNav.style.display='flex';}
-    const soNav=document.getElementById('signoutNav');
-    if(soNav){soNav.style.display='flex';}
-    document.getElementById('limitedBanner').style.display='none';
-    document.getElementById('adminNav').style.display='none';
-    if(prNav){nav('PayReq',prNav);}else{nav('Dashboard',document.querySelector('.nav-item'));}
-  } else if(currentUser&&currentUser.accessLevel==='pr_out'){
-    // PR access + Outstanding Income (Matisan check/approve)
-    allNavItems.forEach(item=>item.style.display='none');
-    const prNav=document.getElementById('payreqNav');
-    const outNav=document.getElementById('outstandingNav');
-    const soNav=document.getElementById('signoutNav');
-    if(prNav){prNav.style.display='flex';}
-    if(outNav){outNav.style.display='flex';}
-    if(soNav){soNav.style.display='flex';}
-    document.getElementById('limitedBanner').style.display='none';
-    document.getElementById('adminNav').style.display='none';
-    // Filter outstanding to Matisan (ME) company only
-    if(currentUser.company) window._outFilter=currentUser.company;
-    if(prNav){nav('PayReq',prNav);}
-  } else {
-    allNavItems.forEach(item=>item.style.display='');
-    document.getElementById('limitedBanner').style.display='none';
-    if(isAdmin()){document.getElementById('adminNav').style.display='flex';}
-    else{document.getElementById('adminNav').style.display='none';}
-    // Payables — admin and finance only
-    const payNav=document.getElementById('payablesNav');
-    if(payNav) payNav.style.display=(isAdmin()||currentUser.username==='finance')?'flex':'none';
-    // Sign out always visible
-    const soNav=document.getElementById('signoutNav');
-    if(soNav) soNav.style.display='flex';
-    nav('Dashboard',document.querySelector('.nav-item'));
-    document.querySelector('.nav-item').classList.add('active');
-  }
 }
 
 function doSignOut(){
