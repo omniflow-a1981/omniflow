@@ -1214,11 +1214,14 @@ const DEFAULT_PASSWORDS = {
   we_prepare:'we123', we_check:'we123', we_approve:'we123', we_finance:'wefinance123',
   me_prepare:'me123', me_check:'me123', me_approve:'me123', me_finance:'mefinance123'
 };
+// Force use of DEFAULT_PASSWORDS — clear any previously stored passwords
+(function(){ ls('omni-passwords', {}); })();
+
 const USER_DEFS = [
   {username:'admin',      role:'admin',      displayRole:'Administrator',   initials:'AD', accessLevel:'full',    company:null, prRole:null},
-  {username:'finance',    role:'finance',    displayRole:'Finance Officer',       initials:'BB', accessLevel:'full', company:null, prRole:'paid',   realName:'Blen Bula'},
-  {username:'we_finance', role:'finance', displayRole:'Wanofi Finance Officer',  initials:'BA', accessLevel:'pr_only', company:'WE', prRole:'paid', realName:'Blen Abera'},
-  {username:'me_finance', role:'finance', displayRole:'Matisan Finance Officer', initials:'BA', accessLevel:'pr_only', company:'ME', prRole:'paid', realName:'Blen Abera'},
+  {username:'finance',    role:'finance',    displayRole:'Finance Officer',       initials:'BB', accessLevel:'full', company:null, prRole:'paid',   realName:'Blen Abera'},
+  {username:'we_finance', role:'finance', displayRole:'Wanofi Finance Officer',  initials:'BA', accessLevel:'pr_only', company:'WE', prRole:null,   realName:'WE-Anani'},
+  {username:'me_finance', role:'finance', displayRole:'Matisan Finance Officer', initials:'BA', accessLevel:'pr_only', company:'ME', prRole:null,   realName:'ME-Anani'},
   {username:'wanofi',     role:'limited',    displayRole:'Wanofi Manager',  initials:'WE', accessLevel:'limited', company:'WE', prRole:null},
   {username:'matisan',    role:'limited',    displayRole:'Matisan Manager', initials:'ME', accessLevel:'limited', company:'ME', prRole:null},
   {username:'we_prepare', role:'pr_prepare', displayRole:'WE Preparer',    initials:'HT', accessLevel:'pr_only', company:'WE', prRole:'prepare', realName:'Hareg Tesfaye'},
