@@ -2992,27 +2992,38 @@ async function updateOutPaid(id,val){const o=outstandings.find(x=>x.id===id);if(
 async function deleteOut(id){if(!confirm('Delete this item?'))return;try{await apiCall('DELETE','/outstanding/'+id);}catch(e){}outstandings=outstandings.filter(o=>o.id!==id);ls('omni-out',outstandings);renderOutstanding();renderDashboard()}
 
 function renderOutstanding(){
-  // If pr_out user (me_check/me_approve), only show Matisan outstanding
-  if(currentUser&&currentUser.accessLevel==='pr_out'&&currentUser.company){
-    const coSel=document.getElementById('outCo');
-    if(coSel&&!coSel.value){
-      // Pre-filter to their company
-      coSel.value=currentUser.company;
-    }
+  // pr_out users (me_check, me_approve) see ONLY ME1 Construction items
+  const isPrOut = currentUser&&currentUser.accessLevel==='pr_out';
+  const ME1_DIV_CODES = ['ME1','ME1. Construction','ME1.Construction'];
+  function visibleOut(o){
+    if(!isPrOut) return true;
+    // Must be ME company AND ME1 division
+    const coMatch = o.co&&(o.co.toLowerCase().includes('matisan')||o.co==='ME'||o.co.toLowerCase().includes('me'));
+    const divMatch = o.div&&ME1_DIV_CODES.some(function(d){return o.div.startsWith('ME1');});
+    return coMatch&&divMatch;
   }
-  const tot=outstandings.reduce((s,o)=>s+o.amt,0);
-  const col=outstandings.reduce((s,o)=>s+o.paid,0);
-  const pend=outstandings.filter(o=>o.status==='pending').length;
-  document.getElementById('outKpis').innerHTML=`<div class="out-kpi"><div class="ok-label">Total Outstanding</div><div class="ok-val">${fmt(tot)}</div></div><div class="out-kpi"><div class="ok-label">Collected</div><div class="ok-val" style="color:var(--teal-dark)">${fmt(col)}</div></div><div class="out-kpi"><div class="ok-label">Still to Collect</div><div class="ok-val">${fmt(tot-col)}</div></div><div class="out-kpi"><div class="ok-label">Pending Items</div><div class="ok-val" style="color:var(--red)">${pend}</div></div>`;
+  const visOutstandings = outstandings.filter(visibleOut);
 
-  const sorted=[...outstandings].filter(o=>o.status!=='collected').sort((a,b)=>(b.amt-b.paid)-(a.amt-a.paid));
+  const tot=visOutstandings.reduce((s,o)=>s+o.amt,0);
+  const col=visOutstandings.reduce((s,o)=>s+o.paid,0);
+  const pend=visOutstandings.filter(o=>o.status==='pending').length;
+
+  // Hide Add Item and Delete buttons for pr_out users
+  const addBtn=document.querySelector('#pgOutstanding .btn-primary');
+  if(addBtn) addBtn.style.display=isPrOut?'none':'';
+
+  document.getElementById('outKpis').innerHTML=`<div class="out-kpi"><div class="ok-label">Total Outstanding</div><div class="ok-val">${fmt(tot)}</div></div><div class="out-kpi"><div class="ok-label">Collected</div><div class="ok-val" style="color:var(--teal-dark)">${fmt(col)}</div></div><div class="out-kpi"><div class="ok-label">Still to Collect</div><div class="ok-val">${fmt(tot-col)}</div></div><div class="out-kpi"><div class="ok-label">Pending Items</div><div class="ok-val" style="color:var(--red)">${pend}</div></div>`
+  +(isPrOut?'<div style="margin-top:8px;padding:8px 12px;background:#dbeafe;border-radius:8px;font-size:12px;color:#1e40af;font-weight:600">📋 Showing ME1 Construction outstanding items only</div>':'');
+
+  const sorted=[...visOutstandings].filter(o=>o.status!=='collected').sort((a,b)=>(b.amt-b.paid)-(a.amt-a.paid));
   const rnks=['r1','r2','r3','r4'];
   document.getElementById('priorityBar').innerHTML=sorted.length===0?'<div style="color:var(--muted2);font-size:13px;padding:8px 0">All items collected!</div>':sorted.map((o,i)=>`<div class="pi"><div class="pi-rank ${rnks[Math.min(i,3)]}">${i+1}</div><div class="pi-info"><div class="pi-name">${o.client} — ${o.project}</div><div class="pi-sub">${o.div} · ${o.co}</div></div><span class="badge ${o.status}" style="margin-right:8px">${o.status}</span><div class="pi-amt">${fmt(o.amt-o.paid)}</div></div>`).join('');
 
-  // group by company
+  // group by company — pr_out only sees Matisan with ME1 items
   const grid=document.getElementById('outGrid');grid.innerHTML='';
-  companies.forEach(co=>{
-    const items=outstandings.filter(o=>o.co===co.id);
+  const cosToShow=isPrOut?companies.filter(function(co){return co.name.toLowerCase().includes('matisan')||co.code==='ME';}):companies;
+  cosToShow.forEach(co=>{
+    const items=visOutstandings.filter(o=>o.co===co.id);
     const t=items.reduce((s,o)=>s+o.amt,0);
     const badgeStyle=getCoPillClass(co.color);
     let cardHtml=`<div class="out-card" style="margin-bottom:14px">
@@ -3030,7 +3041,7 @@ function renderOutstanding(){
             <option value="partial" ${o.status==='partial'?'selected':''}>Partial</option>
             <option value="collected" ${o.status==='collected'?'selected':''}>Collected</option>
           </select>
-          <button class="del-btn" onclick="deleteOut(${o.id})" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button>
+          ${!isPrOut?`<button class="del-btn" onclick="deleteOut(${o.id})" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button>`:""}
         </div>
         ${o.status==='partial'?`<input type="number" placeholder="Paid so far" value="${o.paid}" onchange="updateOutPaid(${o.id},this.value)" style="width:110px;font-size:10px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;margin-top:2px">`:''}
       </div>
