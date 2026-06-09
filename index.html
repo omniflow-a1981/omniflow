@@ -2867,46 +2867,70 @@ async function deleteOut(id){if(!confirm('Delete this item?'))return;try{await a
 
 function renderOutstanding(){
   const isPrOut=currentUser&&currentUser.accessLevel==='pr_out';
-  const visOut=isPrOut?visOut.filter(function(o){
-    const d=(o.div||'').toUpperCase().trim();
-    return d==='ME1'||d.startsWith('ME1.')||d.startsWith('ME1 ');
-  }):outstandings;
-  if(isPrOut){const ib=document.getElementById('outPrOutBanner');if(!ib){const b=document.createElement('div');b.id='outPrOutBanner';b.style.cssText='margin-bottom:10px;padding:8px 14px;background:#dbeafe;border-radius:8px;font-size:12px;color:#1e40af;font-weight:600';b.textContent='Showing ME1 Construction outstanding items only';document.getElementById('outKpis').before(b);}}
-  const tot=visOut.reduce((s,o)=>s+o.amt,0);
-  const col=visOut.reduce((s,o)=>s+o.paid,0);
-  const pend=visOut.filter(o=>o.status==='pending').length;
-  document.getElementById('outKpis').innerHTML=`<div class="out-kpi"><div class="ok-label">Total Outstanding</div><div class="ok-val">${fmt(tot)}</div></div><div class="out-kpi"><div class="ok-label">Collected</div><div class="ok-val" style="color:var(--teal-dark)">${fmt(col)}</div></div><div class="out-kpi"><div class="ok-label">Still to Collect</div><div class="ok-val">${fmt(tot-col)}</div></div><div class="out-kpi"><div class="ok-label">Pending Items</div><div class="ok-val" style="color:var(--red)">${pend}</div></div>`;
 
-  const sorted=[...outstandings].filter(o=>o.status!=='collected').sort((a,b)=>(b.amt-b.paid)-(a.amt-a.paid));
+  // For pr_out (me_check/me_approve): show ONLY ME1 Construction items
+  function isME1(o){
+    const d=(o.div||'').toString().trim();
+    return d==='ME1'||d.toLowerCase().startsWith('me1.');
+  }
+  const visOut=isPrOut?outstandings.filter(isME1):outstandings;
+
+  // KPIs from visOut only
+  const tot=visOut.reduce(function(s,o){return s+o.amt;},0);
+  const col=visOut.reduce(function(s,o){return s+o.paid;},0);
+  const pend=visOut.filter(function(o){return o.status==='pending';}).length;
+  document.getElementById('outKpis').innerHTML=
+    '<div class="out-kpi"><div class="ok-label">Total Outstanding</div><div class="ok-val">'+fmt(tot)+'</div></div>'
+    +'<div class="out-kpi"><div class="ok-label">Collected</div><div class="ok-val" style="color:var(--teal-dark)">'+fmt(col)+'</div></div>'
+    +'<div class="out-kpi"><div class="ok-label">Still to Collect</div><div class="ok-val">'+fmt(tot-col)+'</div></div>'
+    +'<div class="out-kpi"><div class="ok-label">Pending Items</div><div class="ok-val" style="color:var(--red)">'+pend+'</div></div>'
+    +(isPrOut?'<div style="margin-top:8px;padding:7px 12px;background:#dbeafe;border-radius:8px;font-size:12px;color:#1e40af;font-weight:600">Showing ME1 Construction outstanding items only</div>':'');
+
+  // Priority list — from visOut only
+  const sorted=[...visOut].filter(function(o){return o.status!=='collected';}).sort(function(a,b){return (b.amt-b.paid)-(a.amt-a.paid);});
   const rnks=['r1','r2','r3','r4'];
-  document.getElementById('priorityBar').innerHTML=sorted.length===0?'<div style="color:var(--muted2);font-size:13px;padding:8px 0">All items collected!</div>':sorted.map((o,i)=>`<div class="pi"><div class="pi-rank ${rnks[Math.min(i,3)]}">${i+1}</div><div class="pi-info"><div class="pi-name">${o.client} — ${o.project}</div><div class="pi-sub">${o.div} · ${o.co}</div></div><span class="badge ${o.status}" style="margin-right:8px">${o.status}</span><div class="pi-amt">${fmt(o.amt-o.paid)}</div></div>`).join('');
+  document.getElementById('priorityBar').innerHTML=sorted.length===0
+    ?'<div style="color:var(--muted2);font-size:13px;padding:8px 0">All items collected!</div>'
+    :sorted.map(function(o,i){
+      return '<div class="pi"><div class="pi-rank '+rnks[Math.min(i,3)]+'">'+(i+1)+'</div><div class="pi-info"><div class="pi-name">'+o.client+' — '+o.project+'</div><div class="pi-sub">'+o.div+' · '+o.co+'</div></div><span class="badge '+o.status+'" style="margin-right:8px">'+o.status+'</span><div class="pi-amt">'+fmt(o.amt-o.paid)+'</div></div>';
+    }).join('');
 
-  // group by company
+  // Group by company — pr_out only shows Matisan
   const grid=document.getElementById('outGrid');grid.innerHTML='';
-  companies.forEach(co=>{
-    const items=visOut.filter(o=>o.co===co.id);
-    const t=items.reduce((s,o)=>s+o.amt,0);
+  const addBtn=document.querySelector('#pgOutstanding .btn-primary');
+  if(addBtn) addBtn.style.display=isPrOut?'none':'';
+
+  const cosToShow=isPrOut
+    ?companies.filter(function(co){return co.name.toLowerCase().includes('matisan')||co.code==='ME'||co.id==='Matisan';})
+    :companies;
+
+  cosToShow.forEach(function(co){
+    const items=visOut.filter(function(o){return o.co===co.id;});
+    const t=items.reduce(function(s,o){return s+o.amt;},0);
     const badgeStyle=getCoPillClass(co.color);
-    let cardHtml=`<div class="out-card" style="margin-bottom:14px">
-      <div class="out-co-badge" style="${badgeStyle}">${co.name}</div>
-      <div class="out-total">${fmt(t)}</div>`;
+    let cardHtml='<div class="out-card" style="margin-bottom:14px">'
+      +'<div class="out-co-badge" style="'+badgeStyle+'">'+co.name+'</div>'
+      +'<div class="out-total">'+fmt(t)+'</div>';
     if(!items.length){cardHtml+='<div style="color:var(--muted2);font-size:13px">No items.</div>';}
-    else{cardHtml+=items.map(o=>`<div class="out-item">
-      <div><div class="oi-name">${o.client}</div><div class="oi-proj">${o.project} · ${o.div}</div>${o.paid>0?`<div class="oi-paid">Collected: ${fmt(o.paid)}</div>`:''}</div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-        <div class="oi-amt">${fmt(o.amt)}</div>
-        <span class="badge ${o.status}">${o.status}</span>
-        <div style="display:flex;gap:4px;margin-top:2px">
-          <select onchange="updateOutStatus(${o.id},this.value)" style="font-size:10px;padding:2px 4px;border:1px solid var(--border);border-radius:5px;background:var(--surface)">
-            <option value="pending" ${o.status==='pending'?'selected':''}>Pending</option>
-            <option value="partial" ${o.status==='partial'?'selected':''}>Partial</option>
-            <option value="collected" ${o.status==='collected'?'selected':''}>Collected</option>
-          </select>
-          <button class="del-btn" onclick="deleteOut(${o.id})" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button>
-        </div>
-        ${o.status==='partial'?`<input type="number" placeholder="Paid so far" value="${o.paid}" onchange="updateOutPaid(${o.id},this.value)" style="width:110px;font-size:10px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;margin-top:2px">`:''}
-      </div>
-    </div>`).join('');}
+    else{
+      cardHtml+=items.map(function(o){
+        return '<div class="out-item">'
+          +'<div><div class="oi-name">'+o.client+'</div><div class="oi-proj">'+o.project+' · '+o.div+'</div>'+(o.paid>0?'<div class="oi-paid">Collected: '+fmt(o.paid)+'</div>':'')+'</div>'
+          +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">'
+            +'<div class="oi-amt">'+fmt(o.amt)+'</div>'
+            +'<span class="badge '+o.status+'">'+o.status+'</span>'
+            +'<div style="display:flex;gap:4px;margin-top:2px">'
+              +'<select onchange="updateOutStatus('+o.id+',this.value)" style="font-size:10px;padding:2px 4px;border:1px solid var(--border);border-radius:5px;background:var(--surface)">'
+                +'<option value="pending" '+(o.status==='pending'?'selected':'')+'>Pending</option>'
+                +'<option value="partial" '+(o.status==='partial'?'selected':'')+'>Partial</option>'
+                +'<option value="collected" '+(o.status==='collected'?'selected':'')+'>Collected</option>'
+              +'</select>'
+              +(!isPrOut?'<button class="del-btn" onclick="deleteOut('+o.id+')" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button>':'')
+            +'</div>'
+            +(o.status==='partial'?'<input type="number" placeholder="Paid so far" value="'+o.paid+'" onchange="updateOutPaid('+o.id+',this.value)" style="width:110px;font-size:10px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;margin-top:2px">':'')
+          +'</div>'
+        +'</div>';
+      }).join('');}
     cardHtml+='</div>';
     grid.innerHTML+=cardHtml;
   });
@@ -5260,12 +5284,8 @@ function deleteSubdivisionBtn(btn){deleteSubdivision(btn.dataset.coid,btn.datase
   <!-- PWA Service Worker + Install prompt -->
   <script>
   // Register service worker for offline use
-  if('serviceWorker' in navigator){
-    window.addEventListener('load', function(){
-      navigator.serviceWorker.register('./sw.js').then(function(reg){
-        console.log('SW registered:', reg.scope);
-      }).catch(function(e){ console.log('SW error:', e); });
-    });
+  if('serviceWorker' in navigator && window.location.hostname.endsWith('github.io')){
+    navigator.serviceWorker.register('./sw.js').catch(function(){});
   }
 
   // Install prompt (desktop/Android)
