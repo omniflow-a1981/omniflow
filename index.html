@@ -2997,10 +2997,11 @@ function renderOutstanding(){
   const ME1_DIV_CODES = ['ME1','ME1. Construction','ME1.Construction'];
   function visibleOut(o){
     if(!isPrOut) return true;
-    // Must be ME company AND ME1 division
-    const coMatch = o.co&&(o.co.toLowerCase().includes('matisan')||o.co==='ME'||o.co.toLowerCase().includes('me'));
-    const divMatch = o.div&&ME1_DIV_CODES.some(function(d){return o.div.startsWith('ME1');});
-    return coMatch&&divMatch;
+    // ONLY show ME1 Construction items — exact match on division code starting with ME1
+    if(!o.div) return false;
+    const divStr = (o.div||'').toString().toUpperCase().trim();
+    // Allow: "ME1", "ME1.", "ME1. Construction", "ME1.Construction", "ME1 Construction"
+    return divStr==='ME1' || divStr.startsWith('ME1.') || divStr.startsWith('ME1 ');
   }
   const visOutstandings = outstandings.filter(visibleOut);
 
@@ -3021,7 +3022,7 @@ function renderOutstanding(){
 
   // group by company — pr_out only sees Matisan with ME1 items
   const grid=document.getElementById('outGrid');grid.innerHTML='';
-  const cosToShow=isPrOut?companies.filter(function(co){return co.name.toLowerCase().includes('matisan')||co.code==='ME';}):companies;
+  const cosToShow=isPrOut?companies.filter(function(co){return co.name.toLowerCase().includes('matisan')||co.code==='ME'||co.id==='Matisan';  }):companies;
   cosToShow.forEach(co=>{
     const items=visOutstandings.filter(o=>o.co===co.id);
     const t=items.reduce((s,o)=>s+o.amt,0);
