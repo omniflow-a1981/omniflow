@@ -1235,6 +1235,12 @@ function getPasswords(){
   const stored=ls('omni-passwords');
   return Object.assign({},DEFAULT_PASSWORDS,stored||{});
 }
+function getUsers(){
+  const pw=getPasswords();
+  return USER_DEFS.map(function(u){
+    return Object.assign({},u,{password:pw[u.username]||DEFAULT_PASSWORDS[u.username]||''});
+  });
+}
 function isLimitedUser(){return currentUser&&currentUser.accessLevel==='limited';}
 function isAdmin(){return currentUser&&currentUser.username==='admin';}
 // For limited users: allowed date window = today and yesterday
