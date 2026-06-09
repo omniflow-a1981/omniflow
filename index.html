@@ -1384,26 +1384,6 @@ function navMob(id, el){
   nav(id, null);
 }
 
-function showMobileUI(){
-  if(isMobile()){
-    document.getElementById('mobHeader').style.display='flex';
-    document.getElementById('bottomTabs').style.display='block';
-    // Sync dot colour
-    setInterval(()=>{
-      const dot=document.getElementById('mobSyncDot');
-      if(dot) dot.style.color=isOnline?'var(--teal)':'var(--red)';
-    },2000);
-    // Hide limited tabs if limited user
-    if(isLimitedUser()){
-      ['bt-Dashboard','bt-Balances','bt-Outstanding'].forEach(id=>{
-        const el=document.getElementById(id);
-        if(el) el.style.display='none';
-      });
-      // Reduce to 2 tabs — center them
-      document.querySelector('.bottom-tabs-inner').style.gridTemplateColumns='1fr 1fr';
-    }
-  }
-}
 
 // PWA install prompt
 let deferredPWAPrompt = null;
@@ -1415,25 +1395,11 @@ async function installPWA_orig(){
   deferredPWAPrompt=null;
   document.getElementById('pwaBanner').classList.remove('show');
 }
-function dismissPWA(){
-  document.getElementById('pwaBanner').classList.remove('show');
-  localStorage.setItem('omni-pwa-dismissed','1');
-}
 
 // ══════════════════════════════════════
 // ══════════════════════════════════════
 // LOGIN FUNCTIONS
 // ══════════════════════════════════════
-function getPasswords(){
-  const stored=ls('omni-passwords');
-  return Object.assign({},DEFAULT_PASSWORDS,stored||{});
-}
-function getUsers(){
-  const pw=getPasswords();
-  return USER_DEFS.map(function(u){
-    return Object.assign({},u,{password:pw[u.username]||DEFAULT_PASSWORDS[u.username]||''});
-  });
-}
 
 function _loginSuccess(userDef,btn,errEl){
   authToken=btoa(JSON.stringify({username:userDef.username,role:userDef.role,exp:Date.now()+86400000*30}));
@@ -1528,7 +1494,8 @@ function initLogin(){
 
     grp.users.forEach(function(u){
       const dispName=u.realName||(names[u.username])||u.username;
-      const roleLabel=u.prRole?'('+u.prRole+')':'';
+      // Don't show role in parentheses for cleaner display
+      const roleLabel='';
       const o=document.createElement('option');
       o.value=u.username;
       o.textContent=dispName+(roleLabel?' '+roleLabel:'');
