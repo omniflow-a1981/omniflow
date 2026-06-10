@@ -4771,23 +4771,26 @@ function requestPaymentPR(id){
 
 async function cancelPR(id){
   const pr=payRequests.find(x=>x.id===id); if(!pr) return;
-  if(!confirm('Cancel this payment request? This cannot be undone.')) return;
+  if(!confirm('Cancel and permanently DELETE this payment request?\nIt will be removed from history completely.')) return;
   try{
+    // DELETE from Supabase — removes from history permanently
     await fetch(PR_SB+'/payment_requests?id=eq.'+id,{
-      method:'PATCH',
-      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
-      body:JSON.stringify({status:'cancelled',rejected:true,reject_comment:'Cancelled by '+currentUser.username+' on '+new Date().toLocaleDateString('en-GB')})
+      method:'DELETE',
+      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Prefer':'return=minimal'}
     });
     // Notify preparer if they didn't cancel it themselves
     if(pr.prepared_by && pr.prepared_by!==currentUser.username){
       pushNotif(pr.prepared_by,'error',
         '✗ Request Cancelled: '+pr.project,
-        'Your payment request was cancelled by '+currentUser.username+'.',
+        'Your payment request was cancelled and removed by '+currentUser.username+'.',
         id
       );
     }
-    closePRDetail(); await loadPayRequests(); renderPRList();
-    showFlash('Request cancelled.','prFlash','prFlashMsg');
+    // Remove from local array immediately
+    payRequests=payRequests.filter(x=>x.id!==id);
+    closePRDetail();
+    renderPRList();
+    showFlash('✗ Request cancelled and removed from history.','prFlash','prFlashMsg');
   }catch(e){alert('Failed: '+e.message);}
 }
 
