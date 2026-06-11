@@ -3711,9 +3711,17 @@ function prCanAct(pr,step){
   return false;
 }
 function prNextStep(pr){for(const s of PR_STEPS){if(!pr[s+'_by'])return s;}return 'complete';}
+function prIsReversed(pr){return !!(pr.reject_comment&&pr.reject_comment.startsWith('[REVERSED:'));}
+function prReverseInfo(pr){
+  if(!prIsReversed(pr)) return null;
+  const m=pr.reject_comment.match(/^\[REVERSED:([^\]]+)\]\s*(.*)/s);
+  if(!m) return {step:'?',by:'?',reason:pr.reject_comment};
+  const parts=m[1].split(' by ');
+  return {step:parts[0]||'?', by:parts[1]||'?', reason:m[2]||''};
+}
 function prStatusInfo(pr){
   if(pr.status==='cancelled') return {label:'Cancelled',css:'pr-rejected'};
-  if(pr.status==='reversed') return {label:'↩ Reversed — Needs Attention',css:'pr-reversed'};
+  if(prIsReversed(pr)) return {label:'↩ Reversed — Needs Attention',css:'pr-reversed'};
   if(pr.rejected) return {label:'Rejected ✗',css:'pr-rejected'};
   return {prepared:{label:'Draft',css:'pr-draft'},checked:{label:'Pending Review',css:'pr-pending'},approved:{label:'Checked ✓',css:'pr-checked'},verified:{label:'Approved ✓',css:'pr-approved'},paid:{label:'Verified ✓',css:'pr-verified'},complete:{label:'Paid ✓',css:'pr-paid'}}[prNextStep(pr)]||{label:'Unknown',css:'pr-draft'};
 }
@@ -4356,7 +4364,7 @@ function updatePendingBadge(){
   if(count>0&&badge) badge.style.display='inline';
   else if(badge) badge.style.display='none';
   // Update reversed badge
-  const revCount=payRequests.filter(pr=>prVisible(pr)&&pr.status==='reversed').length;
+  const revCount=payRequests.filter(pr=>prVisible(pr)&&prIsReversed(pr)).length;
   const revBadge=document.getElementById('prReversedCount');
   if(revBadge){revBadge.textContent=revCount;revBadge.style.display=revCount>0?'inline':'none';}
 }
@@ -4366,7 +4374,7 @@ function renderPRList(){
   let list=payRequests.filter(pr=>prVisible(pr));
   if(prFilter==='mine')    list=list.filter(pr=>pr.prepared_by===currentUser.username);
   if(prFilter==='action')  list=list.filter(pr=>{const n=prNextStep(pr);return n!=='complete'&&n!=='prepared'&&prCanAct(pr,n);});
-  if(prFilter==='reversed') list=list.filter(pr=>pr.status==='reversed');
+  if(prFilter==='reversed') list=list.filter(pr=>prIsReversed(pr));
   if(prFilter==='done')    list=list.filter(pr=>prNextStep(pr)==='complete');
   if(prFilter==='pending') list=getPendingPRs();
   if(!list.length){el.innerHTML='<div class="empty-state">No payment requests found.</div>';return;}
@@ -4542,7 +4550,7 @@ function viewPR(id){
 
     ${pr.note?`<div style="background:var(--bg);border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:10px"><strong>Note:</strong> ${pr.note}</div>`:''}
     ${pr.rejected&&pr.reject_comment?`<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:10px;color:#991b1b"><strong>⚠ Rejection Reason:</strong> ${pr.reject_comment}</div>`:''}
-    ${pr.status==='reversed'&&pr.reverse_reason?`<div style="background:#fff1f2;border:1.5px solid #fda4af;border-radius:10px;padding:12px 16px;font-size:13px;margin-bottom:12px"><div style="font-weight:800;color:#be123c;margin-bottom:4px">↩ Payment Request Reversed</div><div style="color:#9f1239;margin-bottom:6px"><strong>Reversed Step:</strong> ${pr.reverse_step||'—'} &nbsp;|&nbsp; <strong>By:</strong> ${pr.reversed_by||'—'}</div><div style="color:#9f1239;margin-bottom:6px"><strong>Reason:</strong> ${pr.reverse_reason}</div><div style="background:#be123c;color:#fff;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:700">⚠ Please address the reason for this reversed PR before resubmitting.</div></div>`:''}
+    ${(()=>{const _ri=prReverseInfo(pr);return _ri?`<div style="background:#fff1f2;border:1.5px solid #fda4af;border-radius:10px;padding:12px 16px;font-size:13px;margin-bottom:12px"><div style="font-weight:800;color:#be123c;margin-bottom:4px">↩ Payment Request Reversed</div><div style="color:#9f1239;margin-bottom:6px"><strong>Reversed Step:</strong> ${_ri.step} &nbsp;|&nbsp; <strong>By:</strong> ${_ri.by}</div><div style="color:#9f1239;margin-bottom:6px"><strong>Reason:</strong> ${_ri.reason}</div><div style="background:#be123c;color:#fff;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:700">⚠ Please address the reason for this reversed PR before resubmitting.</div></div>`:'';})()}
     ${pr.transfer_id?`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px"><strong style="color:#166534">Transfer ID:</strong> ${pr.transfer_id} | <strong style="color:#166534">Method:</strong> ${pr.pay_method||'—'}</div>`:''}
 
     <!-- Action area for current step -->
@@ -4821,20 +4829,21 @@ async function reversePRStep(id, step){
   if(!reason.trim()){alert('A reason is required to reverse this step.');return;}
   if(!confirm('Reverse the '+step+' step? This will require it to be done again.')) return;
 
+  // Build update using ONLY columns that exist in Supabase
   const upd={};
   upd[step+'_by']=null;
   upd[step+'_at']=null;
   upd[step+'_comment']=null;
-  upd.status='reversed';
-  upd.reverse_step=step;
-  upd.reverse_reason=reason.trim();
-  upd.reversed_by=currentUser.username;
-  upd.reversed_at=new Date().toISOString();
+  upd.status='pending';
+  // Encode reverse info into reject_comment so it survives without new DB columns
+  upd.reject_comment='[REVERSED:'+step+' by '+currentUser.username+'] '+reason.trim();
+  upd.rejected=false; // keep distinct from a true rejection
 
   try{
-    await fetch(PR_SB+'/payment_requests?id=eq.'+id,{method:'PATCH',headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(upd)});
+    const resp = await fetch(PR_SB+'/payment_requests?id=eq.'+id,{method:'PATCH',headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(upd)});
+    if(!resp.ok){const err=await resp.text();throw new Error(err);}
     closePRDetail(); await loadPayRequests(); renderPRList();
-    showFlash('↩ '+step+' step reversed.','prFlash','prFlashMsg');
+    showFlash('↩ '+step+' step reversed. Reason stored.','prFlash','prFlashMsg');
     // Notify the preparer to correct and resubmit
     const rpr = payRequests.find(x=>x.id===id);
     if(rpr && rpr.prepared_by){
@@ -4851,7 +4860,7 @@ async function reversePRStep(id, step){
       });
       loadNotifs();
     }
-  }catch(e){alert('Failed: '+e.message);}
+  }catch(e){alert('Reverse failed: '+e.message);}
 }
 
 async function rejectPR(id){
