@@ -898,7 +898,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
         <button class="pr-type-btn" id="prTypeBtn-Machinery" onclick="setPRType('Machinery',this)">🚜 Machinery</button>
       </div>
     </div>
+    <!-- Purchase / Service Category -->
+    <div id="prCategoryRow" style="display:none;margin-bottom:10px">
+      <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px">Category <span style="font-weight:400;color:var(--muted2)">(affects withholding threshold)</span></label>
+      <div style="display:flex;gap:8px">
+        <button class="pr-type-btn active" id="prCatBtn-Purchase" onclick="setPRCategory('Purchase',this)">🛒 Purchase</button>
+        <button class="pr-type-btn" id="prCatBtn-Service" onclick="setPRCategory('Service',this)">🔧 Service</button>
+      </div>
+      <div id="prCatNote" style="font-size:11px;color:var(--muted);margin-top:5px">3% withholding applies when subtotal ≥ ETB 20,000</div>
+    </div>
     <input type="hidden" id="prType" value="Material">
+    <input type="hidden" id="prCategory" value="Purchase">
     <div id="prManpowerRow" style="display:none;margin-bottom:10px">
       <div class="ff"><label>Labour Category</label>
         <select id="prManpowerCat">
@@ -3766,8 +3776,10 @@ function updatePRSub(){
   var isME1=divVal.toUpperCase().startsWith('ME1');
   var subRow=document.getElementById('prSubRow');
   var typeRow=document.getElementById('prTypeRow');
+  var catRow=document.getElementById('prCategoryRow');
   if(subRow) subRow.style.display=hasSubs?'block':'none';
   if(typeRow) typeRow.style.display=(hasSubs||isME1)?'block':'none';
+  if(catRow) catRow.style.display=(hasSubs||isME1)?'block':'none';
   if(hasSubs){
     var s=document.getElementById('prSub');
     if(!s) return;
@@ -3819,12 +3831,34 @@ function updatePRSubFields(){
   fill('prSubProject',project); fill('prProject',project);
 }
 
+function setPRCategory(cat, btn){
+  document.getElementById('prCategory').value=cat;
+  document.querySelectorAll('[id^="prCatBtn-"]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const note=document.getElementById('prCatNote');
+  if(note) note.textContent=cat==='Service'?'3% withholding applies when subtotal ≥ ETB 10,000':'3% withholding applies when subtotal ≥ ETB 20,000';
+  calcPRTotals();
+}
+
 function calcPRTotals(){
   let sub=0; document.querySelectorAll('.pr-item-paid').forEach(el=>{sub+=parseFloat(el.value)||0;});
   const vm=document.querySelector('input[name="vatMode"]:checked')?.value||'exclusive';
+  const cat=document.getElementById('prCategory')?.value||'Purchase';
+  const whThreshold=cat==='Service'?10000:20000;
   let vat=0,grand=0,wh=0,net=0;
-  if(vm==='exclusive'){vat=sub*0.15;grand=sub+vat;wh=grand*0.03;net=grand-wh;document.getElementById('prVatLabel').textContent='15% VAT (exclusive)';document.getElementById('prWithholdRow').style.display='flex';}
-  else{vat=0;grand=sub;wh=0;net=sub;document.getElementById('prVatLabel').textContent='No VAT';document.getElementById('prWithholdRow').style.display='none';}
+  if(vm==='exclusive'){
+    vat=sub*0.15; grand=sub+vat;
+    wh=sub>=whThreshold?Math.round(sub*0.03):0;
+    net=grand-wh;
+    document.getElementById('prVatLabel').textContent='15% VAT (exclusive)';
+    document.getElementById('prWithholdRow').style.display='flex';
+  } else {
+    vat=0; grand=sub;
+    wh=sub>=whThreshold?Math.round(sub*0.03):0;
+    net=grand-wh;
+    document.getElementById('prVatLabel').textContent='No VAT';
+    document.getElementById('prWithholdRow').style.display=wh>0?'flex':'none';
+  }
   document.getElementById('prSubTotal').textContent=fmt(sub);
   document.getElementById('prVat').textContent=fmt(vat);
   document.getElementById('prGrandTotal').textContent=fmt(grand);
@@ -4182,6 +4216,11 @@ function openNewPR(){
   document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active'));
   const mb=document.getElementById('prTypeBtn-Material'); if(mb) mb.classList.add('active');
   document.getElementById('prManpowerRow').style.display='none';
+  // Reset Purchase/Service category
+  document.getElementById('prCategory').value='Purchase';
+  document.querySelectorAll('[id^="prCatBtn-"]').forEach(b=>b.classList.remove('active'));
+  const cb=document.getElementById('prCatBtn-Purchase'); if(cb) cb.classList.add('active');
+  const cn=document.getElementById('prCatNote'); if(cn) cn.textContent='3% withholding applies when subtotal ≥ ETB 20,000';
   // Populate company dropdown — uses DEFAULT_COMPANIES as guaranteed baseline
   populatePRCompany(null);
   updatePRDiv();
@@ -4241,9 +4280,11 @@ async function savePR(){
     if(!confirm('You have selected Pre-Payment Invoice but uploaded a Post-Payment Invoice.\nSubmit anyway?')) return;
   }
   let sub=0; items.forEach(i=>sub+=i.to_be_paid);
+  const prCatVal=document.getElementById('prCategory')?.value||'Purchase';
+  const whThresh=prCatVal==='Service'?10000:20000;
   let vat=0,grand=0,wh=0,net=0;
-  if(vatMode==='exclusive'){vat=sub*0.15;grand=sub+vat;wh=grand*0.03;net=grand-wh;}
-  else{vat=0;grand=sub;wh=0;net=sub;}
+  if(vatMode==='exclusive'){vat=sub*0.15;grand=sub+vat;wh=sub>=whThresh?Math.round(sub*0.03):0;net=grand-wh;}
+  else{vat=0;grand=sub;wh=sub>=whThresh?Math.round(sub*0.03):0;net=grand-wh;}
   // Merge subdivision fields into main fields if main is empty
   var _sLocEl=document.getElementById('prSubLocation');
   var _pLocEl=document.getElementById('prLocation');
@@ -4259,7 +4300,7 @@ async function savePR(){
     note:document.getElementById('prNote').value.trim(),
     items:JSON.stringify(items),
     sub_total:sub,vat,grand_total:grand,withholding:wh,net_payable:net,
-    vat_mode:vatMode,request_type:prType,sub_project:subCode,manpower_category:mpCat,
+    vat_mode:vatMode,request_type:prType,sub_project:subCode,manpower_category:mpCat,purchase_category:document.getElementById('prCategory')?.value||'Purchase',
     prepared_by:currentUser.username,prepared_at:new Date().toISOString(),status:'pending',rejected:false,reject_comment:null,
     pre_invoice:(prAttachments.pre_invoice&&prAttachments.pre_invoice.length)?JSON.stringify(prAttachments.pre_invoice):null,
     post_invoice:(prAttachments.post_invoice&&prAttachments.post_invoice.length)?JSON.stringify(prAttachments.post_invoice):null,
@@ -4496,7 +4537,7 @@ function viewPR(id){
     tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}"><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td>${it.unit||''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td></tr>`).join('');
   }
 
-  const withholdRow=vatMode==='exclusive'?`<div class="pr-total-row"><span>3% Withholding Tax</span><span style="color:var(--red)">${fmt(pr.withholding)}</span></div>`:'';
+  const withholdRow=pr.withholding>0?`<div class="pr-total-row"><span>3% Withholding Tax <span style="font-size:10px;color:var(--muted)">(${pr.purchase_category||'Purchase'})</span></span><span style="color:var(--red)">${fmt(pr.withholding)}</span></div>`:'';
   const partialPaid=parseFloat(pr.partial_amount||0);
   const pendingAmt=pr.net_payable-partialPaid;
 
@@ -4518,6 +4559,7 @@ function viewPR(id){
         <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">
           ${pr.request_type?`<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--border2);color:var(--muted);font-weight:600">${pr.request_type}</span>`:''}
           ${(pr.type==='manpower'||pr.request_type==='Manpower')&&pr.manpower_category?`<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:#ede9fe;color:#5b21b6;font-weight:600">${pr.manpower_category}</span>`:''}
+          ${pr.purchase_category?`<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${pr.purchase_category==='Service'?'#f0fdf4':'#eff6ff'};color:${pr.purchase_category==='Service'?'#166534':'#1e40af'};font-weight:600">${pr.purchase_category==='Service'?'🔧':'🛒'} ${pr.purchase_category}</span>`:''}
           <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${vatMode==='exclusive'?'#dbeafe':'#fef3c7'};color:${vatMode==='exclusive'?'#1e40af':'#92400e'};font-weight:600">VAT ${vatMode}</span>
           ${pr.rejected?'<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:#fee2e2;color:#991b1b;font-weight:700">⚠ REJECTED</span>':''}
         </div>
@@ -4912,6 +4954,12 @@ function editPR(id){
   document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active'));
   const tb=document.getElementById('prTypeBtn-'+prType); if(tb) tb.classList.add('active');
   document.getElementById('prManpowerRow').style.display=prType==='Manpower'?'block':'none';
+  // Restore Purchase/Service category
+  const prCat=pr.purchase_category||'Purchase';
+  document.getElementById('prCategory').value=prCat;
+  document.querySelectorAll('[id^="prCatBtn-"]').forEach(b=>b.classList.remove('active'));
+  const cbEdit=document.getElementById('prCatBtn-'+prCat); if(cbEdit) cbEdit.classList.add('active');
+  const cnEdit=document.getElementById('prCatNote'); if(cnEdit) cnEdit.textContent=prCat==='Service'?'3% withholding applies when subtotal ≥ ETB 10,000':'3% withholding applies when subtotal ≥ ETB 20,000';
   // Set VAT mode
   const vatEl=document.querySelector('input[name="vatMode"][value="'+(pr.vat_mode||'exclusive')+'"]') || document.querySelector('input[name="vatMode"][value="exclusive"]');
   if(vatEl) vatEl.checked=true;
