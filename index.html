@@ -4389,7 +4389,14 @@ async function savePR(){
         null
       );
     });
-    closePRModal(); await loadPayRequests();
+    // Reset filters so the new PR is visible immediately
+    prFilter='all'; prCoFilter='all'; prDivFilter='all';
+    document.querySelectorAll('#pgPayReq .dfb-mode').forEach(b=>b.classList.remove('on'));
+    const allBtn=document.getElementById('prf-all'); if(allBtn) allBtn.classList.add('on');
+    document.querySelectorAll('.pr-co-pill').forEach(b=>b.classList.remove('active'));
+    const allCoPill=document.querySelector('.pr-co-pill'); if(allCoPill) allCoPill.classList.add('active');
+    const searchEl=document.getElementById('prSearchInput'); if(searchEl) searchEl.value='';
+    closePRModal(); await loadPayRequests(); renderPRList();
   }catch(e){alert('Save failed: '+e.message);}
 }
 
