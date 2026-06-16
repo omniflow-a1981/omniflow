@@ -3796,8 +3796,8 @@ function prReverseInfo(pr){
   const parts=m[1].split(' by ');
   return {step:parts[0]||'?', by:parts[1]||'?', reason:m[2]||''};
 }
-function prGetType(pr){return prGetType(pr).split('|')[0].trim();}
-function prGetCategory(pr){const parts=(pr.request_type||'').split('|');return parts.length>1?parts[1].trim():(prGetCategory(pr));}
+function prGetType(pr){return (pr.request_type||'Material').split('|')[0].trim();}
+function prGetCategory(pr){const parts=(pr.request_type||'').split('|');return parts.length>1?parts[1].trim():(pr.purchase_category||'Purchase');}
 function prStatusInfo(pr){
   if(pr.status==='cancelled') return {label:'Cancelled',css:'pr-rejected'};
   if(prIsReversed(pr)) return {label:'↩ Reversed — Needs Attention',css:'pr-reversed'};
