@@ -3779,7 +3779,7 @@ function updatePRSub(){
   var catRow=document.getElementById('prCategoryRow');
   if(subRow) subRow.style.display=hasSubs?'block':'none';
   if(typeRow) typeRow.style.display=(hasSubs||isME1)?'block':'none';
-  if(catRow) catRow.style.display=(hasSubs||isME1)?'block':'none';
+  if(catRow) catRow.style.display='block';
   if(hasSubs){
     var s=document.getElementById('prSub');
     if(!s) return;
@@ -4227,6 +4227,7 @@ function openNewPR(){
   const vatEl=document.querySelector('input[name="vatMode"][value="exclusive"]');
   if(vatEl) vatEl.checked=true;
   buildPRHead('Material'); addPRItem(); calcPRTotals();
+  const _cr=document.getElementById('prCategoryRow'); if(_cr) _cr.style.display='block';
   document.getElementById('prModal').classList.add('open');
 }
 function closePRModal(){document.getElementById('prModal').classList.remove('open');}
@@ -4970,6 +4971,7 @@ function editPR(id){
   items.forEach(it=>addPRItem(it));
   calcPRTotals();
   // Clear rejected flag when editing
+  const _crEdit=document.getElementById('prCategoryRow'); if(_crEdit) _crEdit.style.display='block';
   document.getElementById('prModal').classList.add('open');
 }
 
