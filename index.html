@@ -1835,50 +1835,98 @@ function getPRPendingPayables(){
 }
 
 function getPRTransactions(){
-  // Convert all paid payment requests into outflow transactions
-  // so they appear in ledger/dashboard automatically
-  return payRequests
-    .filter(pr => pr.status === 'paid' && pr.paid_by)
-    .map(pr => {
-      const coId = normCoId(pr.company_id||'');
-      const rawDiv  = pr.division || '';
-      const dot     = rawDiv.indexOf('.');
-      const divCode = dot > -1 ? rawDiv.slice(0, dot).trim() : rawDiv.trim();
-      const divName = dot > -1 ? rawDiv.slice(dot+1).trim() : rawDiv.trim();
-      const sub     = pr.sub_project ? ' [' + pr.sub_project + ']' : '';
-      const partial = parseFloat(pr.partial_amount||0);
-      const net     = parseFloat(pr.net_payable||0);
-      const amt     = (partial > 0 && partial < net) ? partial : net;
-      const paidDate = pr.paid_at ? pr.paid_at.slice(0,10) : new Date().toISOString().slice(0,10);
-      return {
-        id      : 'pr-' + pr.id,
-        date    : paidDate,
-        co      : coId,
-        divCode : divCode,
-        divName : divName,
-        type    : 'out',
-        amt     : amt,
-        amtUsd  : null,
-        ref     : (pr.request_type||'Payment') + ': ' + pr.project + sub
-                + (pr.transfer_id ? ' | TRF:' + pr.transfer_id : ''),
-        note    : 'PR Payment — ' + (pr.pay_method||'') + sub,
-        isPR    : true
+  // Convert paid PRs into ledger outflow entries.
+  // PRs sharing the same transfer_id are GROUPED into one entry.
+  const paid = payRequests.filter(pr => pr.status === 'paid' && pr.paid_by);
+
+  // Separate: PRs with a transfer_id (can be grouped) vs without
+  const withTrf  = paid.filter(pr => pr.transfer_id && pr.transfer_id.trim());
+  const noTrf    = paid.filter(pr => !pr.transfer_id || !pr.transfer_id.trim());
+
+  // Group by transfer_id + company + divCode + date
+  const groups = {};
+  withTrf.forEach(pr => {
+    const coId    = normCoId(pr.company_id||'');
+    const rawDiv  = pr.division||'';
+    const dot     = rawDiv.indexOf('.');
+    const divCode = dot > -1 ? rawDiv.slice(0, dot).trim() : rawDiv.trim();
+    const divName = dot > -1 ? rawDiv.slice(dot+1).trim() : rawDiv.trim();
+    const paidDate = pr.paid_at ? pr.paid_at.slice(0,10) : new Date().toISOString().slice(0,10);
+    const key = pr.transfer_id.trim() + '|' + coId + '|' + divCode + '|' + paidDate;
+    if(!groups[key]){
+      groups[key] = {
+        trf: pr.transfer_id.trim(), co: coId, divCode, divName,
+        paidDate, prs: [], totalAmt: 0, pay_method: pr.pay_method||''
       };
-    });
+    }
+    const partial = parseFloat(pr.partial_amount||0);
+    const net     = parseFloat(pr.net_payable||0);
+    const amt     = (partial > 0 && partial < net) ? partial : net;
+    groups[key].prs.push({project: pr.project, sub: pr.sub_project ? ' ['+pr.sub_project+']' : '', type: prGetType(pr), amt});
+    groups[key].totalAmt += amt;
+    if(!groups[key].pay_method && pr.pay_method) groups[key].pay_method = pr.pay_method;
+  });
+
+  // Build grouped entries
+  const grouped = Object.values(groups).map(g => {
+    const projects = g.prs.map(p => p.type + ': ' + p.project + p.sub).join(' | ');
+    return {
+      id      : 'pr-trf-' + g.trf + '-' + g.co + '-' + g.divCode,
+      date    : g.paidDate,
+      co      : g.co,
+      divCode : g.divCode,
+      divName : g.divName,
+      type    : 'out',
+      amt     : g.totalAmt,
+      amtUsd  : null,
+      ref     : projects + ' | TRF:' + g.trf,
+      note    : 'PR Payment — ' + g.pay_method + ' | TRF:' + g.trf + (g.prs.length > 1 ? ' (' + g.prs.length + ' requests)' : ''),
+      isPR    : true
+    };
+  });
+
+  // Individual entries for PRs without a transfer_id
+  const individual = noTrf.map(pr => {
+    const coId    = normCoId(pr.company_id||'');
+    const rawDiv  = pr.division||'';
+    const dot     = rawDiv.indexOf('.');
+    const divCode = dot > -1 ? rawDiv.slice(0, dot).trim() : rawDiv.trim();
+    const divName = dot > -1 ? rawDiv.slice(dot+1).trim() : rawDiv.trim();
+    const sub     = pr.sub_project ? ' ['+pr.sub_project+']' : '';
+    const partial = parseFloat(pr.partial_amount||0);
+    const net     = parseFloat(pr.net_payable||0);
+    const amt     = (partial > 0 && partial < net) ? partial : net;
+    const paidDate = pr.paid_at ? pr.paid_at.slice(0,10) : new Date().toISOString().slice(0,10);
+    return {
+      id      : 'pr-' + pr.id,
+      date    : paidDate,
+      co      : coId,
+      divCode : divCode,
+      divName : divName,
+      type    : 'out',
+      amt     : amt,
+      amtUsd  : null,
+      ref     : prGetType(pr) + ': ' + pr.project + sub,
+      note    : 'PR Payment — ' + (pr.pay_method||'') + sub,
+      isPR    : true
+    };
+  });
+
+  return [...grouped, ...individual];
 }
 
 function getMergedTransactions(){
   const prTxs = getPRTransactions();
   
-  // Build a set of PR refs to detect duplicates saved to Supabase
+  // Build a set of PR refs and transfer IDs to detect duplicates
   const prRefs = new Set(prTxs.map(t => t.ref));
-  
+  const prTrfIds = new Set(prTxs.filter(t=>t.id.startsWith('pr-trf-')).map(t=>t.id));
+
   // Remove from manual transactions:
   // 1. Any with 'pr-' prefix id (old PR ledger saves)
   // 2. Any whose ref matches a PR transaction (Supabase-saved duplicates)
   const cleanManual = transactions.filter(t => {
     if(String(t.id).startsWith('pr-')) return false;
-    // If this manual tx ref matches a PR ref exactly - it's a duplicate
     if(t.ref && prRefs.has(t.ref)) return false;
     return true;
   });
