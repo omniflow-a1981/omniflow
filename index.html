@@ -3796,6 +3796,8 @@ function prReverseInfo(pr){
   const parts=m[1].split(' by ');
   return {step:parts[0]||'?', by:parts[1]||'?', reason:m[2]||''};
 }
+function prGetType(pr){return prGetType(pr).split('|')[0].trim();}
+function prGetCategory(pr){const parts=(pr.request_type||'').split('|');return parts.length>1?parts[1].trim():(prGetCategory(pr));}
 function prStatusInfo(pr){
   if(pr.status==='cancelled') return {label:'Cancelled',css:'pr-rejected'};
   if(prIsReversed(pr)) return {label:'↩ Reversed — Needs Attention',css:'pr-reversed'};
@@ -4366,7 +4368,7 @@ async function savePR(){
     note:document.getElementById('prNote').value.trim(),
     items:JSON.stringify(items),
     sub_total:sub,vat,grand_total:grand,withholding:wh,net_payable:net,
-    vat_mode:vatMode,request_type:prType,sub_project:subCode,manpower_category:mpCat,purchase_category:document.getElementById('prCategory')?.value||'Purchase',
+    vat_mode:vatMode,request_type:prType+(prCatVal==='Service'?'|Service':'|Purchase'),sub_project:subCode,manpower_category:mpCat,
     prepared_by:currentUser.username,prepared_at:new Date().toISOString(),status:'pending',rejected:false,reject_comment:null,
     pre_invoice:(prAttachments.pre_invoice&&prAttachments.pre_invoice.length)?JSON.stringify(prAttachments.pre_invoice):null,
     post_invoice:(prAttachments.post_invoice&&prAttachments.post_invoice.length)?JSON.stringify(prAttachments.post_invoice):null,
@@ -4374,11 +4376,12 @@ async function savePR(){
   };
   try{
     const eid=document.getElementById('prEditId').value;
-    await fetch(PR_SB+'/payment_requests'+(eid?'?id=eq.'+eid:''),{
+    const saveRes=await fetch(PR_SB+'/payment_requests'+(eid?'?id=eq.'+eid:''),{
       method:eid?'PATCH':'POST',
       headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
       body:JSON.stringify(payload)
     });
+    if(!saveRes.ok){const errTxt=await saveRes.text();throw new Error('Supabase error: '+saveRes.status+' '+errTxt);}
     showFlash('✓ Payment request submitted.','prFlash','prFlashMsg');
     // Notify checkers that a new PR needs review
     const newPr={company_id:co,project,id:'pending'};
@@ -4564,8 +4567,8 @@ function renderPRList(){
     const isAF=isFinanceOrAdmin();
     const ri=prReverseInfo(pr);
     const tags=[
-      pr.request_type?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--border2);color:var(--muted);font-weight:600">${pr.request_type}</span>`:'',
-      pr.purchase_category?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:${pr.purchase_category==='Service'?'#f0fdf4':'#eff6ff'};color:${pr.purchase_category==='Service'?'#166534':'#1e40af'};font-weight:600">${pr.purchase_category==='Service'?'Service':'Purchase'}</span>`:'',
+      pr.request_type?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--border2);color:var(--muted);font-weight:600">${ prGetType(pr)}</span>`:'',
+      prGetCategory(pr)?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:${prGetCategory(pr)==='Service'?'#f0fdf4':'#eff6ff'};color:${prGetCategory(pr)==='Service'?'#166534':'#1e40af'};font-weight:600">${prGetCategory(pr)==='Service'?'Service':'Purchase'}</span>`:'',
       pr.sub_project?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#dbeafe;color:#1e40af;font-weight:600">&#128205; ${pr.sub_project}</span>`:'',
       pendAmt>0?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#fef3c7;color:#92400e;font-weight:700">&#9203; ${fmt(pendAmt)}</span>`:'',
       canAct?'<span style="background:var(--red-light);color:var(--red);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">&#9679; ACTION NEEDED</span>':'',
@@ -4642,7 +4645,7 @@ function viewPR(id){
   const pr=payRequests.find(x=>x.id===id); if(!pr) return;
   const items=JSON.parse(pr.items||'[]');
   const st=prStatusInfo(pr), next=prNextStep(pr);
-  const prType=pr.request_type||'Material';
+  const prType=prGetType(pr);
   const vatMode=pr.vat_mode||'exclusive';
   const canAct=next!=='complete'&&prCanAct(pr,next);
   const canEdit=next==='checked'&&pr.prepared_by===currentUser.username;
@@ -4659,7 +4662,7 @@ function viewPR(id){
     tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}"><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td>${it.unit||''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td></tr>`).join('');
   }
 
-  const withholdRow=pr.withholding>0?`<div class="pr-total-row"><span>3% Withholding Tax <span style="font-size:10px;color:var(--muted)">(${pr.purchase_category||'Purchase'})</span></span><span style="color:var(--red)">${fmt(pr.withholding)}</span></div>`:'';
+  const withholdRow=pr.withholding>0?`<div class="pr-total-row"><span>3% Withholding Tax <span style="font-size:10px;color:var(--muted)">(${prGetCategory(pr)})</span></span><span style="color:var(--red)">${fmt(pr.withholding)}</span></div>`:'';
   const partialPaid=parseFloat(pr.partial_amount||0);
   const pendingAmt=pr.net_payable-partialPaid;
 
@@ -4679,9 +4682,9 @@ function viewPR(id){
         <div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--ink)">Payment Request</div>
         <div style="font-size:12px;color:var(--muted);margin-top:2px">${pr.company_id} · ${pr.division}${pr.sub_project?' · '+pr.sub_project:''}</div>
         <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">
-          ${pr.request_type?`<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--border2);color:var(--muted);font-weight:600">${pr.request_type}</span>`:''}
-          ${(pr.type==='manpower'||pr.request_type==='Manpower')&&pr.manpower_category?`<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:#ede9fe;color:#5b21b6;font-weight:600">${pr.manpower_category}</span>`:''}
-          ${pr.purchase_category?`<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${pr.purchase_category==='Service'?'#f0fdf4':'#eff6ff'};color:${pr.purchase_category==='Service'?'#166534':'#1e40af'};font-weight:600">${pr.purchase_category==='Service'?'🔧':'🛒'} ${pr.purchase_category}</span>`:''}
+          ${pr.request_type?`<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--border2);color:var(--muted);font-weight:600">${ prGetType(pr)}</span>`:''}
+          ${(pr.type==='manpower'||prGetType(pr)==='Manpower')&&pr.manpower_category?`<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:#ede9fe;color:#5b21b6;font-weight:600">${pr.manpower_category}</span>`:''}
+          ${prGetCategory(pr)?`<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${prGetCategory(pr)==='Service'?'#f0fdf4':'#eff6ff'};color:${prGetCategory(pr)==='Service'?'#166534':'#1e40af'};font-weight:600">${prGetCategory(pr)==='Service'?'🔧':'🛒'} ${prGetCategory(pr)}</span>`:''}
           <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${vatMode==='exclusive'?'#dbeafe':'#fef3c7'};color:${vatMode==='exclusive'?'#1e40af':'#92400e'};font-weight:600">VAT ${vatMode}</span>
           ${pr.rejected?'<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:#fee2e2;color:#991b1b;font-weight:700">⚠ REJECTED</span>':''}
         </div>
@@ -5063,13 +5066,13 @@ function editPR(id){
   document.getElementById('prConsultant').value=pr.consultant||'';
   document.getElementById('prNote').value=pr.note||'';
   // Set type
-  const prType=pr.request_type||'Material';
+  const prType=prGetType(pr);
   currentPRType=prType; document.getElementById('prType').value=prType;
   document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active'));
   const tb=document.getElementById('prTypeBtn-'+prType); if(tb) tb.classList.add('active');
   document.getElementById('prManpowerRow').style.display=prType==='Manpower'?'block':'none';
   // Restore Purchase/Service category
-  const prCat=pr.purchase_category||'Purchase';
+  const prCat=prGetCategory(pr);
   document.getElementById('prCategory').value=prCat;
   document.querySelectorAll('[id^="prCatBtn-"]').forEach(b=>b.classList.remove('active'));
   const cbEdit=document.getElementById('prCatBtn-'+prCat); if(cbEdit) cbEdit.classList.add('active');
