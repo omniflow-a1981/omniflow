@@ -298,6 +298,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 
 .pr-type-btn{padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;color:var(--ink2)}
 .pr-type-btn.active{background:var(--teal-dark);color:#fff;border-color:var(--teal-dark)}
+.pr-co-pill{padding:4px 12px;border-radius:20px;border:1.5px solid var(--border);background:transparent;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted);font-family:'DM Sans',sans-serif;transition:all .15s}
+.pr-co-pill.active{background:var(--ink2);color:#fff;border-color:var(--ink2)}
+.pr-div-pill{padding:3px 10px;border-radius:20px;border:1.5px solid var(--border);background:transparent;font-size:11px;font-weight:600;cursor:pointer;color:var(--muted);font-family:'DM Sans',sans-serif;transition:all .15s}
+.pr-div-pill.active{color:#fff}
+.pr-card-v2{background:var(--surface);border-radius:12px;border:1px solid var(--border);box-shadow:var(--shadow);margin-bottom:10px;overflow:hidden;display:flex;transition:box-shadow .15s}
+.pr-card-v2:hover{box-shadow:0 4px 18px rgba(0,0,0,.1)}
+.pr-card-v2-bar{width:5px;flex-shrink:0}
+.pr-card-v2-body{flex:1;padding:12px 14px;min-width:0}
+.pr-group-header{color:#fff;border-radius:10px;padding:10px 16px;margin-bottom:8px;margin-top:14px;display:flex;justify-content:space-between;align-items:center}
 .pr-status-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
 .pr-draft{background:#f1f5f9;color:#64748b}.pr-pending{background:#fef3c7;color:#92400e}
 .pr-checked{background:#dbeafe;color:#1e40af}.pr-approved{background:#ede9fe;color:#5b21b6}
@@ -838,6 +847,32 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     <button class="dfb-mode" id="prf-pending" onclick="filterPR('pending',this)">
       ⏳ Pending Payments <span id="prPendingCount" style="background:var(--amber);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:3px">0</span>
     </button>
+  </div>
+  <!-- Admin/Finance enhanced toolbar -->
+  <div id="prAdminToolbar" style="display:none;margin-bottom:14px">
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+      <div style="position:relative;flex:1;min-width:200px">
+        <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.4" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="prSearchInput" type="text" placeholder="Search project, client, preparer…" oninput="renderPRList()" style="width:100%;padding:7px 10px 7px 30px;font-size:12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink2);outline:none;box-sizing:border-box">
+      </div>
+      <select id="prSortSel" onchange="renderPRList()" style="font-size:12px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink2);outline:none">
+        <option value="date_desc">Newest first</option>
+        <option value="date_asc">Oldest first</option>
+        <option value="amount_desc">Amount ↓</option>
+        <option value="amount_asc">Amount ↑</option>
+        <option value="status">By Status</option>
+      </select>
+      <button id="prGroupBtn" onclick="togglePRGroup()" style="font-size:12px;padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink2);cursor:pointer;white-space:nowrap">⊞ Group by Division</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      <span style="font-size:11px;font-weight:700;color:var(--muted);align-self:center;margin-right:2px">Company:</span>
+      <button class="pr-co-pill active" onclick="setPRCoFilter('all',this)">All</button>
+      <button class="pr-co-pill" onclick="setPRCoFilter('WE',this)" style="border-color:#0d9488;color:#0d9488">Wanofi</button>
+      <button class="pr-co-pill" onclick="setPRCoFilter('ME',this)" style="border-color:#5b21b6;color:#5b21b6">Matisan</button>
+    </div>
+    <div id="prDivPills" style="display:flex;gap:6px;flex-wrap:wrap;min-height:28px">
+      <span style="font-size:11px;font-weight:700;color:var(--muted);align-self:center;margin-right:2px">Division:</span>
+    </div>
   </div>
   <div id="prList"></div>
 </div>
@@ -3688,6 +3723,38 @@ async function runDiagnostics(){
 // PAYMENT REQUESTS
 // ══════════════════════════════════════
 let payRequests=[], prFilter='all', currentPRType='Material';
+let prCoFilter='all', prDivFilter='all', prGrouped=false;
+function setPRCoFilter(co,btn){
+  prCoFilter=co; prDivFilter='all';
+  document.querySelectorAll('.pr-co-pill').forEach(b=>b.classList.remove('active')); btn.classList.add('active');
+  buildPRDivPills(); renderPRList();
+}
+function setPRDivFilter(div,btn){
+  prDivFilter=div;
+  document.querySelectorAll('.pr-div-pill').forEach(b=>b.classList.remove('active')); btn.classList.add('active');
+  renderPRList();
+}
+function togglePRGroup(){
+  prGrouped=!prGrouped;
+  const btn=document.getElementById('prGroupBtn');
+  if(btn){btn.style.background=prGrouped?'var(--ink2)':'var(--surface)';btn.style.color=prGrouped?'#fff':'var(--ink2)';}
+  renderPRList();
+}
+function buildPRDivPills(){
+  const container=document.getElementById('prDivPills'); if(!container) return;
+  const visible=payRequests.filter(pr=>prVisible(pr)&&(prCoFilter==='all'||pr.company_id===prCoFilter));
+  const divCodes=[...new Set(visible.map(pr=>(pr.division||'').split('.')[0].trim()))].filter(Boolean).sort();
+  const divColors={'WE1':'#0d9488','WE2':'#2563eb','WE3':'#7c3aed','ME1':'#1d4ed8','ME2':'#b45309','ME3':'#166534'};
+  container.innerHTML='<span style="font-size:11px;font-weight:700;color:var(--muted);align-self:center;margin-right:2px">Division:</span>'
+    +'<button class="pr-div-pill active" onclick="setPRDivFilter(\'all\',this)" style="border-color:var(--border);color:var(--muted)">All</button>'
+    +divCodes.map(d=>{const col=divColors[d]||'#64748b';return '<button class="pr-div-pill" onclick="setPRDivFilter(\''+d+'\',this)" style="border-color:'+col+';color:'+col+'">'+d+'</button>';}).join('');
+}
+function initPRAdminToolbar(){
+  const tb=document.getElementById('prAdminToolbar');
+  if(!tb) return;
+  if(isFinanceOrAdmin()){tb.style.display='block';buildPRDivPills();}
+  else tb.style.display='none';
+}
 const PR_SB='https://carcospsxvrmvkxhdyym.supabase.co/rest/v1', PR_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE';
 const PR_STEPS=['prepared','checked','approved','verified','paid'];
 function getSubsForDiv(divCode){
@@ -3776,9 +3843,9 @@ function updatePRSub(){
   var isME1=divVal.toUpperCase().startsWith('ME1');
   var subRow=document.getElementById('prSubRow');
   var typeRow=document.getElementById('prTypeRow');
-  var catRow=document.getElementById('prCategoryRow');
   if(subRow) subRow.style.display=hasSubs?'block':'none';
   if(typeRow) typeRow.style.display=(hasSubs||isME1)?'block':'none';
+  var catRow=document.getElementById('prCategoryRow');
   if(catRow) catRow.style.display='block';
   if(hasSubs){
     var s=document.getElementById('prSub');
@@ -3839,7 +3906,6 @@ function setPRCategory(cat, btn){
   if(note) note.textContent=cat==='Service'?'3% withholding applies when subtotal ≥ ETB 10,000':'3% withholding applies when subtotal ≥ ETB 20,000';
   calcPRTotals();
 }
-
 function calcPRTotals(){
   let sub=0; document.querySelectorAll('.pr-item-paid').forEach(el=>{sub+=parseFloat(el.value)||0;});
   const vm=document.querySelector('input[name="vatMode"]:checked')?.value||'exclusive';
@@ -4216,7 +4282,6 @@ function openNewPR(){
   document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active'));
   const mb=document.getElementById('prTypeBtn-Material'); if(mb) mb.classList.add('active');
   document.getElementById('prManpowerRow').style.display='none';
-  // Reset Purchase/Service category
   document.getElementById('prCategory').value='Purchase';
   document.querySelectorAll('[id^="prCatBtn-"]').forEach(b=>b.classList.remove('active'));
   const cb=document.getElementById('prCatBtn-Purchase'); if(cb) cb.classList.add('active');
@@ -4366,6 +4431,7 @@ async function loadPayRequests(){
     payRequests=await res.json();
     if(!Array.isArray(payRequests)) payRequests=[];
     checkPRAlerts();
+    initPRAdminToolbar();
     if(document.getElementById('pgPayReq')?.classList.contains('active')) renderPRList();
     // Re-render only when not in initial load sequence
     if(!window._omniLoading) renderAll();
@@ -4405,7 +4471,6 @@ function updatePendingBadge(){
   if(badge) badge.textContent=count;
   if(count>0&&badge) badge.style.display='inline';
   else if(badge) badge.style.display='none';
-  // Update reversed badge
   const revCount=payRequests.filter(pr=>prVisible(pr)&&prIsReversed(pr)).length;
   const revBadge=document.getElementById('prReversedCount');
   if(revBadge){revBadge.textContent=revCount;revBadge.style.display=revCount>0?'inline':'none';}
@@ -4419,6 +4484,19 @@ function renderPRList(){
   if(prFilter==='reversed') list=list.filter(pr=>prIsReversed(pr));
   if(prFilter==='done')    list=list.filter(pr=>prNextStep(pr)==='complete');
   if(prFilter==='pending') list=getPendingPRs();
+  // Admin/Finance extra filters
+  if(isFinanceOrAdmin()){
+    if(prCoFilter!=='all') list=list.filter(pr=>pr.company_id===prCoFilter);
+    if(prDivFilter!=='all') list=list.filter(pr=>(pr.division||'').split('.')[0].trim()===prDivFilter);
+    const q=(document.getElementById('prSearchInput')?.value||'').toLowerCase().trim();
+    if(q) list=list.filter(pr=>(pr.project||'').toLowerCase().includes(q)||(pr.client||'').toLowerCase().includes(q)||(pr.prepared_by||'').toLowerCase().includes(q)||(pr.division||'').toLowerCase().includes(q));
+    const sort=document.getElementById('prSortSel')?.value||'date_desc';
+    if(sort==='date_desc') list.sort((a,b)=>new Date(b.created_at||b.request_date)-new Date(a.created_at||a.request_date));
+    else if(sort==='date_asc') list.sort((a,b)=>new Date(a.created_at||a.request_date)-new Date(b.created_at||b.request_date));
+    else if(sort==='amount_desc') list.sort((a,b)=>b.net_payable-a.net_payable);
+    else if(sort==='amount_asc') list.sort((a,b)=>a.net_payable-b.net_payable);
+    else if(sort==='status') list.sort((a,b)=>PR_STEPS.indexOf(prNextStep(a))-PR_STEPS.indexOf(prNextStep(b)));
+  }
   if(!list.length){el.innerHTML='<div class="empty-state">No payment requests found.</div>';return;}
 
   // Show summary header when in pending filter
@@ -4461,60 +4539,96 @@ function renderPRList(){
       </div>
     </div>`;
   }
-  el.innerHTML=headerHtml+list.map(pr=>{
-    const st=prStatusInfo(pr), next=prNextStep(pr);
+  const STATUS_BAR={
+    'pr-draft':'#94a3b8','pr-pending':'#f59e0b','pr-checked':'#3b82f6',
+    'pr-approved':'#7c3aed','pr-verified':'#10b981','pr-paid':'#16a34a',
+    'pr-rejected':'#ef4444','pr-reversed':'#be123c'
+  };
+  const DIV_COL={'WE1':'#0d9488','WE2':'#2563eb','WE3':'#7c3aed','ME1':'#1d4ed8','ME2':'#b45309','ME3':'#166534'};
+  function buildPRCard(pr){
+    const st=prStatusInfo(pr),next=prNextStep(pr);
     const canAct=next!=='complete'&&next!=='prepared'&&prCanAct(pr,next);
-    const typeTag=pr.request_type?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--border2);color:var(--muted);font-weight:600">${pr.request_type}</span>`:''
-    const partialAmt=parseFloat(pr.partial_amount||0)
-    // Pending = verified but not paid, OR partial payment done with remainder pending
-    const isPending=(prNextStep(pr)==='paid')||(prNextStep(pr)==='complete'&&partialAmt>0&&partialAmt<pr.net_payable)
-    const pendingAmt=isPending?(partialAmt>0&&partialAmt<pr.net_payable?pr.net_payable-partialAmt:pr.net_payable):0
-    const pendingTag=pendingAmt>0?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#fef3c7;color:#92400e;font-weight:700">⏳ Pending: ${fmt(pendingAmt)}</span>`:'';
-    var _sdivCode=(pr.division||'').split('.')[0].trim();
-    var _sinfo=pr.sub_project?getSubsForDiv(_sdivCode).find(function(s){return s.name===pr.sub_project||s.code===pr.sub_project;}):null;
-    var _sclient=_sinfo&&_sinfo.client&&_sinfo.client!==pr.sub_project?' · '+_sinfo.client:'';
-    const subTag=pr.sub_project?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#dbeafe;color:#1e40af;font-weight:600">📍 ${pr.sub_project}${_sclient}</span>`:'';
-    return `<div class="pr-card">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-        <div>
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">
-            <span style="font-size:15px;font-weight:700;color:var(--ink2)">${pr.project}</span>
-            <span class="pr-status-badge ${st.css}">${st.label}</span>
-            ${typeTag}${subTag}${pendingTag}
-            ${canAct?'<span style="background:var(--red-light);color:var(--red);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">● ACTION NEEDED</span>':''}
-          </div>
-          <div style="font-size:11px;color:var(--muted)">
-            <strong>${pr.company_id}</strong> · ${pr.division}${pr.sub_project?' · <span style="color:#1e40af;font-weight:700">'+pr.sub_project+'</span>':''}
-          </div>
-          <div style="font-size:11px;color:var(--muted)">${pr.request_date} · Net Payable: <strong>${fmt(pr.net_payable)}</strong>${partialAmt>0?' · <span style="color:#92400e">Partial Paid: '+fmt(partialAmt)+'</span>':''}</div>
-          <div style="font-size:11px;color:var(--muted)">Client: ${pr.client||'—'} · Prepared by: ${prDispName(pr.prepared_by)}</div>
-          ${prFilter==='pending'?`
-          <div style="margin-top:6px;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:12px">
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px">
-              <div><span style="color:var(--muted);font-size:10px">COMPANY</span><br><strong>${pr.company_id==='WE'?'Wanofi Engineering':'Matisan Engineering'}</strong></div>
-              <div><span style="color:var(--muted);font-size:10px">DIVISION</span><br><strong>${pr.division}</strong></div>
-              ${pr.sub_project?`<div><span style="color:var(--muted);font-size:10px">SITE</span><br><strong style="color:#1e40af">${pr.sub_project}</strong></div>`:''}
-              <div><span style="color:var(--muted);font-size:10px">TYPE</span><br><strong>${pr.request_type||'Material'}</strong></div>
-              <div><span style="color:var(--muted);font-size:10px">VERIFIED BY</span><br><strong>${prDispName(pr.verified_by||'—')}</strong></div>
-              <div><span style="color:var(--muted);font-size:10px">PENDING AMOUNT</span><br><strong style="color:#92400e;font-size:13px">${fmt(pendingAmt>0?pendingAmt:pr.net_payable)}</strong></div>
+    const pa=parseFloat(pr.partial_amount||0);
+    const isPending=(next==='paid')||(next==='complete'&&pa>0&&pa<pr.net_payable);
+    const pendAmt=isPending?(pa>0&&pa<pr.net_payable?pr.net_payable-pa:pr.net_payable):0;
+    const divCode=(pr.division||'').split('.')[0].trim();
+    const barCol=STATUS_BAR[st.css]||'#94a3b8';
+    const divCol=DIV_COL[divCode]||'var(--ink2)';
+    const isAF=isFinanceOrAdmin();
+    const ri=prReverseInfo(pr);
+    const tags=[
+      pr.request_type?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--border2);color:var(--muted);font-weight:600">${pr.request_type}</span>`:'',
+      pr.purchase_category?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:${pr.purchase_category==='Service'?'#f0fdf4':'#eff6ff'};color:${pr.purchase_category==='Service'?'#166534':'#1e40af'};font-weight:600">${pr.purchase_category==='Service'?'Service':'Purchase'}</span>`:'',
+      pr.sub_project?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#dbeafe;color:#1e40af;font-weight:600">&#128205; ${pr.sub_project}</span>`:'',
+      pendAmt>0?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#fef3c7;color:#92400e;font-weight:700">&#9203; ${fmt(pendAmt)}</span>`:'',
+      canAct?'<span style="background:var(--red-light);color:var(--red);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">&#9679; ACTION NEEDED</span>':'',
+      ri?'<span style="background:#fff1f2;color:#be123c;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid #fecdd3">&#8617; REVERSED</span>':''
+    ].filter(Boolean).join('');
+    const steps=PR_STEPS.map(step=>{
+      const done=pr[step+'_by'],isNext=next===step;
+      return '<span class="ws-step '+(done?'done':isNext?'active':'pending')+'">'+(done?'&#10003;':isNext?'&#9679;':'&#9675;')+' '+step.charAt(0).toUpperCase()+step.slice(1)+(done?' <span style="font-size:10px;opacity:.7">'+prDispName(pr[step+'_by'])+'</span>':'')+'</span>'+(step!=='paid'?'<span class="ws-arrow">&#8594;</span>':'');
+    }).join('');
+    const amtCol=isPending?'#92400e':next==='complete'?'#16a34a':'var(--ink2)';
+    return `<div class="pr-card-v2">
+      <div class="pr-card-v2-bar" style="background:${barCol}"></div>
+      <div class="pr-card-v2-body">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+              <span style="font-size:14px;font-weight:700;color:var(--ink2)" title="${pr.project}">${pr.project}</span>
+              <span class="pr-status-badge ${st.css}">${st.label}</span>
             </div>
-          </div>`:``}
+            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:5px">${tags}</div>
+            ${isAF?`<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-bottom:3px">
+              <span style="font-weight:700;color:${divCol}">${pr.division}</span>
+              ${pr.sub_project?`<span style="color:#1e40af">&#128205; ${pr.sub_project}</span>`:''}
+              <span>&#128197; ${pr.request_date}</span>
+              <span>&#128100; ${prDispName(pr.prepared_by)}</span>
+              ${pr.client&&pr.client!=='NONE'?`<span>&#127962; ${pr.client}</span>`:''}
+            </div>`:`<div style="font-size:11px;color:var(--muted);margin-bottom:3px">${pr.company_id} &middot; ${pr.division} &middot; ${pr.request_date} &middot; ${prDispName(pr.prepared_by)}</div>`}
+            ${ri?`<div style="font-size:11px;color:#be123c;background:#fff1f2;border:1px solid #fecdd3;border-radius:6px;padding:4px 8px;margin-bottom:4px">&#8617; <strong>${ri.step}</strong> reversed by ${ri.by}: ${ri.reason}</div>`:''}
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
+            <div style="text-align:right">
+              <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px">Net Payable</div>
+              <div style="font-size:17px;font-weight:800;color:${amtCol}">${fmt(pr.net_payable)}</div>
+              ${pa>0?`<div style="font-size:10px;color:#92400e">Paid: ${fmt(pa)}</div>`:''}
+            </div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
+              <button onclick="viewPR('${pr.id}')" class="btn-secondary" style="font-size:11px;padding:5px 11px">View</button>
+              ${canAct?`<button onclick="actOnPR('${pr.id}')" class="btn-primary" style="font-size:11px;padding:5px 12px;background:linear-gradient(135deg,#f59e0b,#d97706)">${next.charAt(0).toUpperCase()+next.slice(1)} &#10003;</button>`:''}
+              ${isPending?`<button onclick="requestPaymentPR('${pr.id}')" class="btn-primary" style="font-size:11px;padding:5px 11px;background:linear-gradient(135deg,#f59e0b,#d97706)">&#128226; Pay</button>`:''}
+            </div>
+          </div>
         </div>
-        <div style="display:flex;gap:6px">
-          <button onclick="viewPR('${pr.id}')" class="btn-secondary" style="font-size:11px;padding:6px 12px">View</button>
-          ${canAct?`<button onclick="actOnPR('${pr.id}')" class="btn-primary" style="font-size:11px;padding:6px 14px;background:linear-gradient(135deg,#f59e0b,#d97706)">${next.charAt(0).toUpperCase()+next.slice(1)} ✓</button>`:''}
-          ${(next==='paid'||(next==='complete'&&partialAmt>0&&partialAmt<pr.net_payable))?`<button onclick="requestPaymentPR('${pr.id}')" class="btn-primary" style="font-size:11px;padding:6px 12px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:700">📢 Request Payment</button>`:''}
-        </div>
-      </div>
-      <div class="workflow-steps">
-        ${PR_STEPS.map(step=>{
-          const done=pr[step+'_by'], isNext=prNextStep(pr)===step;
-          return '<span class="ws-step '+(done?'done':isNext?'active':'pending')+'">'+(done?'✓':isNext?'●':'○')+' '+step.charAt(0).toUpperCase()+step.slice(1)+(done?' <span style="font-size:10px;opacity:.7">'+prDispName(pr[step+'_by'])+'</span>':'')+
-            '</span>'+(step!=='paid'?'<span class="ws-arrow">→</span>':'');
-        }).join('')}
+        <div class="workflow-steps" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border2)">${steps}</div>
       </div>
     </div>`;
-  }).join('');
+  }
+  const GRP_COL={'WE1':'#0d9488','WE2':'#2563eb','WE3':'#7c3aed','ME1':'#1d4ed8','ME2':'#b45309','ME3':'#166534'};
+  if(isFinanceOrAdmin()&&prGrouped){
+    const groups={};
+    list.forEach(pr=>{
+      const key=(pr.division||'').split('.')[0].trim()||'Unknown';
+      if(!groups[key]){groups[key]={prs:[],total:0,pending:0};}
+      groups[key].prs.push(pr);
+      groups[key].total+=pr.net_payable||0;
+      const pa2=parseFloat(pr.partial_amount||0),nxt=prNextStep(pr);
+      if(nxt==='paid'||(nxt==='complete'&&pa2>0&&pa2<pr.net_payable)) groups[key].pending+=(pa2>0&&pa2<pr.net_payable?pr.net_payable-pa2:pr.net_payable);
+    });
+    el.innerHTML=headerHtml+Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0])).map(([div,g])=>
+      `<div class="pr-group-header" style="background:linear-gradient(135deg,${GRP_COL[div]||'#334155'},#1e293b)">
+        <div><span style="font-family:'DM Serif Display',serif;font-size:15px">${div}</span>
+        <span style="font-size:11px;opacity:.7;margin-left:10px">${g.prs.length} request${g.prs.length!==1?'s':''}</span></div>
+        <div style="text-align:right">
+          <div style="font-size:10px;opacity:.6;text-transform:uppercase;letter-spacing:.4px">Total</div>
+          <div style="font-size:15px;font-weight:800">${fmt(g.total)}</div>
+          ${g.pending>0?`<div style="font-size:10px;color:#fde68a">Pending: ${fmt(g.pending)}</div>`:''}</div>
+      </div>${g.prs.map(buildPRCard).join('')}`
+    ).join('');
+  } else {
+    el.innerHTML=headerHtml+list.map(buildPRCard).join('');
+  }
 }
 
 function viewPR(id){
@@ -4866,28 +4980,20 @@ async function cancelPR(id){
 }
 
 async function reversePRStep(id, step){
-  // Prompt for reason before confirming
   const reason = prompt('Reason for reversing the "'+step+'" step (required):');
-  if(reason===null) return; // cancelled
+  if(reason===null) return;
   if(!reason.trim()){alert('A reason is required to reverse this step.');return;}
   if(!confirm('Reverse the '+step+' step? This will require it to be done again.')) return;
-
-  // Build update using ONLY columns that exist in Supabase
   const upd={};
-  upd[step+'_by']=null;
-  upd[step+'_at']=null;
-  upd[step+'_comment']=null;
+  upd[step+'_by']=null; upd[step+'_at']=null; upd[step+'_comment']=null;
   upd.status='pending';
-  // Encode reverse info into reject_comment so it survives without new DB columns
   upd.reject_comment='[REVERSED:'+step+' by '+currentUser.username+'] '+reason.trim();
-  upd.rejected=false; // keep distinct from a true rejection
-
+  upd.rejected=false;
   try{
-    const resp = await fetch(PR_SB+'/payment_requests?id=eq.'+id,{method:'PATCH',headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(upd)});
+    const resp=await fetch(PR_SB+'/payment_requests?id=eq.'+id,{method:'PATCH',headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(upd)});
     if(!resp.ok){const err=await resp.text();throw new Error(err);}
     closePRDetail(); await loadPayRequests(); renderPRList();
     showFlash('↩ '+step+' step reversed. Reason stored.','prFlash','prFlashMsg');
-    // Notify the preparer to correct and resubmit
     const rpr = payRequests.find(x=>x.id===id);
     if(rpr && rpr.prepared_by){
       pushNotif(rpr.prepared_by, 'warning',
