@@ -1016,34 +1016,121 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 
   <!-- TAB: RATE LIBRARY -->
   <div id="tenderTabRates" style="display:none">
-    <div class="form-card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-        <div>
-          <div style="font-size:13px;font-weight:700;color:var(--ink2)">ME1. Construction — Rate Library</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">Base unit rates for Labour, Equipment, and Materials. Used to price BOQ items.</div>
-        </div>
-        <div class="btn-row">
-          <button class="btn-secondary" onclick="addRateRow()">+ Add Rate</button>
-          <button class="btn-primary" onclick="saveRates()">Save All Rates</button>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;margin-bottom:10px">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;padding:3px 10px;border-radius:20px;background:var(--teal-light);color:var(--teal-dark)">Overhead: <span id="rateOverheadPct">--</span>%</div>
-        <div style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--amber-light);color:#92400e">Profit: <span id="rateProfitPct">--</span>%</div>
-        <button onclick="editMargins()" style="font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid var(--border);background:var(--surface);cursor:pointer;color:var(--ink2)">Edit margins</button>
-      </div>
-      <div id="marginsForm" style="display:none;background:var(--bg);border-radius:10px;padding:12px 14px;margin-bottom:12px">
-        <div class="fr" style="margin-bottom:8px;max-width:340px">
-          <div class="ff"><label>Overhead %</label><input type="number" id="overheadInput" placeholder="15" min="0" max="100" step="0.5"></div>
-          <div class="ff"><label>Profit %</label><input type="number" id="profitInput" placeholder="10" min="0" max="100" step="0.5"></div>
-        </div>
-        <button class="btn-primary" onclick="saveMargins()" style="font-size:12px;padding:7px 14px">Save Margins</button>
-      </div>
-      <div style="display:grid;grid-template-columns:120px 1fr 80px 110px 36px;gap:6px;padding:7px 10px;background:var(--bg);font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;border-radius:6px;margin-bottom:4px">
-        <span>Category</span><span>Description</span><span>Unit</span><span>Base Rate (ETB)</span><span></span>
-      </div>
-      <div id="rateRowsWrap"></div>
+    <!-- Sub-tabs -->
+    <div style="display:flex;gap:6px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0">
+      <button id="rateSubTab-unit" onclick="showRateSubTab('unit')" style="padding:8px 16px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:700;color:var(--teal-dark);border-bottom:2px solid var(--teal);margin-bottom:-2px">Unit Rates</button>
+      <button id="rateSubTab-resource" onclick="showRateSubTab('resource')" style="padding:8px 16px;border:none;background:none;cursor:pointer;font-size:13px;color:var(--muted);margin-bottom:-2px">Resource Sheet</button>
+      <button id="rateSubTab-docs" onclick="showRateSubTab('docs')" style="padding:8px 16px;border:none;background:none;cursor:pointer;font-size:13px;color:var(--muted);margin-bottom:-2px">Uploaded Documents</button>
     </div>
+
+    <!-- SUB: Unit Rates -->
+    <div id="rateSubPanel-unit">
+      <div class="form-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--ink2)">ME1. Construction — Unit Rate Library</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Base unit rates used to price BOQ items. Applied with location factor, overhead & profit.</div>
+          </div>
+          <div class="btn-row">
+            <button class="btn-secondary" onclick="addRateRow()">+ Add Rate</button>
+            <button class="btn-primary" onclick="saveRates()">Save All Rates</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+          <div style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--teal-light);color:var(--teal-dark)">Overhead: <span id="rateOverheadPct">--</span>%</div>
+          <div style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--amber-light);color:#92400e">Profit: <span id="rateProfitPct">--</span>%</div>
+          <button onclick="editMargins()" style="font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid var(--border);background:var(--surface);cursor:pointer;color:var(--ink2)">Edit margins</button>
+        </div>
+        <div id="marginsForm" style="display:none;background:var(--bg);border-radius:10px;padding:12px 14px;margin-bottom:12px">
+          <div class="fr" style="margin-bottom:8px;max-width:340px">
+            <div class="ff"><label>Overhead %</label><input type="number" id="overheadInput" placeholder="15" min="0" max="100" step="0.5"></div>
+            <div class="ff"><label>Profit %</label><input type="number" id="profitInput" placeholder="10" min="0" max="100" step="0.5"></div>
+          </div>
+          <button class="btn-primary" onclick="saveMargins()" style="font-size:12px;padding:7px 14px">Save Margins</button>
+        </div>
+        <div style="display:grid;grid-template-columns:120px 1fr 80px 110px 36px;gap:6px;padding:7px 10px;background:var(--bg);font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;border-radius:6px;margin-bottom:4px">
+          <span>Category</span><span>Description</span><span>Unit</span><span>Base Rate (ETB)</span><span></span>
+        </div>
+        <div id="rateRowsWrap"></div>
+      </div>
+    </div>
+
+    <!-- SUB: Resource Sheet -->
+    <div id="rateSubPanel-resource" style="display:none">
+      <div class="form-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--ink2)">Resource Sheet — ME1. Construction</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Labour, Equipment, and Material resource rates. Edit cells directly. Location factor applied per tender.</div>
+          </div>
+          <div class="btn-row">
+            <button class="btn-secondary" onclick="addResourceRow()">+ Add Row</button>
+            <button class="btn-primary" onclick="saveResourceSheet()">Save Resource Sheet</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <select id="resourceCatFilter" onchange="renderResourceSheet()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:var(--surface);color:var(--ink)">
+            <option value="">All Categories</option>
+            <option value="Labour">Labour</option>
+            <option value="Equipment">Equipment</option>
+            <option value="Material">Material</option>
+          </select>
+          <input type="text" id="resourceSearch" placeholder="Search resources..." oninput="renderResourceSheet()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:var(--surface);color:var(--ink);min-width:180px">
+        </div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:800px">
+            <thead>
+              <tr style="background:var(--bg);font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">
+                <th style="padding:8px 10px;text-align:left;border-bottom:1.5px solid var(--border);width:110px">Category</th>
+                <th style="padding:8px 10px;text-align:left;border-bottom:1.5px solid var(--border)">Resource Description</th>
+                <th style="padding:8px 10px;text-align:left;border-bottom:1.5px solid var(--border);width:70px">Unit</th>
+                <th style="padding:8px 10px;text-align:right;border-bottom:1.5px solid var(--border);width:110px">Base Rate (ETB)</th>
+                <th style="padding:8px 10px;text-align:center;border-bottom:1.5px solid var(--border);width:90px">Location Factor</th>
+                <th style="padding:8px 10px;text-align:right;border-bottom:1.5px solid var(--border);width:120px">Adjusted Rate</th>
+                <th style="padding:8px 10px;text-align:left;border-bottom:1.5px solid var(--border);width:140px">Allowances</th>
+                <th style="padding:8px 10px;text-align:center;border-bottom:1.5px solid var(--border);width:36px"></th>
+              </tr>
+            </thead>
+            <tbody id="resourceSheetBody"></tbody>
+          </table>
+        </div>
+        <div id="resourceSheetEmpty" style="text-align:center;padding:30px;color:var(--muted);font-size:12px;display:none">No resource rows yet. Click + Add Row to start.</div>
+      </div>
+    </div>
+
+    <!-- SUB: Uploaded Documents -->
+    <div id="rateSubPanel-docs" style="display:none">
+      <div class="form-card">
+        <div style="font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:6px">Upload Cost Breakdown &amp; Reference Documents</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Upload your cost breakdown spreadsheets and resource reference files. These are stored for review and reference. Supported: Excel, PDF.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+          <div style="flex:1;min-width:220px">
+            <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:8px">Cost Breakdown</div>
+            <div style="border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer" ondragover="event.preventDefault()" ondrop="handleDocDrop(event,'breakdown')">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Drag or click to upload</div>
+              <input type="file" id="docInputBreakdown" accept=".xlsx,.xls,.pdf" style="display:none" onchange="handleDocFile(this.files[0],'breakdown')">
+              <button class="btn-secondary" onclick="document.getElementById('docInputBreakdown').click()" style="font-size:11px">Choose File</button>
+            </div>
+          </div>
+          <div style="flex:1;min-width:220px">
+            <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:8px">Resource Reference Sheet</div>
+            <div style="border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer" ondragover="event.preventDefault()" ondrop="handleDocDrop(event,'resource')">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Drag or click to upload</div>
+              <input type="file" id="docInputResource" accept=".xlsx,.xls,.pdf" style="display:none" onchange="handleDocFile(this.files[0],'resource')">
+              <button class="btn-secondary" onclick="document.getElementById('docInputResource').click()" style="font-size:11px">Choose File</button>
+            </div>
+          </div>
+        </div>
+        <div id="docUploadStatus" style="margin-bottom:12px"></div>
+        <div id="docLibraryList">
+          <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:8px">Saved Documents</div>
+          <div id="docListWrap"><div style="color:var(--muted);font-size:12px">Loading…</div></div>
+        </div>
+      </div>
+    </div>
+
     <button class="btn-secondary" onclick="showTenderTab('list')" style="margin-top:8px">Back to Tender List</button>
   </div>
 
@@ -1316,7 +1403,8 @@ const DEFAULT_PASSWORDS = {
   admin:'omni2024', finance:'finance123',
   wanofi:'wanofi123', matisan:'matisan123',
   we_prepare:'we123', we_check:'we123', we_approve:'we123',
-  me_prepare:'me123', me_check:'me123', me_approve:'me123'
+  me_prepare:'me123', me_check:'me123', me_approve:'me123',
+  we_finance:'wefinance123', me_finance:'mefinance123'
 };
 const USER_DEFS = [
   {username:'admin',      role:'admin',      displayRole:'Administrator',   initials:'AD', accessLevel:'full',    company:null, prRole:null},
@@ -1329,6 +1417,8 @@ const USER_DEFS = [
   {username:'me_prepare', role:'pr_prepare', displayRole:'ME Preparer',    initials:'MP', accessLevel:'pr_only', company:'ME', prRole:'prepare'},
   {username:'me_check',   role:'pr_check',   displayRole:'ME Checker',     initials:'MC', accessLevel:'pr_only', company:'ME', prRole:'check'},
   {username:'me_approve', role:'pr_approve', displayRole:'ME Approver',    initials:'MA', accessLevel:'pr_only', company:'ME', prRole:'approve'},
+  {username:'we_finance', role:'we_finance', displayRole:'WE-Finance',     initials:'WF', accessLevel:'pr_only', company:'WE', prRole:'pr_only'},
+  {username:'me_finance', role:'me_finance', displayRole:'ME-Finance',     initials:'MF', accessLevel:'pr_only', company:'ME', prRole:'pr_only'},
 ];
 
 // Limited users: only Entry + Ledger, only today and yesterday
@@ -1507,8 +1597,9 @@ function initLogin(){
   const chips=document.getElementById('userChips');
     const chipGroups=[
     {label:'System',color:'#0ea87a',users:USER_DEFS.filter(u=>!u.company)},
-    {label:'Wanofi PR Team',color:'#1d4ed8',users:USER_DEFS.filter(u=>u.company==='WE'&&u.prRole)},
-    {label:'Matisan PR Team',color:'#7c3aed',users:USER_DEFS.filter(u=>u.company==='ME'&&u.prRole)},
+    {label:'Wanofi PR Team',color:'#1d4ed8',users:USER_DEFS.filter(u=>u.company==='WE'&&u.prRole&&u.role!=='we_finance')},
+    {label:'Matisan PR Team',color:'#7c3aed',users:USER_DEFS.filter(u=>u.company==='ME'&&u.prRole&&u.role!=='me_finance')},
+    {label:'Finance (PR Only)',color:'#b45309',users:USER_DEFS.filter(u=>u.role==='we_finance'||u.role==='me_finance')},
   ];
   chipGroups.forEach(grp=>{
     if(!grp.users.length) return;
@@ -4800,7 +4891,7 @@ async function tenderFetch(path, method='GET', body=null){
 
 async function loadTenderPage(){
   showTenderTab('list');
-  await Promise.all([loadTenders(), loadRateLibrary()]);
+  await Promise.all([loadTenders(), loadRateLibrary(), loadResourceSheet()]);
   renderTenderList();
 }
 
@@ -5300,6 +5391,184 @@ async function saveBoqItems(){
   }));
   await Promise.all(ops);
   showFlash('✓ Priced BOQ saved.','tenderFlash','tenderFlashMsg');
+}
+
+// ── RATE LIBRARY SUB-TABS ────────────
+function showRateSubTab(tab){
+  ['unit','resource','docs'].forEach(t=>{
+    const p = document.getElementById('rateSubPanel-'+t);
+    const b = document.getElementById('rateSubTab-'+t);
+    if(p) p.style.display = t===tab ? 'block' : 'none';
+    if(b){
+      b.style.color = t===tab ? 'var(--teal-dark)' : 'var(--muted)';
+      b.style.fontWeight = t===tab ? '700' : '400';
+      b.style.borderBottom = t===tab ? '2px solid var(--teal)' : '2px solid transparent';
+    }
+  });
+  if(tab==='resource') renderResourceSheet();
+  if(tab==='docs') loadDocLibrary();
+}
+
+// ── RESOURCE SHEET ────────────────────
+let resourceRows = [];
+
+async function loadResourceSheet(){
+  const data = await tenderFetch('/eng_resource_items?division_code=eq.'+TENDER_DIV+'&order=category,description&select=*');
+  resourceRows = Array.isArray(data) ? data.map(r=>({...r})) : [];
+}
+
+function renderResourceSheet(){
+  const catF = document.getElementById('resourceCatFilter')?.value||'';
+  const srch = (document.getElementById('resourceSearch')?.value||'').toLowerCase();
+  const body = document.getElementById('resourceSheetBody');
+  const empty = document.getElementById('resourceSheetEmpty');
+  if(!body) return;
+  let rows = resourceRows.filter(r=>{
+    const catOk = !catF || r.category===catF;
+    const srchOk = !srch || (r.description||'').toLowerCase().includes(srch) || (r.unit||'').toLowerCase().includes(srch);
+    return catOk && srchOk;
+  });
+  if(!rows.length){ body.innerHTML=''; if(empty) empty.style.display='block'; return; }
+  if(empty) empty.style.display='none';
+  const catColors = {Labour:'#dbeafe',Equipment:'#fef3c7',Material:'#d1fae5'};
+  const catText   = {Labour:'#1e40af',Equipment:'#92400e',Material:'#065f46'};
+  body.innerHTML = rows.map((r,i)=>{
+    const globalIdx = resourceRows.indexOf(r);
+    const adjRate = ((parseFloat(r.base_rate)||0) * (parseFloat(r.location_factor)||1.0)).toFixed(2);
+    return `<tr style="border-bottom:1px solid var(--border2);${i%2===0?'':'background:var(--bg)'}">
+      <td style="padding:7px 10px">
+        <select onchange="resourceRows[${globalIdx}].category=this.value;renderResourceSheet()" style="padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--ink)">
+          ${['Labour','Equipment','Material'].map(c=>`<option value="${c}" ${r.category===c?'selected':''}>${c}</option>`).join('')}
+        </select>
+      </td>
+      <td style="padding:7px 10px"><input type="text" value="${(r.description||'').replace(/"/g,'&quot;')}" placeholder="Resource name" oninput="resourceRows[${globalIdx}].description=this.value" style="width:100%;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--ink)"></td>
+      <td style="padding:7px 10px"><input type="text" value="${r.unit||''}" placeholder="Day/m³" oninput="resourceRows[${globalIdx}].unit=this.value" style="width:60px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--ink)"></td>
+      <td style="padding:7px 10px;text-align:right"><input type="number" value="${r.base_rate||0}" oninput="resourceRows[${globalIdx}].base_rate=parseFloat(this.value)||0;updateAdjRate(this,${globalIdx})" style="width:100px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:right;background:var(--surface);color:var(--ink)"></td>
+      <td style="padding:7px 10px;text-align:center"><input type="number" value="${r.location_factor||1.0}" step="0.01" min="0.5" max="5" oninput="resourceRows[${globalIdx}].location_factor=parseFloat(this.value)||1.0;updateAdjRate(this,${globalIdx})" style="width:70px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center;background:var(--surface);color:var(--ink)"></td>
+      <td style="padding:7px 10px;text-align:right;font-weight:700;color:var(--teal-dark)" id="adjRate-${globalIdx}">${parseFloat(adjRate).toLocaleString('en-ET',{minimumFractionDigits:2})}</td>
+      <td style="padding:7px 10px"><input type="text" value="${r.allowances||''}" placeholder="e.g. Per diem 500" oninput="resourceRows[${globalIdx}].allowances=this.value" style="width:130px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--ink)"></td>
+      <td style="padding:7px 10px;text-align:center"><button onclick="resourceRows.splice(${globalIdx},1);renderResourceSheet()" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:16px;padding:2px 4px" title="Remove row">×</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function updateAdjRate(el, idx){
+  const r = resourceRows[idx]; if(!r) return;
+  const adj = ((parseFloat(r.base_rate)||0)*(parseFloat(r.location_factor)||1.0)).toFixed(2);
+  const cell = document.getElementById('adjRate-'+idx);
+  if(cell) cell.textContent = parseFloat(adj).toLocaleString('en-ET',{minimumFractionDigits:2});
+}
+
+function addResourceRow(){
+  resourceRows.push({category:'Labour',description:'',unit:'',base_rate:0,location_factor:1.0,allowances:'',division_code:TENDER_DIV,company_id:TENDER_CO});
+  renderResourceSheet();
+}
+
+async function saveResourceSheet(){
+  const btn = document.querySelector('[onclick="saveResourceSheet()"]');
+  if(btn){btn.disabled=true;btn.textContent='Saving…';}
+  const ops = resourceRows.map(async r=>{
+    const payload={
+      company_id:TENDER_CO, division_code:TENDER_DIV,
+      category:r.category, description:(r.description||'').trim(),
+      unit:(r.unit||'').trim(), base_rate:parseFloat(r.base_rate)||0,
+      location_factor:parseFloat(r.location_factor)||1.0,
+      allowances:r.allowances||''
+    };
+    if(!payload.description) return;
+    if(r.id) return tenderFetch('/eng_resource_items?id=eq.'+r.id,'PATCH',payload);
+    else return tenderFetch('/eng_resource_items','POST',payload);
+  });
+  await Promise.all(ops);
+  await loadResourceSheet();
+  renderResourceSheet();
+  if(btn){btn.disabled=false;btn.textContent='Save Resource Sheet';}
+  showFlash('✓ Resource sheet saved.','tenderFlash','tenderFlashMsg');
+}
+
+// ── DOCUMENT UPLOAD ───────────────────
+function handleDocDrop(e, docType){
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if(file) handleDocFile(file, docType);
+}
+
+async function handleDocFile(file, docType){
+  if(!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(!['xlsx','xls','pdf'].includes(ext)){alert('Only Excel or PDF files supported.');return;}
+  const statusEl = document.getElementById('docUploadStatus');
+  statusEl.innerHTML = '<div style="padding:8px 12px;background:var(--amber-light);border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e">Reading and saving '+file.name+'…</div>';
+  try {
+    const b64 = await fileToBase64(file);
+    const docPayload = {
+      company_id: TENDER_CO,
+      division_code: TENDER_DIV,
+      doc_type: docType,
+      filename: file.name,
+      file_ext: ext,
+      file_size: file.size,
+      file_data: b64,
+      uploaded_by: currentUser?.username||'user',
+      notes: ''
+    };
+    const res = await tenderFetch('/eng_documents','POST',docPayload);
+    await loadDocLibrary();
+    statusEl.innerHTML = '<div style="padding:8px 12px;background:var(--teal-light);border:1px solid #6ee7b7;border-radius:8px;font-size:12px;color:var(--teal-dark)">✓ '+file.name+' uploaded and saved.</div>';
+    setTimeout(()=>statusEl.innerHTML='', 3000);
+  } catch(e){
+    statusEl.innerHTML = '<div style="padding:8px 12px;background:var(--red-light);border:1px solid #fecaca;border-radius:8px;font-size:12px;color:#991b1b">Error: '+e.message+'</div>';
+  }
+}
+
+async function loadDocLibrary(){
+  const wrap = document.getElementById('docListWrap'); if(!wrap) return;
+  const data = await tenderFetch('/eng_documents?company_id=eq.'+TENDER_CO+'&division_code=eq.'+TENDER_DIV+'&order=created_at.desc&select=id,doc_type,filename,file_ext,file_size,uploaded_by,notes,created_at');
+  if(!Array.isArray(data)||!data.length){
+    wrap.innerHTML='<div style="color:var(--muted);font-size:12px">No documents uploaded yet.</div>';
+    return;
+  }
+  const typeLabel = {breakdown:'Cost Breakdown',resource:'Resource Reference'};
+  wrap.innerHTML = data.map(d=>{
+    const size = d.file_size ? (d.file_size/1024 > 1024 ? (d.file_size/1048576).toFixed(1)+' MB' : (d.file_size/1024).toFixed(0)+' KB') : '';
+    const date = d.created_at ? d.created_at.slice(0,10) : '';
+    const icon = d.file_ext==='pdf'
+      ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#991b1b" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'
+      : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#065f46" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;flex-wrap:wrap">
+      ${icon}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;color:var(--ink2)">${d.filename}</div>
+        <div style="font-size:11px;color:var(--muted)">${typeLabel[d.doc_type]||d.doc_type} &nbsp;·&nbsp; ${size} &nbsp;·&nbsp; ${date} &nbsp;·&nbsp; by ${d.uploaded_by}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button onclick="downloadDoc('${d.id}')" class="btn-secondary" style="font-size:11px;padding:4px 10px">Download</button>
+        <button onclick="deleteDoc('${d.id}')" style="background:none;border:1px solid var(--border);border-radius:7px;cursor:pointer;color:var(--muted2);font-size:18px;padding:2px 8px" title="Delete">×</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function downloadDoc(id){
+  const data = await tenderFetch('/eng_documents?id=eq.'+id+'&select=filename,file_ext,file_data');
+  if(!Array.isArray(data)||!data.length){alert('File not found.');return;}
+  const doc = data[0];
+  const byteStr = atob(doc.file_data);
+  const ab = new ArrayBuffer(byteStr.length);
+  const ia = new Uint8Array(ab);
+  for(let i=0;i<byteStr.length;i++) ia[i]=byteStr.charCodeAt(i);
+  const mimeMap = {pdf:'application/pdf',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',xls:'application/vnd.ms-excel'};
+  const blob = new Blob([ab],{type:mimeMap[doc.file_ext]||'application/octet-stream'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=doc.filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+async function deleteDoc(id){
+  if(!confirm('Delete this document?')) return;
+  await tenderFetch('/eng_documents?id=eq.'+id,'DELETE');
+  loadDocLibrary();
 }
 
 async function exportBoqExcel(){
