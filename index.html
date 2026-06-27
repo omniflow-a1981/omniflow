@@ -228,8 +228,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 
 /* ── LEDGER ── */
 .ledger-wrap{background:var(--surface);border-radius:14px;box-shadow:var(--shadow);border:1px solid var(--border2);overflow:hidden}
-.l-head{display:grid;grid-template-columns:82px minmax(0,1fr) 78px 90px 78px 90px 78px 60px;gap:5px;padding:10px 14px;background:var(--bg);font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)}
-.l-row{display:grid;grid-template-columns:82px minmax(0,1fr) 78px 90px 78px 90px 78px 60px;gap:5px;padding:10px 14px;border-bottom:1px solid var(--border2);font-size:12px;align-items:center;transition:background .12s}
+.l-head{display:grid;grid-template-columns:82px minmax(0,1fr) minmax(0,130px) 78px 90px 78px 90px 78px 60px;gap:5px;padding:10px 14px;background:var(--bg);font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)}
+.l-row{display:grid;grid-template-columns:82px minmax(0,1fr) minmax(0,130px) 78px 90px 78px 90px 78px 60px;gap:5px;padding:10px 14px;border-bottom:1px solid var(--border2);font-size:12px;align-items:center;transition:background .12s}
 .l-row:hover{background:var(--bg)}
 .l-row:last-child{border-bottom:none}
 .chip{display:inline-flex;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
@@ -692,7 +692,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     <button class="btn-secondary" style="padding:7px 12px;font-size:12px" onclick="clearFilters()">Clear filters</button>
   </div>
   <div class="ledger-wrap">
-    <div class="l-head"><span>Date</span><span>Reference</span><span>Division</span><span>Inflow ETB</span><span>Inflow USD</span><span>Outflow ETB</span><span>Outflow USD</span><span>Actions</span></div>
+    <div class="l-head"><span>Date</span><span>Reference</span><span>Bank Account</span><span>Division</span><span>Inflow ETB</span><span>Inflow USD</span><span>Outflow ETB</span><span>Outflow USD</span><span>Actions</span></div>
     <div id="ledgerBody"><div class="empty-state">No transactions yet.</div></div>
   </div>
 </div>
@@ -931,6 +931,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
         <button class="pr-type-btn active" id="prTypeBtn-Material" onclick="setPRType('Material',this)">📦 Material</button>
         <button class="pr-type-btn" id="prTypeBtn-Manpower" onclick="setPRType('Manpower',this)">👷 Manpower</button>
         <button class="pr-type-btn" id="prTypeBtn-Machinery" onclick="setPRType('Machinery',this)">🚜 Machinery</button>
+        <button class="pr-type-btn" id="prTypeBtn-Other" onclick="setPRType('Other',this)">🔖 Other Expense</button>
       </div>
     </div>
     <!-- Purchase / Service Category -->
@@ -966,10 +967,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       </table>
     </div>
     <button onclick="addPRItem()" class="btn-secondary" style="font-size:11px;padding:5px 12px;margin-bottom:12px">+ Add Row</button>
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px;background:var(--bg);padding:9px 13px;border-radius:9px">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:8px;background:var(--bg);padding:9px 13px;border-radius:9px;flex-wrap:wrap">
       <span style="font-size:12px;font-weight:700;color:var(--ink2)">VAT:</span>
       <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="vatMode" value="exclusive" checked onchange="calcPRTotals()"> Exclusive (add 15%)</label>
       <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="vatMode" value="no_vat" onchange="calcPRTotals()"> No VAT (sub-total = net payable)</label>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px;background:#fef9c3;border:1px solid #fde68a;padding:9px 13px;border-radius:9px;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:700;color:#92400e">3% Withholding:</span>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="whtMode" value="apply" checked onchange="calcPRTotals()"> Apply withholding</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="whtMode" value="none" onchange="calcPRTotals()"> No withholding</label>
     </div>
     <div class="pr-totals">
       <div class="pr-total-row"><span>Sub Total</span><span id="prSubTotal" style="font-weight:700">ETB 0</span></div>
@@ -1856,7 +1862,7 @@ function getPRTransactions(){
     if(!groups[key]){
       groups[key] = {
         trf: pr.transfer_id.trim(), co: coId, divCode, divName,
-        paidDate, prs: [], totalAmt: 0, pay_method: pr.pay_method||''
+        paidDate, prs: [], totalAmt: 0, pay_method: pr.pay_method||'', bank_account: pr.pay_bank_account||''
       };
     }
     const partial = parseFloat(pr.partial_amount||0);
@@ -1881,6 +1887,7 @@ function getPRTransactions(){
       amtUsd  : null,
       ref     : projects + ' | TRF:' + g.trf,
       note    : 'PR Payment — ' + g.pay_method + ' | TRF:' + g.trf + (g.prs.length > 1 ? ' (' + g.prs.length + ' requests)' : ''),
+      bank_account: g.bank_account||'',
       isPR    : true
     };
   });
@@ -1908,6 +1915,7 @@ function getPRTransactions(){
       amtUsd  : null,
       ref     : prGetType(pr) + ': ' + pr.project + sub,
       note    : 'PR Payment — ' + (pr.pay_method||'') + sub,
+      bank_account: pr.pay_bank_account||pr.pay_method||'',
       isPR    : true
     };
   });
@@ -2380,6 +2388,7 @@ function renderLedger(){
   body.innerHTML=filtered.map(tx=>`<div class="l-row">
     <span style="color:var(--muted);font-size:11px">${tx.date}</span>
     <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${tx.ref}${tx.note?' — '+tx.note:''}">${tx.ref}</span>
+    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--muted)" title="${tx.bank_account||''}">${tx.bank_account||'—'}</span>
     <span><span class="chip ${tx.type}">${tx.divCode}</span></span>
     <span style="color:var(--teal-dark);font-weight:700;font-size:12px">${tx.type==='in'?fmt(tx.amt):'—'}</span>
     <span style="color:var(--teal-dark);font-size:11px;opacity:.8">${tx.type==='in'&&tx.amtUsd?fmtUsd(tx.amtUsd):'—'}</span>
@@ -3877,6 +3886,8 @@ function buildPRHead(type){
     h.innerHTML=`<tr style="background:var(--bg)">${th('#','28px')}${th('Item/Material')}${th('Description')}${th('Unit','48px')}${th('Qty','58px',1)}${th('Unit Rate','85px',1)}${th('Amount','90px',1)}${th('To Be Paid','90px',1)}${th('Transfer To')}${th('','22px')}</tr>`;
   }else if(type==='Manpower'){
     h.innerHTML=`<tr style="background:var(--bg)">${th('#','28px')}${th('Work Item')}${th('Description')}${th('Unit','58px')}${th('Quantity','70px',1)}${th('Unit Rate','85px',1)}${th('Amount','90px',1)}${th('To Be Paid','90px',1)}${th('Bank/Account')}${th('','22px')}</tr>`;
+  }else if(type==='Other'){
+    h.innerHTML=`<tr style="background:var(--bg)">${th('#','28px')}${th('Expense Item')}${th('Description')}${th('Unit','48px')}${th('Qty','58px',1)}${th('Unit Rate','85px',1)}${th('Amount','90px',1)}${th('To Be Paid','90px',1)}${th('Payable To')}${th('','22px')}</tr>`;
   }else{
     h.innerHTML=`<tr style="background:var(--bg)">${th('#','28px')}${th('Machinery/Equipment')}${th('Task/Description')}${th('Unit','48px')}${th('No. of Days','70px',1)}${th('Qty','58px',1)}${th('Unit Rate','85px',1)}${th('Amount','90px',1)}${th('To Be Paid','90px',1)}${th('Supplier/Owner')}${th('','22px')}</tr>`;
   }
@@ -3959,22 +3970,26 @@ function setPRCategory(cat, btn){
 function calcPRTotals(){
   let sub=0; document.querySelectorAll('.pr-item-paid').forEach(el=>{sub+=parseFloat(el.value)||0;});
   const vm=document.querySelector('input[name="vatMode"]:checked')?.value||'exclusive';
+  const whtMode=document.querySelector('input[name="whtMode"]:checked')?.value||'apply';
   const cat=document.getElementById('prCategory')?.value||'Purchase';
   const whThreshold=cat==='Service'?10000:20000;
   let vat=0,grand=0,wh=0,net=0;
   if(vm==='exclusive'){
     vat=sub*0.15; grand=sub+vat;
-    wh=sub>=whThreshold?Math.round(sub*0.03):0;
-    net=grand-wh;
     document.getElementById('prVatLabel').textContent='15% VAT (exclusive)';
-    document.getElementById('prWithholdRow').style.display='flex';
   } else {
     vat=0; grand=sub;
-    wh=sub>=whThreshold?Math.round(sub*0.03):0;
-    net=grand-wh;
     document.getElementById('prVatLabel').textContent='No VAT';
-    document.getElementById('prWithholdRow').style.display=wh>0?'flex':'none';
   }
+  // Only apply withholding if toggle says apply AND threshold met
+  if(whtMode==='apply' && sub>=whThreshold){
+    wh=Math.round(sub*0.03);
+    document.getElementById('prWithholdRow').style.display='flex';
+  } else {
+    wh=0;
+    document.getElementById('prWithholdRow').style.display='none';
+  }
+  net=grand-wh;
   document.getElementById('prSubTotal').textContent=fmt(sub);
   document.getElementById('prVat').textContent=fmt(vat);
   document.getElementById('prGrandTotal').textContent=fmt(grand);
@@ -4719,8 +4734,8 @@ function viewPR(id){
     {key:'prepared', label:'Prepared by',  canComment:true, canEdit:canEdit, canReverse:false},
     {key:'checked',  label:'Checked by',   canComment:true, canEdit:false,   canReverse:prCanAct(pr,'checked')&&pr.checked_by},
     {key:'approved', label:'Approved by',  canComment:true, canEdit:false,   canReverse:prCanAct(pr,'approved')&&pr.approved_by},
-    {key:'verified', label:'Verified by',  canComment:true, canEdit:false,   canReverse:false, canPartial:isAdmin&&next==='paid', canReject:isAdmin&&(next==='verified'||next==='paid')},
-    {key:'paid',     label:'Paid by',      canComment:true, canEdit:false,   canReverse:false},
+    {key:'verified', label:'Verified by',  canComment:true, canEdit:false,   canReverse:isAdmin&&!!pr.verified_by, canPartial:isAdmin&&next==='paid', canReject:isAdmin&&(next==='verified'||next==='paid')},
+    {key:'paid',     label:'Paid by',      canComment:true, canEdit:false,   canReverse:isAdmin&&!!pr.paid_by},
   ];
 
   document.getElementById('prDetailContent').innerHTML=`
@@ -5197,6 +5212,8 @@ async function actOnPR(id){
         status:'paid',
         transfer_id:tid,
         pay_method:pm,
+        pay_bank_account:document.getElementById('prPayBank')?.selectedOptions?.[0]?.textContent?.trim()||'',
+        wht_applied:document.querySelector('input[name="whtMode"]:checked')?.value==='apply'||false,
         paid_comment:cmt,
         transfer_slip:(prAttachments.transfer_slip&&prAttachments.transfer_slip.length)?JSON.stringify(prAttachments.transfer_slip):null,
         // Save Finance-uploaded invoices if preparer didn't attach any
