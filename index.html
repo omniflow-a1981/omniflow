@@ -956,7 +956,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   <div class="page-header">
     <div>
       <div class="page-title">Bid &amp; <em>Tender</em></div>
-      <div class="page-subtitle">Matisan Engineering — ME1. Construction</div>
+      <div class="page-subtitle" id="tenderSubtitle">Matisan Engineering — ME1. Construction</div>
     </div>
     <div class="btn-row">
       <button class="btn-secondary" onclick="showTenderTab('rates')" id="tbRates">Rate Library</button>
@@ -1003,8 +1003,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       </div>
       <div style="font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:10px;margin-top:6px">Location Adjustments</div>
       <div class="fr" style="margin-bottom:12px">
-        <div class="ff"><label>Location Factor Multiplier</label><input type="number" id="tLocFactor" placeholder="1.0" min="0.5" max="3" step="0.01" value="1.0"></div>
-        <div class="ff"><label>Allowances (transport, camp, per diem — ETB)</label><input type="number" id="tAllowances" placeholder="0" min="0"></div>
+        <div class="ff"><label>Location Factor Multiplier</label><input type="number" id="tLocFactor" placeholder="1.0" min="0.5" max="3" step="0.01" value="1.0" oninput="recalcTenderTotals()"></div>
+        <div class="ff"><label>Allowances (transport, camp, per diem — ETB)</label><input type="number" id="tAllowances" placeholder="0" min="0" oninput="recalcTenderTotals()"></div>
       </div>
       <div class="ff" style="margin-bottom:14px"><label>Notes</label><textarea id="tNotes" style="min-height:46px" placeholder="Any remarks about this tender..."></textarea></div>
       <div class="btn-row">
@@ -1019,8 +1019,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     <!-- Sub-tabs -->
     <div style="display:flex;gap:6px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0">
       <button id="rateSubTab-unit" onclick="showRateSubTab('unit')" style="padding:8px 16px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:700;color:var(--teal-dark);border-bottom:2px solid var(--teal);margin-bottom:-2px">Unit Rates</button>
-      <button id="rateSubTab-resource" onclick="showRateSubTab('resource')" style="padding:8px 16px;border:none;background:none;cursor:pointer;font-size:13px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">Resource Sheet</button>
-      <button id="rateSubTab-docs" onclick="showRateSubTab('docs')" style="padding:8px 16px;border:none;background:none;cursor:pointer;font-size:13px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">Uploaded Documents</button>
+      <button id="rateSubTab-resource" onclick="showRateSubTab('resource')" style="padding:8px 16px;border:none;background:none;cursor:pointer;font-size:13px;color:var(--muted);margin-bottom:-2px">Resource Sheet</button>
+      <button id="rateSubTab-docs" onclick="showRateSubTab('docs')" style="padding:8px 16px;border:none;background:none;cursor:pointer;font-size:13px;color:var(--muted);margin-bottom:-2px">Uploaded Documents</button>
     </div>
 
     <!-- SUB: Unit Rates -->
@@ -1029,7 +1029,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
           <div>
             <div style="font-size:13px;font-weight:700;color:var(--ink2)">ME1. Construction — Unit Rate Library</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px">Base unit rates used to price BOQ items. Applied with location factor, overhead &amp; profit.</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Base unit rates used to price BOQ items. Applied with location factor, overhead & profit.</div>
           </div>
           <div class="btn-row">
             <button class="btn-secondary" onclick="addRateRow()">+ Add Rate</button>
@@ -1102,11 +1102,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     <div id="rateSubPanel-docs" style="display:none">
       <div class="form-card">
         <div style="font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:6px">Upload Cost Breakdown &amp; Reference Documents</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Upload your cost breakdown spreadsheets and resource reference files. Supported: Excel, PDF.</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Upload your cost breakdown spreadsheets and resource reference files. These are stored for review and reference. Supported: Excel, PDF.</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
           <div style="flex:1;min-width:220px">
             <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:8px">Cost Breakdown</div>
-            <div style="border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center" ondragover="event.preventDefault()" ondrop="handleDocDrop(event,'breakdown')">
+            <div style="border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer" ondragover="event.preventDefault()" ondrop="handleDocDrop(event,'breakdown')">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Drag or click to upload</div>
               <input type="file" id="docInputBreakdown" accept=".xlsx,.xls,.pdf" style="display:none" onchange="handleDocFile(this.files[0],'breakdown')">
@@ -1115,7 +1115,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
           </div>
           <div style="flex:1;min-width:220px">
             <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:8px">Resource Reference Sheet</div>
-            <div style="border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center" ondragover="event.preventDefault()" ondrop="handleDocDrop(event,'resource')">
+            <div style="border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer" ondragover="event.preventDefault()" ondrop="handleDocDrop(event,'resource')">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Drag or click to upload</div>
               <input type="file" id="docInputResource" accept=".xlsx,.xls,.pdf" style="display:none" onchange="handleDocFile(this.files[0],'resource')">
@@ -1142,21 +1142,27 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
         Back
       </button>
       <div style="font-size:14px;font-weight:700;color:var(--ink2)" id="boqTenderTitle">—</div>
-      <div style="margin-left:auto">
+      <div style="margin-left:auto;display:flex;gap:8px">
         <button class="btn-secondary" onclick="exportBoqExcel()" id="boqExportBtn" style="display:none">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Export Excel
         </button>
       </div>
     </div>
-    <div id="boqUploadZone" style="border:2px dashed var(--border);border-radius:14px;padding:32px;text-align:center;margin-bottom:16px;cursor:pointer" ondragover="event.preventDefault();this.style.borderColor='var(--teal)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handleBoqDrop(event)">
+
+    <!-- Upload zone -->
+    <div id="boqUploadZone" style="border:2px dashed var(--border);border-radius:14px;padding:32px;text-align:center;margin-bottom:16px;cursor:pointer;transition:border-color .2s" ondragover="event.preventDefault();this.style.borderColor='var(--teal)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handleBoqDrop(event)">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="margin-bottom:10px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       <div style="font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:4px">Upload BOQ Document</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Drag &amp; drop or click to browse. Accepts Excel (.xlsx, .xls) or PDF.</div>
       <input type="file" id="boqFileInput" accept=".xlsx,.xls,.pdf" style="display:none" onchange="handleBoqFile(this.files[0])">
       <button class="btn-secondary" onclick="document.getElementById('boqFileInput').click()">Choose File</button>
     </div>
+
+    <!-- Extraction status -->
     <div id="boqExtractStatus" style="display:none;margin-bottom:12px"></div>
+
+    <!-- BOQ table -->
     <div id="boqTableWrap" style="display:none">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
         <div style="font-size:12px;color:var(--muted)"><span id="boqMatchCount">0</span> of <span id="boqTotalCount">0</span> items matched to rate library</div>
@@ -4847,7 +4853,6 @@ initLogin();
 function renameDivisionBtn(btn){renameDivision(btn.dataset.coid,btn.dataset.dc);}
 function deleteDivisionBtn(btn){deleteDivision(btn.dataset.coid,btn.dataset.dc);}
 function addDivisionBtn(btn){addDivision(btn.dataset.coid);}
-
 function deleteCompanyBtn(btn){deleteCompany(btn.dataset.coid);}
 function addSubdivisionBtn(btn){addSubdivision(btn.dataset.coid,btn.dataset.dc);}
 function editSubdivisionBtn(btn){editSubdivision(btn.dataset.coid,btn.dataset.dc,btn.dataset.sc);}
@@ -4867,8 +4872,11 @@ const TENDER_HDR = {
 const TENDER_DIV = 'ME1';
 const TENDER_CO  = 'Matisan';
 
-let tenders = [], rateItems = [], divTemplate = null, currentBoqTenderId = null, boqItems = [];
-let resourceRows = [];
+let tenders = [];
+let rateItems = [];
+let divTemplate = null;
+let currentBoqTenderId = null;
+let boqItems = [];
 
 async function tenderFetch(path, method='GET', body=null){
   const opts = {method, headers: TENDER_HDR};
@@ -4888,82 +4896,73 @@ async function loadTenderPage(){
 }
 
 async function loadTenders(){
-  const data = await tenderFetch('/eng_tenders?company_id=eq.'+TENDER_CO+'&division_code=eq.'+TENDER_DIV+'&order=created_at.desc&select=*');
+  const data = await tenderFetch('/eng_tenders?company_id=eq.' + TENDER_CO + '&division_code=eq.' + TENDER_DIV + '&order=created_at.desc&select=*');
   tenders = Array.isArray(data) ? data : [];
 }
 
 async function loadRateLibrary(){
-  const tmpl = await tenderFetch('/eng_div_templates?company_id=eq.'+TENDER_CO+'&division_code=eq.'+TENDER_DIV+'&select=*');
+  const tmpl = await tenderFetch('/eng_div_templates?company_id=eq.' + TENDER_CO + '&division_code=eq.' + TENDER_DIV + '&select=*');
   divTemplate = Array.isArray(tmpl) && tmpl.length ? tmpl[0] : null;
-  const rates = await tenderFetch('/eng_rate_items?division_code=eq.'+TENDER_DIV+'&order=category,description&select=*');
+  const rates = await tenderFetch('/eng_rate_items?division_code=eq.' + TENDER_DIV + '&order=category,description&select=*');
   rateItems = Array.isArray(rates) ? rates : [];
-}
-
-async function loadResourceSheet(){
-  const data = await tenderFetch('/eng_resource_items?division_code=eq.'+TENDER_DIV+'&order=category,description&select=*');
-  resourceRows = Array.isArray(data) ? data.map(r=>({...r})) : [];
 }
 
 function showTenderTab(tab){
   ['List','New','Rates','Boq'].forEach(t => {
-    const el = document.getElementById('tenderTab'+t);
+    const el = document.getElementById('tenderTab' + t);
     if(el) el.style.display = 'none';
   });
-  const key = tab.charAt(0).toUpperCase()+tab.slice(1);
-  const show = document.getElementById('tenderTab'+key);
+  const show = document.getElementById('tenderTab' + tab.charAt(0).toUpperCase() + tab.slice(1));
   if(show) show.style.display = 'block';
-  if(tab==='rates') renderRateLibrary();
-  if(tab==='list') renderTenderList();
-  if(tab==='new'){
-    document.getElementById('tenderEditId').value='';
+  if(tab === 'rates') renderRateLibrary();
+  if(tab === 'list') renderTenderList();
+  if(tab === 'new'){
+    document.getElementById('tenderEditId').value = '';
     ['tName','tClient','tLocation','tNotes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     ['tDocFee','tBidBond','tPrepCost','tAllowances'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-    document.getElementById('tDeadline').value='';
-    document.getElementById('tLocFactor').value='1.0';
+    document.getElementById('tDeadline').value = '';
+    document.getElementById('tLocFactor').value = '1.0';
   }
 }
 
-function showRateSubTab(tab){
-  ['unit','resource','docs'].forEach(t=>{
-    const p=document.getElementById('rateSubPanel-'+t);
-    const b=document.getElementById('rateSubTab-'+t);
-    if(p) p.style.display=t===tab?'block':'none';
-    if(b){
-      b.style.color=t===tab?'var(--teal-dark)':'var(--muted)';
-      b.style.fontWeight=t===tab?'700':'400';
-      b.style.borderBottom=t===tab?'2px solid var(--teal)':'2px solid transparent';
-    }
-  });
-  if(tab==='resource') renderResourceSheet();
-  if(tab==='docs') loadDocLibrary();
-}
-
 function tenderStatusBadge(s){
-  const map={draft:['#f1f5f9','#64748b','Draft'],active:['#dbeafe','#1e40af','Active'],submitted:['#fef3c7','#92400e','Submitted'],won:['#d1fae5','#065f46','Won'],lost:['#fee2e2','#991b1b','Lost']};
-  const [bg,cl,label]=map[s]||map['draft'];
+  const map = {
+    draft:     ['#f1f5f9','#64748b','Draft'],
+    active:    ['#dbeafe','#1e40af','Active'],
+    submitted: ['#fef3c7','#92400e','Submitted'],
+    won:       ['#d1fae5','#065f46','Won'],
+    lost:      ['#fee2e2','#991b1b','Lost'],
+  };
+  const [bg, cl, label] = map[s] || map['draft'];
   return `<span style="background:${bg};color:${cl};padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">${label}</span>`;
 }
 
 function renderTenderList(){
-  const wrap=document.getElementById('tenderListWrap'); if(!wrap) return;
-  const q=(document.getElementById('tenderSearch')?.value||'').toLowerCase();
-  const sf=document.getElementById('tenderStatusFilter')?.value||'';
-  let list=tenders.filter(t=>{
-    const match=!q||(t.tender_name||'').toLowerCase().includes(q)||(t.client||'').toLowerCase().includes(q);
-    const st=!sf||t.status===sf;
-    return match&&st;
+  const wrap = document.getElementById('tenderListWrap');
+  if(!wrap) return;
+  const q = (document.getElementById('tenderSearch')?.value||'').toLowerCase();
+  const sf = document.getElementById('tenderStatusFilter')?.value || '';
+  let list = tenders.filter(t => {
+    const match = !q || (t.tender_name||'').toLowerCase().includes(q) || (t.client||'').toLowerCase().includes(q);
+    const st = !sf || t.status === sf;
+    return match && st;
   });
-  if(!list.length){wrap.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">No tenders found. Click <strong>New Tender</strong> to add one.</div>';return;}
-  const today=new Date().toISOString().slice(0,10);
-  wrap.innerHTML=list.map(t=>{
-    const daysLeft=t.submission_deadline?Math.ceil((new Date(t.submission_deadline)-new Date(today))/86400000):null;
-    const urgency=daysLeft!==null&&daysLeft<=7&&t.status==='active'?`<span style="background:#fee2e2;color:#991b1b;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700">${daysLeft<=0?'OVERDUE':daysLeft+'d left'}</span>`:'';
-    const totalCost=(parseFloat(t.doc_fee||0)+parseFloat(t.bid_bond||0)+parseFloat(t.prep_cost||0)+parseFloat(t.allowances||0));
+  if(!list.length){
+    wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">No tenders found. Click <strong>New Tender</strong> to add one.</div>';
+    return;
+  }
+  const today = new Date().toISOString().slice(0,10);
+  wrap.innerHTML = list.map(t => {
+    const daysLeft = t.submission_deadline ? Math.ceil((new Date(t.submission_deadline) - new Date(today)) / 86400000) : null;
+    const urgency = daysLeft !== null && daysLeft <= 7 && t.status === 'active'
+      ? `<span style="background:#fee2e2;color:#991b1b;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700">${daysLeft <= 0 ? 'OVERDUE' : daysLeft + 'd left'}</span>` : '';
+    const deadlineStr = t.submission_deadline ? t.submission_deadline : '—';
+    const totalCost = (parseFloat(t.doc_fee||0) + parseFloat(t.bid_bond||0) + parseFloat(t.prep_cost||0) + parseFloat(t.allowances||0));
     return `<div class="pr-card" style="cursor:pointer" onclick="openTenderDetail('${t.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
         <div>
           <div style="font-size:14px;font-weight:700;color:var(--ink2);margin-bottom:3px">${t.tender_name||'Unnamed Tender'} ${urgency}</div>
-          <div style="font-size:12px;color:var(--muted)">${t.client||'—'} &nbsp;·&nbsp; ${t.location||'—'} &nbsp;·&nbsp; Deadline: ${t.submission_deadline||'—'}</div>
+          <div style="font-size:12px;color:var(--muted)">${t.client||'—'} &nbsp;·&nbsp; ${t.location||'—'} &nbsp;·&nbsp; Deadline: ${deadlineStr}</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
           ${tenderStatusBadge(t.status||'draft')}
@@ -4976,72 +4975,86 @@ function renderTenderList(){
         <div style="font-size:11px;color:var(--muted)">Bid Bond: <strong style="color:var(--ink)">${fmtETB(t.bid_bond)}</strong></div>
         <div style="font-size:11px;color:var(--muted)">Prep Cost: <strong style="color:var(--ink)">${fmtETB(t.prep_cost)}</strong></div>
         <div style="font-size:11px;color:var(--muted)">Loc Factor: <strong style="color:var(--ink)">${t.location_factor||1.0}×</strong></div>
-        ${totalCost>0?`<div style="font-size:11px;color:var(--muted)">Total Bidding Cost: <strong style="color:var(--teal-dark)">${fmtETB(totalCost)}</strong></div>`:''}
+        ${totalCost > 0 ? `<div style="font-size:11px;color:var(--muted)">Total Bidding Cost: <strong style="color:var(--teal-dark)">${fmtETB(totalCost)}</strong></div>` : ''}
+        ${t.outcome ? `<div style="font-size:11px;color:var(--muted)">Outcome: <strong style="color:var(--ink)">${t.outcome}</strong></div>` : ''}
       </div>
     </div>`;
   }).join('');
 }
 
-function fmtETB(n){return 'ETB '+(parseFloat(n||0)).toLocaleString('en-ET',{minimumFractionDigits:2,maximumFractionDigits:2});}
-function openTenderDetail(id){openBoqTab(id);}
+function fmtETB(n){ return 'ETB ' + (parseFloat(n||0)).toLocaleString('en-ET',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function openTenderDetail(id){
+  openBoqTab(id);
+}
 
 async function saveTender(){
-  const id=document.getElementById('tenderEditId').value;
-  const payload={
-    company_id:TENDER_CO, division_code:TENDER_DIV,
-    tender_name:document.getElementById('tName').value.trim(),
-    client:document.getElementById('tClient').value.trim(),
-    location:document.getElementById('tLocation').value.trim(),
-    submission_deadline:document.getElementById('tDeadline').value||null,
-    doc_fee:parseFloat(document.getElementById('tDocFee').value)||0,
-    bid_bond:parseFloat(document.getElementById('tBidBond').value)||0,
-    prep_cost:parseFloat(document.getElementById('tPrepCost').value)||0,
-    location_factor:parseFloat(document.getElementById('tLocFactor').value)||1.0,
-    allowances:parseFloat(document.getElementById('tAllowances').value)||0,
-    notes:document.getElementById('tNotes').value.trim(),
-    status:'active',
-    created_by:currentUser?.username||'user'
+  const id = document.getElementById('tenderEditId').value;
+  const payload = {
+    company_id: TENDER_CO,
+    division_code: TENDER_DIV,
+    tender_name: document.getElementById('tName').value.trim(),
+    client: document.getElementById('tClient').value.trim(),
+    location: document.getElementById('tLocation').value.trim(),
+    submission_deadline: document.getElementById('tDeadline').value || null,
+    doc_fee: parseFloat(document.getElementById('tDocFee').value)||0,
+    bid_bond: parseFloat(document.getElementById('tBidBond').value)||0,
+    prep_cost: parseFloat(document.getElementById('tPrepCost').value)||0,
+    location_factor: parseFloat(document.getElementById('tLocFactor').value)||1.0,
+    allowances: parseFloat(document.getElementById('tAllowances').value)||0,
+    notes: document.getElementById('tNotes').value.trim(),
+    status: 'active',
+    created_by: currentUser?.username || 'user'
   };
   if(!payload.tender_name){alert('Tender name is required.');return;}
-  if(id) await tenderFetch('/eng_tenders?id=eq.'+id,'PATCH',payload);
-  else await tenderFetch('/eng_tenders','POST',payload);
+  let res;
+  if(id){
+    res = await tenderFetch('/eng_tenders?id=eq.' + id, 'PATCH', payload);
+  } else {
+    res = await tenderFetch('/eng_tenders', 'POST', payload);
+  }
   await loadTenders();
   showTenderTab('list');
-  showFlash(id?'✓ Tender updated.':'✓ Tender created.','tenderFlash','tenderFlashMsg');
+  showFlash(id ? '✓ Tender updated.' : '✓ Tender created.', 'tenderFlash', 'tenderFlashMsg');
 }
 
 function editTender(id){
-  const t=tenders.find(x=>x.id===id); if(!t) return;
-  document.getElementById('tenderEditId').value=id;
-  document.getElementById('tName').value=t.tender_name||'';
-  document.getElementById('tClient').value=t.client||'';
-  document.getElementById('tLocation').value=t.location||'';
-  document.getElementById('tDeadline').value=t.submission_deadline||'';
-  document.getElementById('tDocFee').value=t.doc_fee||'';
-  document.getElementById('tBidBond').value=t.bid_bond||'';
-  document.getElementById('tPrepCost').value=t.prep_cost||'';
-  document.getElementById('tLocFactor').value=t.location_factor||1.0;
-  document.getElementById('tAllowances').value=t.allowances||'';
-  document.getElementById('tNotes').value=t.notes||'';
+  const t = tenders.find(x => x.id === id); if(!t) return;
+  document.getElementById('tenderEditId').value = id;
+  document.getElementById('tName').value = t.tender_name||'';
+  document.getElementById('tClient').value = t.client||'';
+  document.getElementById('tLocation').value = t.location||'';
+  document.getElementById('tDeadline').value = t.submission_deadline||'';
+  document.getElementById('tDocFee').value = t.doc_fee||'';
+  document.getElementById('tBidBond').value = t.bid_bond||'';
+  document.getElementById('tPrepCost').value = t.prep_cost||'';
+  document.getElementById('tLocFactor').value = t.location_factor||1.0;
+  document.getElementById('tAllowances').value = t.allowances||'';
+  document.getElementById('tNotes').value = t.notes||'';
   showTenderTab('new');
 }
 
+function recalcTenderTotals(){}
+
 // ── RATE LIBRARY ──────────────────────
-let pendingRates=[];
+let pendingRates = [];
 
 function renderRateLibrary(){
-  const ohEl=document.getElementById('rateOverheadPct');
-  const prEl=document.getElementById('rateProfitPct');
-  if(ohEl) ohEl.textContent=divTemplate?divTemplate.overhead_pct:'--';
-  if(prEl) prEl.textContent=divTemplate?divTemplate.profit_pct:'--';
-  pendingRates=rateItems.map(r=>({...r}));
+  const ohEl = document.getElementById('rateOverheadPct');
+  const prEl = document.getElementById('rateProfitPct');
+  if(ohEl) ohEl.textContent = divTemplate ? divTemplate.overhead_pct : '--';
+  if(prEl) prEl.textContent = divTemplate ? divTemplate.profit_pct : '--';
+  pendingRates = rateItems.map(r => ({...r}));
   renderRateRows();
 }
 
 function renderRateRows(){
-  const wrap=document.getElementById('rateRowsWrap'); if(!wrap) return;
-  if(!pendingRates.length){wrap.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">No rates yet. Click + Add Rate.</div>';return;}
-  wrap.innerHTML=pendingRates.map((r,i)=>`
+  const wrap = document.getElementById('rateRowsWrap'); if(!wrap) return;
+  if(!pendingRates.length){
+    wrap.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">No rates yet. Click + Add Rate.</div>';
+    return;
+  }
+  wrap.innerHTML = pendingRates.map((r,i) => `
     <div style="display:grid;grid-template-columns:120px 1fr 80px 110px 36px;gap:6px;padding:5px 0;border-bottom:1px solid var(--border2);align-items:center">
       <select onchange="pendingRates[${i}].category=this.value" style="padding:6px 8px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:var(--surface);color:var(--ink)">
         ${['Labour','Equipment','Material'].map(c=>`<option value="${c}" ${r.category===c?'selected':''}>${c}</option>`).join('')}
@@ -5049,27 +5062,34 @@ function renderRateRows(){
       <input type="text" value="${r.description||''}" placeholder="e.g. Skilled Mason" oninput="pendingRates[${i}].description=this.value" style="padding:6px 8px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:var(--surface);color:var(--ink)">
       <input type="text" value="${r.unit||''}" placeholder="Day/m³" oninput="pendingRates[${i}].unit=this.value" style="padding:6px 8px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:var(--surface);color:var(--ink)">
       <input type="number" value="${r.base_rate||''}" placeholder="0.00" oninput="pendingRates[${i}].base_rate=parseFloat(this.value)||0" style="padding:6px 8px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:var(--surface);color:var(--ink)">
-      <button onclick="pendingRates.splice(${i},1);renderRateRows()" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:16px;padding:2px 6px">×</button>
+      <button onclick="pendingRates.splice(${i},1);renderRateRows()" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:16px;padding:2px 6px" title="Remove">×</button>
     </div>`).join('');
 }
 
-function addRateRow(){pendingRates.push({category:'Labour',description:'',unit:'',base_rate:0});renderRateRows();}
+function addRateRow(){
+  pendingRates.push({category:'Labour',description:'',unit:'',base_rate:0});
+  renderRateRows();
+}
 
 function editMargins(){
-  const f=document.getElementById('marginsForm');
-  f.style.display=f.style.display==='none'?'block':'none';
+  const f = document.getElementById('marginsForm');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
   if(divTemplate){
-    document.getElementById('overheadInput').value=divTemplate.overhead_pct||'';
-    document.getElementById('profitInput').value=divTemplate.profit_pct||'';
+    document.getElementById('overheadInput').value = divTemplate.overhead_pct||'';
+    document.getElementById('profitInput').value = divTemplate.profit_pct||'';
   }
 }
 
 async function saveMargins(){
-  const oh=parseFloat(document.getElementById('overheadInput').value)||0;
-  const pr=parseFloat(document.getElementById('profitInput').value)||0;
-  const payload={company_id:TENDER_CO,division_code:TENDER_DIV,overhead_pct:oh,profit_pct:pr};
-  if(divTemplate) await tenderFetch('/eng_div_templates?id=eq.'+divTemplate.id,'PATCH',payload);
-  else{const res=await tenderFetch('/eng_div_templates','POST',payload);if(Array.isArray(res)&&res.length)divTemplate=res[0];}
+  const oh = parseFloat(document.getElementById('overheadInput').value)||0;
+  const pr = parseFloat(document.getElementById('profitInput').value)||0;
+  const payload = {company_id:TENDER_CO, division_code:TENDER_DIV, overhead_pct:oh, profit_pct:pr};
+  if(divTemplate){
+    await tenderFetch('/eng_div_templates?id=eq.'+divTemplate.id,'PATCH',payload);
+  } else {
+    const res = await tenderFetch('/eng_div_templates','POST',payload);
+    if(Array.isArray(res) && res.length) divTemplate = res[0];
+  }
   await loadRateLibrary();
   renderRateLibrary();
   document.getElementById('marginsForm').style.display='none';
@@ -5077,11 +5097,21 @@ async function saveMargins(){
 }
 
 async function saveRates(){
-  const ops=pendingRates.map(async r=>{
-    const payload={company_id:TENDER_CO,division_code:TENDER_DIV,category:r.category,description:(r.description||'').trim(),unit:(r.unit||'').trim(),base_rate:parseFloat(r.base_rate)||0};
+  const ops = pendingRates.map(async r => {
+    const payload = {
+      company_id: TENDER_CO,
+      division_code: TENDER_DIV,
+      category: r.category,
+      description: (r.description||'').trim(),
+      unit: (r.unit||'').trim(),
+      base_rate: parseFloat(r.base_rate)||0
+    };
     if(!payload.description) return;
-    if(r.id) return tenderFetch('/eng_rate_items?id=eq.'+r.id,'PATCH',payload);
-    else return tenderFetch('/eng_rate_items','POST',payload);
+    if(r.id){
+      return tenderFetch('/eng_rate_items?id=eq.'+r.id,'PATCH',payload);
+    } else {
+      return tenderFetch('/eng_rate_items','POST',payload);
+    }
   });
   await Promise.all(ops);
   await loadRateLibrary();
@@ -5089,279 +5119,199 @@ async function saveRates(){
   showFlash('✓ Rate library saved.','tenderFlash','tenderFlashMsg');
 }
 
-// ── RESOURCE SHEET ────────────────────
-function renderResourceSheet(){
-  const catF=document.getElementById('resourceCatFilter')?.value||'';
-  const srch=(document.getElementById('resourceSearch')?.value||'').toLowerCase();
-  const body=document.getElementById('resourceSheetBody');
-  const empty=document.getElementById('resourceSheetEmpty');
-  if(!body) return;
-  let rows=resourceRows.filter(r=>{
-    const catOk=!catF||r.category===catF;
-    const srchOk=!srch||(r.description||'').toLowerCase().includes(srch)||(r.unit||'').toLowerCase().includes(srch);
-    return catOk&&srchOk;
-  });
-  if(!rows.length){body.innerHTML='';if(empty)empty.style.display='block';return;}
-  if(empty) empty.style.display='none';
-  body.innerHTML=rows.map((r)=>{
-    const globalIdx=resourceRows.indexOf(r);
-    const adjRate=((parseFloat(r.base_rate)||0)*(parseFloat(r.location_factor)||1.0)).toFixed(2);
-    return `<tr style="border-bottom:1px solid var(--border2)">
-      <td style="padding:7px 10px">
-        <select onchange="resourceRows[${globalIdx}].category=this.value" style="padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--ink)">
-          ${['Labour','Equipment','Material'].map(c=>`<option value="${c}" ${r.category===c?'selected':''}>${c}</option>`).join('')}
-        </select>
-      </td>
-      <td style="padding:7px 10px"><input type="text" value="${(r.description||'').replace(/"/g,'&quot;')}" oninput="resourceRows[${globalIdx}].description=this.value" style="width:100%;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--ink)"></td>
-      <td style="padding:7px 10px"><input type="text" value="${r.unit||''}" oninput="resourceRows[${globalIdx}].unit=this.value" style="width:60px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--ink)"></td>
-      <td style="padding:7px 10px;text-align:right"><input type="number" value="${r.base_rate||0}" oninput="resourceRows[${globalIdx}].base_rate=parseFloat(this.value)||0;updateAdjRate(this,${globalIdx})" style="width:100px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:right;background:var(--surface);color:var(--ink)"></td>
-      <td style="padding:7px 10px;text-align:center"><input type="number" value="${r.location_factor||1.0}" step="0.01" oninput="resourceRows[${globalIdx}].location_factor=parseFloat(this.value)||1.0;updateAdjRate(this,${globalIdx})" style="width:70px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center;background:var(--surface);color:var(--ink)"></td>
-      <td style="padding:7px 10px;text-align:right;font-weight:700;color:var(--teal-dark)" id="adjRate-${globalIdx}">${parseFloat(adjRate).toLocaleString('en-ET',{minimumFractionDigits:2})}</td>
-      <td style="padding:7px 10px"><input type="text" value="${r.allowances||''}" placeholder="e.g. Per diem 500" oninput="resourceRows[${globalIdx}].allowances=this.value" style="width:130px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--ink)"></td>
-      <td style="padding:7px 10px;text-align:center"><button onclick="resourceRows.splice(${globalIdx},1);renderResourceSheet()" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:16px;padding:2px 4px">×</button></td>
-    </tr>`;
-  }).join('');
-}
-
-function updateAdjRate(el,idx){
-  const r=resourceRows[idx]; if(!r) return;
-  const adj=((parseFloat(r.base_rate)||0)*(parseFloat(r.location_factor)||1.0)).toFixed(2);
-  const cell=document.getElementById('adjRate-'+idx);
-  if(cell) cell.textContent=parseFloat(adj).toLocaleString('en-ET',{minimumFractionDigits:2});
-}
-
-function addResourceRow(){
-  resourceRows.push({category:'Labour',description:'',unit:'',base_rate:0,location_factor:1.0,allowances:'',division_code:TENDER_DIV,company_id:TENDER_CO});
-  renderResourceSheet();
-}
-
-async function saveResourceSheet(){
-  const ops=resourceRows.map(async r=>{
-    const payload={company_id:TENDER_CO,division_code:TENDER_DIV,category:r.category,description:(r.description||'').trim(),unit:(r.unit||'').trim(),base_rate:parseFloat(r.base_rate)||0,location_factor:parseFloat(r.location_factor)||1.0,allowances:r.allowances||''};
-    if(!payload.description) return;
-    if(r.id) return tenderFetch('/eng_resource_items?id=eq.'+r.id,'PATCH',payload);
-    else return tenderFetch('/eng_resource_items','POST',payload);
-  });
-  await Promise.all(ops);
-  await loadResourceSheet();
-  renderResourceSheet();
-  showFlash('✓ Resource sheet saved.','tenderFlash','tenderFlashMsg');
-}
-
-// ── DOCUMENT UPLOAD ───────────────────
-function handleDocDrop(e,docType){e.preventDefault();const file=e.dataTransfer.files[0];if(file)handleDocFile(file,docType);}
-
-async function handleDocFile(file,docType){
-  if(!file) return;
-  const ext=file.name.split('.').pop().toLowerCase();
-  if(!['xlsx','xls','pdf'].includes(ext)){alert('Only Excel or PDF files supported.');return;}
-  const statusEl=document.getElementById('docUploadStatus');
-  statusEl.innerHTML='<div style="padding:8px 12px;background:var(--amber-light);border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e">Saving '+file.name+'…</div>';
-  try{
-    const b64=await fileToBase64(file);
-    const docPayload={company_id:TENDER_CO,division_code:TENDER_DIV,doc_type:docType,filename:file.name,file_ext:ext,file_size:file.size,file_data:b64,uploaded_by:currentUser?.username||'user',notes:''};
-    await tenderFetch('/eng_documents','POST',docPayload);
-    await loadDocLibrary();
-    statusEl.innerHTML='<div style="padding:8px 12px;background:var(--teal-light);border:1px solid #6ee7b7;border-radius:8px;font-size:12px;color:var(--teal-dark)">✓ '+file.name+' saved.</div>';
-    setTimeout(()=>statusEl.innerHTML='',3000);
-  }catch(e){statusEl.innerHTML='<div style="padding:8px 12px;background:var(--red-light);border:1px solid #fecaca;border-radius:8px;font-size:12px;color:#991b1b">Error: '+e.message+'</div>';}
-}
-
-async function loadDocLibrary(){
-  const wrap=document.getElementById('docListWrap'); if(!wrap) return;
-  const data=await tenderFetch('/eng_documents?company_id=eq.'+TENDER_CO+'&division_code=eq.'+TENDER_DIV+'&order=created_at.desc&select=id,doc_type,filename,file_ext,file_size,uploaded_by,notes,created_at');
-  if(!Array.isArray(data)||!data.length){wrap.innerHTML='<div style="color:var(--muted);font-size:12px">No documents uploaded yet.</div>';return;}
-  const typeLabel={breakdown:'Cost Breakdown',resource:'Resource Reference'};
-  wrap.innerHTML=data.map(d=>{
-    const size=d.file_size?(d.file_size/1024>1024?(d.file_size/1048576).toFixed(1)+' MB':(d.file_size/1024).toFixed(0)+' KB'):'';
-    const date=d.created_at?d.created_at.slice(0,10):'';
-    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;flex-wrap:wrap">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:700;color:var(--ink2)">${d.filename}</div>
-        <div style="font-size:11px;color:var(--muted)">${typeLabel[d.doc_type]||d.doc_type} · ${size} · ${date} · by ${d.uploaded_by}</div>
-      </div>
-      <div style="display:flex;gap:6px">
-        <button onclick="downloadDoc('${d.id}')" class="btn-secondary" style="font-size:11px;padding:4px 10px">Download</button>
-        <button onclick="deleteDoc('${d.id}')" style="background:none;border:1px solid var(--border);border-radius:7px;cursor:pointer;color:var(--muted2);font-size:18px;padding:2px 8px">×</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-async function downloadDoc(id){
-  const data=await tenderFetch('/eng_documents?id=eq.'+id+'&select=filename,file_ext,file_data');
-  if(!Array.isArray(data)||!data.length){alert('File not found.');return;}
-  const doc=data[0];
-  const byteStr=atob(doc.file_data);
-  const ab=new ArrayBuffer(byteStr.length);
-  const ia=new Uint8Array(ab);
-  for(let i=0;i<byteStr.length;i++) ia[i]=byteStr.charCodeAt(i);
-  const mimeMap={pdf:'application/pdf',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',xls:'application/vnd.ms-excel'};
-  const blob=new Blob([ab],{type:mimeMap[doc.file_ext]||'application/octet-stream'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;a.download=doc.filename;a.click();
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
-}
-
-async function deleteDoc(id){
-  if(!confirm('Delete this document?')) return;
-  await tenderFetch('/eng_documents?id=eq.'+id,'DELETE');
-  loadDocLibrary();
-}
-
 // ── BOQ UPLOAD & PRICING ──────────────
 async function openBoqTab(tenderId){
-  currentBoqTenderId=tenderId;
-  const t=tenders.find(x=>x.id===tenderId);
+  currentBoqTenderId = tenderId;
+  const t = tenders.find(x => x.id === tenderId);
   showTenderTab('boq');
-  document.getElementById('boqTenderTitle').textContent=t?t.tender_name:'—';
-  document.getElementById('boqUploadZone').style.display='block';
-  document.getElementById('boqTableWrap').style.display='none';
-  document.getElementById('boqExtractStatus').style.display='none';
-  document.getElementById('boqExportBtn').style.display='none';
-  boqItems=[];
-  const existing=await tenderFetch('/eng_boq_items?tender_id=eq.'+tenderId+'&order=section,id&select=*');
-  if(Array.isArray(existing)&&existing.length){boqItems=existing;renderBoqTable();}
+  document.getElementById('boqTenderTitle').textContent = t ? t.tender_name : '—';
+  document.getElementById('boqUploadZone').style.display = 'block';
+  document.getElementById('boqTableWrap').style.display = 'none';
+  document.getElementById('boqExtractStatus').style.display = 'none';
+  document.getElementById('boqExportBtn').style.display = 'none';
+  boqItems = [];
+  const existing = await tenderFetch('/eng_boq_items?tender_id=eq.'+tenderId+'&order=section,id&select=*');
+  if(Array.isArray(existing) && existing.length){
+    boqItems = existing;
+    renderBoqTable();
+  }
 }
 
 function handleBoqDrop(e){
   e.preventDefault();
-  document.getElementById('boqUploadZone').style.borderColor='var(--border)';
-  const file=e.dataTransfer.files[0];
+  document.getElementById('boqUploadZone').style.borderColor = 'var(--border)';
+  const file = e.dataTransfer.files[0];
   if(file) handleBoqFile(file);
 }
 
 async function handleBoqFile(file){
   if(!file) return;
-  const ext=file.name.split('.').pop().toLowerCase();
-  if(!['xlsx','xls','pdf'].includes(ext)){alert('Please upload an Excel (.xlsx, .xls) or PDF file.');return;}
-  const statusEl=document.getElementById('boqExtractStatus');
-  statusEl.style.display='block';
-  statusEl.innerHTML='<div style="padding:10px 14px;background:var(--amber-light);border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e">Extracting BOQ items from '+file.name+'…</div>';
-  try{
-    if(ext==='pdf') await extractBoqFromPdf(file);
-    else await extractBoqFromExcel(file);
-  }catch(e){
-    statusEl.innerHTML='<div style="padding:10px 14px;background:var(--red-light);border:1px solid #fecaca;border-radius:8px;font-size:12px;color:#991b1b">Error: '+e.message+'</div>';
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(!['xlsx','xls','pdf'].includes(ext)){ alert('Please upload an Excel (.xlsx, .xls) or PDF file.'); return; }
+  const statusEl = document.getElementById('boqExtractStatus');
+  statusEl.style.display = 'block';
+  statusEl.innerHTML = '<div style="padding:10px 14px;background:var(--amber-light);border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e">Extracting BOQ items from ' + file.name + '…</div>';
+  try {
+    if(ext === 'pdf'){
+      await extractBoqFromPdf(file);
+    } else {
+      await extractBoqFromExcel(file);
+    }
+  } catch(e){
+    statusEl.innerHTML = '<div style="padding:10px 14px;background:var(--red-light);border:1px solid #fecaca;border-radius:8px;font-size:12px;color:#991b1b">Error: ' + e.message + '</div>';
   }
 }
 
 async function extractBoqFromExcel(file){
-  const statusEl=document.getElementById('boqExtractStatus');
-  const XLSX=await loadXlsx();
-  const ab=await file.arrayBuffer();
-  const wb=XLSX.read(ab,{type:'array'});
-  const ws=wb.Sheets[wb.SheetNames[0]];
-  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-  const items=parseBoqRows(rows);
-  if(!items.length){statusEl.innerHTML='<div style="padding:10px 14px;background:var(--red-light);border:1px solid #fecaca;border-radius:8px;font-size:12px;color:#991b1b">Could not detect BOQ table in this Excel file.</div>';return;}
-  boqItems=items;autoMatchAll();
-  statusEl.innerHTML='<div style="padding:10px 14px;background:var(--teal-light);border:1px solid #6ee7b7;border-radius:8px;font-size:12px;color:var(--teal-dark)">✓ Extracted '+items.length+' BOQ items from Excel.</div>';
+  const statusEl = document.getElementById('boqExtractStatus');
+  const XLSX = await loadXlsx();
+  const ab = await file.arrayBuffer();
+  const wb = XLSX.read(ab, {type:'array'});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+  const items = parseBoqRows(rows);
+  if(!items.length){ statusEl.innerHTML='<div style="padding:10px 14px;background:var(--red-light);border:1px solid #fecaca;border-radius:8px;font-size:12px;color:#991b1b">Could not detect BOQ table in this Excel file. Ensure it has columns: Description, Unit, Quantity.</div>'; return; }
+  boqItems = items;
+  autoMatchAll();
+  statusEl.innerHTML = '<div style="padding:10px 14px;background:var(--teal-light);border:1px solid #6ee7b7;border-radius:8px;font-size:12px;color:var(--teal-dark)">✓ Extracted ' + items.length + ' BOQ items from Excel.</div>';
   renderBoqTable();
 }
 
 async function loadXlsx(){
   if(window.XLSX) return window.XLSX;
   return new Promise((resolve,reject)=>{
-    const s=document.createElement('script');
-    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-    s.onload=()=>resolve(window.XLSX);
-    s.onerror=()=>reject(new Error('Failed to load XLSX library'));
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = ()=>resolve(window.XLSX);
+    s.onerror = ()=>reject(new Error('Failed to load XLSX library'));
     document.head.appendChild(s);
   });
 }
 
 function parseBoqRows(rows){
-  let descCol=-1,unitCol=-1,qtyCol=-1,headerRow=-1;
+  let descCol=-1, unitCol=-1, qtyCol=-1, sectionCol=-1;
+  let headerRow = -1;
   for(let i=0;i<Math.min(rows.length,20);i++){
-    const r=rows[i].map(c=>String(c||'').toLowerCase());
+    const r = rows[i].map(c=>String(c||'').toLowerCase());
     if(r.some(c=>c.includes('description')||c.includes('item'))){
-      descCol=r.findIndex(c=>c.includes('description')||c.includes('item'));
-      unitCol=r.findIndex(c=>c.includes('unit'));
-      qtyCol=r.findIndex(c=>c.includes('qty')||c.includes('quantity'));
-      headerRow=i;break;
+      descCol = r.findIndex(c=>c.includes('description')||c.includes('item'));
+      unitCol = r.findIndex(c=>c.includes('unit'));
+      qtyCol  = r.findIndex(c=>c.includes('qty')||c.includes('quantity'));
+      sectionCol = r.findIndex(c=>c.includes('section')||c.includes('no')||c.includes('no.'));
+      headerRow = i; break;
     }
   }
   if(descCol<0) return [];
-  const items=[];let curSection='';
+  const items=[];
+  let curSection='';
   for(let i=headerRow+1;i<rows.length;i++){
     const r=rows[i];
     const desc=String(r[descCol]||'').trim();
     if(!desc) continue;
     const qty=parseFloat(String(r[qtyCol]||'').replace(/,/g,''))||0;
     const unit=unitCol>=0?String(r[unitCol]||'').trim():'';
-    if(qty===0&&desc.length<80&&!unit){curSection=desc;continue;}
+    if(qty===0 && desc.length<80 && !unit){curSection=desc;continue;}
     items.push({section:curSection||'General',description:desc,unit,quantity:qty,unit_price:0,amount:0,matched:false,rate_item_id:null});
   }
   return items;
 }
 
 async function extractBoqFromPdf(file){
-  const statusEl=document.getElementById('boqExtractStatus');
-  statusEl.innerHTML='<div style="padding:10px 14px;background:var(--amber-light);border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e">Sending PDF to AI for BOQ extraction… This may take 20-40 seconds.</div>';
-  const b64=await fileToBase64(file);
-  const prompt='You are an expert quantity surveyor. Extract all BOQ (Bill of Quantities) line items from this document. Return ONLY a JSON array with no markdown. Each object must have: "section" (string), "description" (string), "unit" (string), "quantity" (number). Skip headers and totals. Example: [{"section":"Earthworks","description":"Excavation in hard rock","unit":"m3","quantity":150}]';
-  const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},{type:'text',text:prompt}]}]})});
-  const data=await res.json();
-  const text=(data.content||[]).map(c=>c.text||'').join('');
-  const clean=text.replace(/```json|```/g,'').trim();
+  const statusEl = document.getElementById('boqExtractStatus');
+  statusEl.innerHTML = '<div style="padding:10px 14px;background:var(--amber-light);border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e">Sending PDF to AI for BOQ extraction… This may take 20-40 seconds.</div>';
+  const b64 = await fileToBase64(file);
+  const prompt = `You are an expert quantity surveyor. Extract all BOQ (Bill of Quantities) line items from this document. Return ONLY a JSON array with no markdown, no explanation. Each object must have exactly these keys: "section" (string, section/chapter name or "General"), "description" (string, full item description), "unit" (string, unit of measurement), "quantity" (number). Skip header rows, totals rows, and blank rows. Example: [{"section":"Earthworks","description":"Excavation in hard rock","unit":"m3","quantity":150}]`;
+  const res = await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-6',
+      max_tokens:4000,
+      messages:[{role:'user',content:[
+        {type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},
+        {type:'text',text:prompt}
+      ]}]
+    })
+  });
+  const data = await res.json();
+  const text = (data.content||[]).map(c=>c.text||'').join('');
+  const clean = text.replace(/```json|```/g,'').trim();
   let extracted;
-  try{extracted=JSON.parse(clean);}catch(e){throw new Error('AI could not parse BOQ from this PDF. Try Excel format instead.');}
+  try { extracted = JSON.parse(clean); } catch(e){ throw new Error('AI could not parse BOQ from this PDF. Try Excel format instead.'); }
   if(!Array.isArray(extracted)||!extracted.length) throw new Error('No BOQ items found in PDF.');
-  boqItems=extracted.map(e=>({section:e.section||'General',description:e.description||'',unit:e.unit||'',quantity:parseFloat(e.quantity)||0,unit_price:0,amount:0,matched:false,rate_item_id:null}));
+  boqItems = extracted.map(e=>({
+    section: e.section||'General',
+    description: e.description||'',
+    unit: e.unit||'',
+    quantity: parseFloat(e.quantity)||0,
+    unit_price:0, amount:0, matched:false, rate_item_id:null
+  }));
   autoMatchAll();
-  statusEl.innerHTML='<div style="padding:10px 14px;background:var(--teal-light);border:1px solid #6ee7b7;border-radius:8px;font-size:12px;color:var(--teal-dark)">✓ AI extracted '+boqItems.length+' BOQ items from PDF.</div>';
+  statusEl.innerHTML = '<div style="padding:10px 14px;background:var(--teal-light);border:1px solid #6ee7b7;border-radius:8px;font-size:12px;color:var(--teal-dark)">✓ AI extracted ' + boqItems.length + ' BOQ items from PDF.</div>';
   renderBoqTable();
 }
 
 function fileToBase64(file){
-  return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=()=>rej(new Error('File read failed'));r.readAsDataURL(file);});
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result.split(',')[1]);
+    r.onerror=()=>rej(new Error('File read failed'));
+    r.readAsDataURL(file);
+  });
 }
 
 function autoMatchAll(){
   if(!rateItems.length) return;
-  const oh=divTemplate?(parseFloat(divTemplate.overhead_pct)||0)/100:0;
-  const pr=divTemplate?(parseFloat(divTemplate.profit_pct)||0)/100:0;
-  const t=tenders.find(x=>x.id===currentBoqTenderId);
-  const locFactor=t?(parseFloat(t.location_factor)||1.0):1.0;
+  const oh = divTemplate ? (parseFloat(divTemplate.overhead_pct)||0)/100 : 0;
+  const pr = divTemplate ? (parseFloat(divTemplate.profit_pct)||0)/100 : 0;
+  const t = tenders.find(x=>x.id===currentBoqTenderId);
+  const locFactor = t ? (parseFloat(t.location_factor)||1.0) : 1.0;
+  const allowances = t ? (parseFloat(t.allowances)||0) : 0;
+
   boqItems.forEach(item=>{
-    const desc=(item.description||'').toLowerCase();
-    let best=null,bestScore=0;
+    const desc = (item.description||'').toLowerCase();
+    let best = null, bestScore = 0;
     rateItems.forEach(r=>{
-      const rdesc=(r.description||'').toLowerCase();
-      const words=rdesc.split(/\s+/).filter(w=>w.length>2);
-      const hits=words.filter(w=>desc.includes(w)).length;
-      const score=words.length?hits/words.length:0;
-      if(score>bestScore&&score>=0.4){bestScore=score;best=r;}
+      const rdesc = (r.description||'').toLowerCase();
+      const words = rdesc.split(/\s+/).filter(w=>w.length>2);
+      const hits = words.filter(w=>desc.includes(w)).length;
+      const score = words.length ? hits/words.length : 0;
+      if(score > bestScore && score >= 0.4){bestScore=score;best=r;}
     });
     if(best){
-      item.rate_item_id=best.id;item.matched=true;
-      const directCost=(parseFloat(best.base_rate)||0)*locFactor;
-      item.unit_price=Math.round(directCost*(1+oh)*(1+pr)*100)/100;
-      item.amount=Math.round(item.unit_price*(item.quantity||0)*100)/100;
+      item.rate_item_id = best.id;
+      item.matched = true;
+      const directCost = (parseFloat(best.base_rate)||0) * locFactor;
+      const withOH = directCost * (1 + oh);
+      const withProfit = withOH * (1 + pr);
+      item.unit_price = Math.round(withProfit * 100)/100;
+      item.amount = Math.round(item.unit_price * (item.quantity||0) * 100)/100;
     }
   });
 }
 
 function renderBoqTable(){
-  document.getElementById('boqUploadZone').style.display='none';
-  document.getElementById('boqTableWrap').style.display='block';
-  document.getElementById('boqExportBtn').style.display='inline-flex';
-  const matched=boqItems.filter(i=>i.matched).length;
-  document.getElementById('boqMatchCount').textContent=matched;
-  document.getElementById('boqTotalCount').textContent=boqItems.length;
-  const tbody=document.getElementById('boqTableBody');
-  const oh=divTemplate?(parseFloat(divTemplate.overhead_pct)||0)/100:0;
-  const pr=divTemplate?(parseFloat(divTemplate.profit_pct)||0)/100:0;
-  const t=tenders.find(x=>x.id===currentBoqTenderId);
-  const locFactor=t?(parseFloat(t.location_factor)||1.0):1.0;
-  let curSection='';
-  tbody.innerHTML=boqItems.map((item,i)=>{
-    let sectionRow='';
-    if(item.section!==curSection){curSection=item.section;sectionRow=`<tr><td colspan="7" style="background:var(--bg);font-size:11px;font-weight:700;color:var(--ink2);padding:8px 10px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)">${curSection}</td></tr>`;}
-    const rateOptions=rateItems.map(r=>`<option value="${r.id}" ${item.rate_item_id===r.id?'selected':''}>${r.category}: ${r.description} (${r.unit})</option>`).join('');
-    const matchColor=item.matched?'var(--teal-dark)':'var(--muted2)';
+  document.getElementById('boqUploadZone').style.display = 'none';
+  document.getElementById('boqTableWrap').style.display = 'block';
+  document.getElementById('boqExportBtn').style.display = 'inline-flex';
+  const matched = boqItems.filter(i=>i.matched).length;
+  document.getElementById('boqMatchCount').textContent = matched;
+  document.getElementById('boqTotalCount').textContent = boqItems.length;
+  const tbody = document.getElementById('boqTableBody');
+  const oh = divTemplate ? (parseFloat(divTemplate.overhead_pct)||0)/100 : 0;
+  const pr = divTemplate ? (parseFloat(divTemplate.profit_pct)||0)/100 : 0;
+  const t = tenders.find(x=>x.id===currentBoqTenderId);
+  const locFactor = t ? (parseFloat(t.location_factor)||1.0) : 1.0;
+
+  let curSection = '';
+  tbody.innerHTML = boqItems.map((item,i)=>{
+    let sectionRow = '';
+    if(item.section !== curSection){
+      curSection = item.section;
+      sectionRow = `<tr><td colspan="7" style="background:var(--bg);font-size:11px;font-weight:700;color:var(--ink2);padding:8px 10px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)">${curSection}</td></tr>`;
+    }
+    const rateOptions = rateItems.map(r=>`<option value="${r.id}" ${item.rate_item_id===r.id?'selected':''}>${r.category}: ${r.description} (${r.unit})</option>`).join('');
+    const matchColor = item.matched ? 'var(--teal-dark)' : 'var(--muted2)';
     return `${sectionRow}<tr style="border-bottom:1px solid var(--border2)">
       <td style="padding:7px 10px;color:var(--muted);font-size:11px">${item.section}</td>
       <td style="padding:7px 10px;font-size:12px;color:var(--ink)">${item.description}</td>
@@ -5381,68 +5331,271 @@ function renderBoqTable(){
   renderBoqSummary();
 }
 
-function onRateChange(i,rateId){
-  const item=boqItems[i]; if(!item) return;
-  const oh=divTemplate?(parseFloat(divTemplate.overhead_pct)||0)/100:0;
-  const pr=divTemplate?(parseFloat(divTemplate.profit_pct)||0)/100:0;
-  const t=tenders.find(x=>x.id===currentBoqTenderId);
-  const locFactor=t?(parseFloat(t.location_factor)||1.0):1.0;
-  if(!rateId){item.matched=false;item.rate_item_id=null;item.unit_price=0;item.amount=0;}
-  else{
-    const r=rateItems.find(x=>x.id===rateId);
-    item.rate_item_id=rateId;item.matched=true;
-    const directCost=(parseFloat(r?.base_rate)||0)*locFactor;
-    item.unit_price=Math.round(directCost*(1+oh)*(1+pr)*100)/100;
-    item.amount=Math.round(item.unit_price*(item.quantity||0)*100)/100;
+function onRateChange(i, rateId){
+  const item = boqItems[i]; if(!item) return;
+  const oh = divTemplate ? (parseFloat(divTemplate.overhead_pct)||0)/100 : 0;
+  const pr = divTemplate ? (parseFloat(divTemplate.profit_pct)||0)/100 : 0;
+  const t = tenders.find(x=>x.id===currentBoqTenderId);
+  const locFactor = t ? (parseFloat(t.location_factor)||1.0) : 1.0;
+  if(!rateId){ item.matched=false; item.rate_item_id=null; item.unit_price=0; item.amount=0; }
+  else {
+    const r = rateItems.find(x=>x.id===rateId);
+    item.rate_item_id = rateId;
+    item.matched = true;
+    const directCost = (parseFloat(r?.base_rate)||0) * locFactor;
+    const withOH = directCost * (1+oh);
+    const withProfit = withOH * (1+pr);
+    item.unit_price = Math.round(withProfit*100)/100;
+    item.amount = Math.round(item.unit_price*(item.quantity||0)*100)/100;
   }
   renderBoqTable();
 }
 
-function onUnitPriceChange(i,val){
-  const item=boqItems[i]; if(!item) return;
-  item.unit_price=parseFloat(val)||0;
-  item.amount=Math.round(item.unit_price*(item.quantity||0)*100)/100;
+function onUnitPriceChange(i, val){
+  const item = boqItems[i]; if(!item) return;
+  item.unit_price = parseFloat(val)||0;
+  item.amount = Math.round(item.unit_price*(item.quantity||0)*100)/100;
   renderBoqSummary();
 }
 
 function renderBoqSummary(){
-  const box=document.getElementById('boqSummaryBox'); if(!box) return;
-  const t=tenders.find(x=>x.id===currentBoqTenderId);
-  const oh=divTemplate?parseFloat(divTemplate.overhead_pct)||0:0;
-  const pr=divTemplate?parseFloat(divTemplate.profit_pct)||0:0;
-  const directTotal=boqItems.reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
-  const allowances=t?parseFloat(t.allowances)||0:0;
-  box.innerHTML=`
+  const box = document.getElementById('boqSummaryBox'); if(!box) return;
+  const t = tenders.find(x=>x.id===currentBoqTenderId);
+  const oh = divTemplate ? parseFloat(divTemplate.overhead_pct)||0 : 0;
+  const pr = divTemplate ? parseFloat(divTemplate.profit_pct)||0 : 0;
+  const directTotal = boqItems.reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+  const allowances = t ? parseFloat(t.allowances)||0 : 0;
+  const totalBidCost = directTotal + allowances;
+  box.innerHTML = `
     <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:10px">Bid Summary</div>
     <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border2)"><span style="color:var(--muted)">BOQ Direct Total</span><span style="font-weight:700">${fmtETB(directTotal)}</span></div>
     <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border2)"><span style="color:var(--muted)">Overhead (${oh}%)</span><span>${fmtETB(directTotal*(oh/100))}</span></div>
-    <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border2)"><span style="color:var(--muted)">Profit (${pr}%)</span><span>${fmtETB(directTotal*(pr/100))}</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border2)"><span style="color:var(--muted)">Profit (${pr}%)</span><span>${fmtETB(directTotal*((oh+pr)/100))}</span></div>
     <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border2)"><span style="color:var(--muted)">Location Allowances</span><span>${fmtETB(allowances)}</span></div>
-    <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;padding:6px 0;color:var(--teal-dark)"><span>Total Bid Price</span><span>${fmtETB(directTotal+allowances)}</span></div>`;
+    <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;padding:6px 0;color:var(--teal-dark)"><span>Total Bid Price</span><span>${fmtETB(totalBidCost)}</span></div>`;
 }
 
 async function saveBoqItems(){
   if(!currentBoqTenderId){alert('No tender selected.');return;}
   await tenderFetch('/eng_boq_items?tender_id=eq.'+currentBoqTenderId,'DELETE');
-  const ops=boqItems.map(item=>tenderFetch('/eng_boq_items','POST',{tender_id:currentBoqTenderId,section:item.section||'General',description:item.description||'',unit:item.unit||'',quantity:parseFloat(item.quantity)||0,rate_item_id:item.rate_item_id||null,unit_price:parseFloat(item.unit_price)||0,amount:parseFloat(item.amount)||0,matched:!!item.matched}));
+  const ops = boqItems.map(item=>tenderFetch('/eng_boq_items','POST',{
+    tender_id: currentBoqTenderId,
+    section: item.section||'General',
+    description: item.description||'',
+    unit: item.unit||'',
+    quantity: parseFloat(item.quantity)||0,
+    rate_item_id: item.rate_item_id||null,
+    unit_price: parseFloat(item.unit_price)||0,
+    amount: parseFloat(item.amount)||0,
+    matched: !!item.matched
+  }));
   await Promise.all(ops);
   showFlash('✓ Priced BOQ saved.','tenderFlash','tenderFlashMsg');
 }
 
+// ── RATE LIBRARY SUB-TABS ────────────
+function showRateSubTab(tab){
+  ['unit','resource','docs'].forEach(t=>{
+    const p = document.getElementById('rateSubPanel-'+t);
+    const b = document.getElementById('rateSubTab-'+t);
+    if(p) p.style.display = t===tab ? 'block' : 'none';
+    if(b){
+      b.style.color = t===tab ? 'var(--teal-dark)' : 'var(--muted)';
+      b.style.fontWeight = t===tab ? '700' : '400';
+      b.style.borderBottom = t===tab ? '2px solid var(--teal)' : '2px solid transparent';
+    }
+  });
+  if(tab==='resource') renderResourceSheet();
+  if(tab==='docs') loadDocLibrary();
+}
+
+// ── RESOURCE SHEET ────────────────────
+let resourceRows = [];
+
+async function loadResourceSheet(){
+  const data = await tenderFetch('/eng_resource_items?division_code=eq.'+TENDER_DIV+'&order=category,description&select=*');
+  resourceRows = Array.isArray(data) ? data.map(r=>({...r})) : [];
+}
+
+function renderResourceSheet(){
+  const catF = document.getElementById('resourceCatFilter')?.value||'';
+  const srch = (document.getElementById('resourceSearch')?.value||'').toLowerCase();
+  const body = document.getElementById('resourceSheetBody');
+  const empty = document.getElementById('resourceSheetEmpty');
+  if(!body) return;
+  let rows = resourceRows.filter(r=>{
+    const catOk = !catF || r.category===catF;
+    const srchOk = !srch || (r.description||'').toLowerCase().includes(srch) || (r.unit||'').toLowerCase().includes(srch);
+    return catOk && srchOk;
+  });
+  if(!rows.length){ body.innerHTML=''; if(empty) empty.style.display='block'; return; }
+  if(empty) empty.style.display='none';
+  const catColors = {Labour:'#dbeafe',Equipment:'#fef3c7',Material:'#d1fae5'};
+  const catText   = {Labour:'#1e40af',Equipment:'#92400e',Material:'#065f46'};
+  body.innerHTML = rows.map((r,i)=>{
+    const globalIdx = resourceRows.indexOf(r);
+    const adjRate = ((parseFloat(r.base_rate)||0) * (parseFloat(r.location_factor)||1.0)).toFixed(2);
+    return `<tr style="border-bottom:1px solid var(--border2);${i%2===0?'':'background:var(--bg)'}">
+      <td style="padding:7px 10px">
+        <select onchange="resourceRows[${globalIdx}].category=this.value;renderResourceSheet()" style="padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--ink)">
+          ${['Labour','Equipment','Material'].map(c=>`<option value="${c}" ${r.category===c?'selected':''}>${c}</option>`).join('')}
+        </select>
+      </td>
+      <td style="padding:7px 10px"><input type="text" value="${(r.description||'').replace(/"/g,'&quot;')}" placeholder="Resource name" oninput="resourceRows[${globalIdx}].description=this.value" style="width:100%;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--ink)"></td>
+      <td style="padding:7px 10px"><input type="text" value="${r.unit||''}" placeholder="Day/m³" oninput="resourceRows[${globalIdx}].unit=this.value" style="width:60px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--ink)"></td>
+      <td style="padding:7px 10px;text-align:right"><input type="number" value="${r.base_rate||0}" oninput="resourceRows[${globalIdx}].base_rate=parseFloat(this.value)||0;updateAdjRate(this,${globalIdx})" style="width:100px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:right;background:var(--surface);color:var(--ink)"></td>
+      <td style="padding:7px 10px;text-align:center"><input type="number" value="${r.location_factor||1.0}" step="0.01" min="0.5" max="5" oninput="resourceRows[${globalIdx}].location_factor=parseFloat(this.value)||1.0;updateAdjRate(this,${globalIdx})" style="width:70px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center;background:var(--surface);color:var(--ink)"></td>
+      <td style="padding:7px 10px;text-align:right;font-weight:700;color:var(--teal-dark)" id="adjRate-${globalIdx}">${parseFloat(adjRate).toLocaleString('en-ET',{minimumFractionDigits:2})}</td>
+      <td style="padding:7px 10px"><input type="text" value="${r.allowances||''}" placeholder="e.g. Per diem 500" oninput="resourceRows[${globalIdx}].allowances=this.value" style="width:130px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--ink)"></td>
+      <td style="padding:7px 10px;text-align:center"><button onclick="resourceRows.splice(${globalIdx},1);renderResourceSheet()" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:16px;padding:2px 4px" title="Remove row">×</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function updateAdjRate(el, idx){
+  const r = resourceRows[idx]; if(!r) return;
+  const adj = ((parseFloat(r.base_rate)||0)*(parseFloat(r.location_factor)||1.0)).toFixed(2);
+  const cell = document.getElementById('adjRate-'+idx);
+  if(cell) cell.textContent = parseFloat(adj).toLocaleString('en-ET',{minimumFractionDigits:2});
+}
+
+function addResourceRow(){
+  resourceRows.push({category:'Labour',description:'',unit:'',base_rate:0,location_factor:1.0,allowances:'',division_code:TENDER_DIV,company_id:TENDER_CO});
+  renderResourceSheet();
+}
+
+async function saveResourceSheet(){
+  const btn = document.querySelector('[onclick="saveResourceSheet()"]');
+  if(btn){btn.disabled=true;btn.textContent='Saving…';}
+  const ops = resourceRows.map(async r=>{
+    const payload={
+      company_id:TENDER_CO, division_code:TENDER_DIV,
+      category:r.category, description:(r.description||'').trim(),
+      unit:(r.unit||'').trim(), base_rate:parseFloat(r.base_rate)||0,
+      location_factor:parseFloat(r.location_factor)||1.0,
+      allowances:r.allowances||''
+    };
+    if(!payload.description) return;
+    if(r.id) return tenderFetch('/eng_resource_items?id=eq.'+r.id,'PATCH',payload);
+    else return tenderFetch('/eng_resource_items','POST',payload);
+  });
+  await Promise.all(ops);
+  await loadResourceSheet();
+  renderResourceSheet();
+  if(btn){btn.disabled=false;btn.textContent='Save Resource Sheet';}
+  showFlash('✓ Resource sheet saved.','tenderFlash','tenderFlashMsg');
+}
+
+// ── DOCUMENT UPLOAD ───────────────────
+function handleDocDrop(e, docType){
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if(file) handleDocFile(file, docType);
+}
+
+async function handleDocFile(file, docType){
+  if(!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(!['xlsx','xls','pdf'].includes(ext)){alert('Only Excel or PDF files supported.');return;}
+  const statusEl = document.getElementById('docUploadStatus');
+  statusEl.innerHTML = '<div style="padding:8px 12px;background:var(--amber-light);border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e">Reading and saving '+file.name+'…</div>';
+  try {
+    const b64 = await fileToBase64(file);
+    const docPayload = {
+      company_id: TENDER_CO,
+      division_code: TENDER_DIV,
+      doc_type: docType,
+      filename: file.name,
+      file_ext: ext,
+      file_size: file.size,
+      file_data: b64,
+      uploaded_by: currentUser?.username||'user',
+      notes: ''
+    };
+    const res = await tenderFetch('/eng_documents','POST',docPayload);
+    await loadDocLibrary();
+    statusEl.innerHTML = '<div style="padding:8px 12px;background:var(--teal-light);border:1px solid #6ee7b7;border-radius:8px;font-size:12px;color:var(--teal-dark)">✓ '+file.name+' uploaded and saved.</div>';
+    setTimeout(()=>statusEl.innerHTML='', 3000);
+  } catch(e){
+    statusEl.innerHTML = '<div style="padding:8px 12px;background:var(--red-light);border:1px solid #fecaca;border-radius:8px;font-size:12px;color:#991b1b">Error: '+e.message+'</div>';
+  }
+}
+
+async function loadDocLibrary(){
+  const wrap = document.getElementById('docListWrap'); if(!wrap) return;
+  const data = await tenderFetch('/eng_documents?company_id=eq.'+TENDER_CO+'&division_code=eq.'+TENDER_DIV+'&order=created_at.desc&select=id,doc_type,filename,file_ext,file_size,uploaded_by,notes,created_at');
+  if(!Array.isArray(data)||!data.length){
+    wrap.innerHTML='<div style="color:var(--muted);font-size:12px">No documents uploaded yet.</div>';
+    return;
+  }
+  const typeLabel = {breakdown:'Cost Breakdown',resource:'Resource Reference'};
+  wrap.innerHTML = data.map(d=>{
+    const size = d.file_size ? (d.file_size/1024 > 1024 ? (d.file_size/1048576).toFixed(1)+' MB' : (d.file_size/1024).toFixed(0)+' KB') : '';
+    const date = d.created_at ? d.created_at.slice(0,10) : '';
+    const icon = d.file_ext==='pdf'
+      ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#991b1b" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'
+      : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#065f46" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;flex-wrap:wrap">
+      ${icon}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;color:var(--ink2)">${d.filename}</div>
+        <div style="font-size:11px;color:var(--muted)">${typeLabel[d.doc_type]||d.doc_type} &nbsp;·&nbsp; ${size} &nbsp;·&nbsp; ${date} &nbsp;·&nbsp; by ${d.uploaded_by}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button onclick="downloadDoc('${d.id}')" class="btn-secondary" style="font-size:11px;padding:4px 10px">Download</button>
+        <button onclick="deleteDoc('${d.id}')" style="background:none;border:1px solid var(--border);border-radius:7px;cursor:pointer;color:var(--muted2);font-size:18px;padding:2px 8px" title="Delete">×</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function downloadDoc(id){
+  const data = await tenderFetch('/eng_documents?id=eq.'+id+'&select=filename,file_ext,file_data');
+  if(!Array.isArray(data)||!data.length){alert('File not found.');return;}
+  const doc = data[0];
+  const byteStr = atob(doc.file_data);
+  const ab = new ArrayBuffer(byteStr.length);
+  const ia = new Uint8Array(ab);
+  for(let i=0;i<byteStr.length;i++) ia[i]=byteStr.charCodeAt(i);
+  const mimeMap = {pdf:'application/pdf',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',xls:'application/vnd.ms-excel'};
+  const blob = new Blob([ab],{type:mimeMap[doc.file_ext]||'application/octet-stream'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=doc.filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+async function deleteDoc(id){
+  if(!confirm('Delete this document?')) return;
+  await tenderFetch('/eng_documents?id=eq.'+id,'DELETE');
+  loadDocLibrary();
+}
+
 async function exportBoqExcel(){
-  const XLSX=await loadXlsx();
-  const t=tenders.find(x=>x.id===currentBoqTenderId);
-  const rows=[[t?.tender_name||'Tender','','','','','',''],['Client: '+(t?.client||''),'','Deadline: '+(t?.submission_deadline||''),'','Location: '+(t?.location||''),'',''],[''],['Section','Description','Unit','Quantity','Unit Price (ETB)','Amount (ETB)','Matched']];
-  boqItems.forEach(item=>{rows.push([item.section,item.description,item.unit,item.quantity,item.unit_price,item.amount,item.matched?'Yes':'No']);});
-  const oh=divTemplate?parseFloat(divTemplate.overhead_pct)||0:0;
-  const pr=divTemplate?parseFloat(divTemplate.profit_pct)||0:0;
-  const directTotal=boqItems.reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
-  const allowances=t?parseFloat(t.allowances)||0:0;
-  rows.push([''],['','','','','BOQ Direct Total',directTotal,''],['','','','','Overhead ('+oh+'%)',directTotal*(oh/100),''],['','','','','Profit ('+pr+'%)',directTotal*(pr/100),''],['','','','','Location Allowances',allowances,''],['','','','','TOTAL BID PRICE',directTotal+allowances,'']);
-  const ws=XLSX.utils.aoa_to_sheet(rows);
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'Priced BOQ');
-  XLSX.writeFile(wb,(t?.tender_name||'Tender').replace(/\s+/g,'_')+'_PricedBOQ.xlsx');
+  const XLSX = await loadXlsx();
+  const t = tenders.find(x=>x.id===currentBoqTenderId);
+  const rows = [
+    [t?.tender_name||'Tender','','','','','',''],
+    ['Client: '+(t?.client||''),'','Deadline: '+(t?.submission_deadline||''),'','Location: '+(t?.location||''),'',''],
+    [''],
+    ['Section','Description','Unit','Quantity','Unit Price (ETB)','Amount (ETB)','Matched']
+  ];
+  boqItems.forEach(item=>{
+    rows.push([item.section,item.description,item.unit,item.quantity,item.unit_price,item.amount,item.matched?'Yes':'No']);
+  });
+  const oh = divTemplate ? parseFloat(divTemplate.overhead_pct)||0 : 0;
+  const pr = divTemplate ? parseFloat(divTemplate.profit_pct)||0 : 0;
+  const directTotal = boqItems.reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+  const allowances = t ? parseFloat(t.allowances)||0 : 0;
+  rows.push([''],['','','','','BOQ Direct Total',directTotal,'']);
+  rows.push(['','','','','Overhead ('+oh+'%)',directTotal*(oh/100),'']);
+  rows.push(['','','','','Profit ('+pr+'%)',directTotal*(pr/100),'']);
+  rows.push(['','','','','Location Allowances',allowances,'']);
+  rows.push(['','','','','TOTAL BID PRICE',directTotal+allowances,'']);
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Priced BOQ');
+  XLSX.writeFile(wb, (t?.tender_name||'Tender').replace(/\s+/g,'_')+'_PricedBOQ.xlsx');
 }
 
 </script>
