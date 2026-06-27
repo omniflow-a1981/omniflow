@@ -487,7 +487,34 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-users">
       <div class="login-users-title">Quick sign in as:</div>
-      <div id="userChips"></div>
+      <div id="userChips">
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+          <div>
+            <div style="font-size:9px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px">System</div>
+            <select id="chipDropSystem" onchange="applyChipDrop(this)" style="width:100%;padding:6px 10px;border:1px solid rgba(255,255,255,.15);border-radius:8px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.7);font-size:12px;outline:none">
+              <option value="">— select —</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:9px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px">Finance</div>
+            <select id="chipDropFinance" onchange="applyChipDrop(this)" style="width:100%;padding:6px 10px;border:1px solid rgba(255,255,255,.15);border-radius:8px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.7);font-size:12px;outline:none">
+              <option value="">— select —</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:9px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px">Wanofi PR Team</div>
+            <select id="chipDropWanofi" onchange="applyChipDrop(this)" style="width:100%;padding:6px 10px;border:1px solid rgba(255,255,255,.15);border-radius:8px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.7);font-size:12px;outline:none">
+              <option value="">— select —</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:9px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px">Matisan PR Team</div>
+            <select id="chipDropMatisan" onchange="applyChipDrop(this)" style="width:100%;padding:6px 10px;border:1px solid rgba(255,255,255,.15);border-radius:8px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.7);font-size:12px;outline:none">
+              <option value="">— select —</option>
+            </select>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -870,6 +897,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
         <button class="pr-type-btn active" id="prTypeBtn-Material" onclick="setPRType('Material',this)">📦 Material</button>
         <button class="pr-type-btn" id="prTypeBtn-Manpower" onclick="setPRType('Manpower',this)">👷 Manpower</button>
         <button class="pr-type-btn" id="prTypeBtn-Machinery" onclick="setPRType('Machinery',this)">🚜 Machinery</button>
+        <button class="pr-type-btn" id="prTypeBtn-Other" onclick="setPRType('Other',this)">🔖 Other Expense</button>
       </div>
     </div>
     <input type="hidden" id="prType" value="Material">
@@ -1594,33 +1622,20 @@ function initLogin(){
   localStorage.removeItem('omni-token');
   localStorage.removeItem('omni-session-user');
   authToken=null; currentUser=null;
-  const chips=document.getElementById('userChips');
-    const chipGroups=[
-    {label:'System',color:'#0ea87a',users:USER_DEFS.filter(u=>!u.company)},
-    {label:'Wanofi PR Team',color:'#1d4ed8',users:USER_DEFS.filter(u=>u.company==='WE'&&u.prRole&&u.role!=='we_finance')},
-    {label:'Matisan PR Team',color:'#7c3aed',users:USER_DEFS.filter(u=>u.company==='ME'&&u.prRole&&u.role!=='me_finance')},
-    {label:'Finance (PR Only)',color:'#b45309',users:USER_DEFS.filter(u=>u.role==='we_finance'||u.role==='me_finance')},
-  ];
-  chipGroups.forEach(grp=>{
-    if(!grp.users.length) return;
-    const lbl=document.createElement('div');
-    lbl.style.cssText='width:100%;font-size:9px;color:rgba(255,255,255,.3);margin:8px 0 3px;text-transform:uppercase;letter-spacing:.6px';
-    lbl.textContent=grp.label;
-    chips.appendChild(lbl);
-    grp.users.forEach(u=>{
-      const names=ls('omni-display-names')||{};
-      const chip=document.createElement('span');
-      chip.className='login-user-chip';
-      chip.textContent=(names[u.username]||u.username)+(u.prRole?' ('+u.prRole+')':'');
-      chip.style.borderColor=grp.color+'55';
-      chip.onclick=()=>{
-        document.getElementById('loginUser').value=u.username;
-        document.getElementById('loginPass').value='';
-        document.getElementById('loginPass').focus();
-      };
-      chips.appendChild(chip);
+  const names=ls('omni-display-names')||{};
+  function fillDrop(dropId, users){
+    const sel=document.getElementById(dropId); if(!sel) return;
+    users.forEach(u=>{
+      const opt=document.createElement('option');
+      opt.value=u.username;
+      opt.textContent=(names[u.username]||u.displayRole)+(u.prRole&&u.prRole!=='pr_only'?' ('+u.prRole+')':'');
+      sel.appendChild(opt);
     });
-  });
+  }
+  fillDrop('chipDropSystem', USER_DEFS.filter(u=>!u.company));
+  fillDrop('chipDropFinance', USER_DEFS.filter(u=>u.role==='we_finance'||u.role==='me_finance'||u.username==='finance'));
+  fillDrop('chipDropWanofi', USER_DEFS.filter(u=>u.company==='WE'&&u.prRole&&u.role!=='we_finance'));
+  fillDrop('chipDropMatisan', USER_DEFS.filter(u=>u.company==='ME'&&u.prRole&&u.role!=='me_finance'));
   document.getElementById('loginPass').onkeydown=e=>{if(e.key==='Enter')doLogin()};
   // Auto-restore session from saved token
   authToken = localStorage.getItem('omni-token');
@@ -3348,6 +3363,8 @@ function buildPRHead(type){
     h.innerHTML=`<tr style="background:var(--bg)">${th('#','28px')}${th('Item/Material')}${th('Description')}${th('Unit','48px')}${th('Qty','58px',1)}${th('Unit Rate','85px',1)}${th('Amount','90px',1)}${th('To Be Paid','90px',1)}${th('Transfer To')}${th('','22px')}</tr>`;
   }else if(type==='Manpower'){
     h.innerHTML=`<tr style="background:var(--bg)">${th('#','28px')}${th('Name')}${th('Position/Trade')}${th('Days','58px',1)}${th('Daily Rate','85px',1)}${th('Amount','90px',1)}${th('To Be Paid','90px',1)}${th('Bank/Account')}${th('','22px')}</tr>`;
+  }else if(type==='Other'){
+    h.innerHTML=`<tr style="background:var(--bg)">${th('#','28px')}${th('Expense Item')}${th('Description')}${th('Unit','48px')}${th('Qty','58px',1)}${th('Unit Rate','85px',1)}${th('Amount','90px',1)}${th('To Be Paid','90px',1)}${th('Payable To')}${th('','22px')}</tr>`;
   }else{
     h.innerHTML=`<tr style="background:var(--bg)">${th('#','28px')}${th('Machinery/Equipment')}${th('Task/Description')}${th('Unit','48px')}${th('Qty','58px',1)}${th('Unit Rate','85px',1)}${th('Amount','90px',1)}${th('To Be Paid','90px',1)}${th('Supplier/Owner')}${th('','22px')}</tr>`;
   }
@@ -4045,10 +4062,10 @@ function viewPR(id){
   let thead='',tbody='';
   if(prType==='Manpower'){
     thead='<tr><th>#</th><th>Name</th><th>Position</th><th style="text-align:right">Days</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th><th style="text-align:right">To Be Paid</th><th>Bank</th></tr>';
-    tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}"><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td></tr>`).join('');
+    tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}"><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td><td style="text-align:center"><button onclick="editPaymentRow('${pr.id}',${i})" style="font-size:10px;padding:2px 7px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;color:var(--teal-dark)">✏</button></td></tr>`).join('');
   } else {
     thead=`<tr><th>#</th><th>${prType==='Machinery'?'Equipment':'Item'}</th><th>Description</th><th>Unit</th><th style="text-align:right">Qty</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th><th style="text-align:right">To Be Paid</th><th>${prType==='Machinery'?'Supplier':'Transfer To'}</th></tr>`;
-    tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}"><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td>${it.unit||''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td></tr>`).join('');
+    tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}"><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td>${it.unit||''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td><td style="text-align:center"><button onclick="editPaymentRow('${pr.id}',${i})" style="font-size:10px;padding:2px 7px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;color:var(--teal-dark)">✏</button></td></tr>`).join('');
   }
 
   const withholdRow=vatMode==='exclusive'?`<div class="pr-total-row"><span>3% Withholding Tax</span><span style="color:var(--red)">${fmt(pr.withholding)}</span></div>`:'';
@@ -4105,7 +4122,7 @@ function viewPR(id){
 
     ${pr.note?`<div style="background:var(--bg);border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:10px"><strong>Note:</strong> ${pr.note}</div>`:''}
     ${pr.rejected&&pr.reject_comment?`<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:10px;color:#991b1b"><strong>⚠ Rejection Reason:</strong> ${pr.reject_comment}</div>`:''}
-    ${pr.transfer_id?`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px"><strong style="color:#166534">Transfer ID:</strong> ${pr.transfer_id} | <strong style="color:#166534">Method:</strong> ${pr.pay_method||'—'}</div>`:''}
+    ${pr.transfer_id?`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px"><strong style="color:#166534">Transfer ID:</strong> ${pr.transfer_id} | <strong style="color:#166534">Method:</strong> ${pr.pay_method||'—'}${pr.paid_from_bank?` | <strong style="color:#166534">Paid From:</strong> ${pr.paid_from_bank}${pr.paid_from_acct?' (A/C: '+pr.paid_from_acct+')':''}`:''}</div>`:''}
 
     <!-- Action area for current step -->
     ${next==='paid'&&canAct?`
@@ -4118,6 +4135,12 @@ function viewPR(id){
           <select id="prPayMethod" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;outline:none">
             <option>Bank Transfer</option><option>Cheque</option><option>Cash</option><option>CBE Birr</option><option>Telebirr</option>
           </select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+        <div><label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Paid From Bank / Account <span style="color:var(--red)">*</span></label>
+          <input type="text" id="prPaidFromBank" placeholder="e.g. CBE — Matisan Main A/C" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:12px;outline:none"></div>
+        <div><label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Account Number (optional)</label>
+          <input type="text" id="prPaidFromAcct" placeholder="e.g. 1000123456789" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:12px;outline:none"></div>
       </div>
       <div><label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Payment Comment (optional)</label>
         <textarea id="prPaidComment" rows="2" placeholder="Any payment notes..." style="width:100%;padding:7px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:12px;outline:none;resize:vertical"></textarea>
@@ -4511,6 +4534,8 @@ async function actOnPR(id){
         status:'paid',
         transfer_id:tid,
         pay_method:pm,
+        paid_from_bank:document.getElementById('prPaidFromBank')?.value?.trim()||'',
+        paid_from_acct:document.getElementById('prPaidFromAcct')?.value?.trim()||'',
         paid_comment:cmt,
         transfer_slip:(prAttachments.transfer_slip&&prAttachments.transfer_slip.length)?JSON.stringify(prAttachments.transfer_slip):null,
         // Save Finance-uploaded invoices if preparer didn't attach any
@@ -5596,6 +5621,47 @@ async function exportBoqExcel(){
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Priced BOQ');
   XLSX.writeFile(wb, (t?.tender_name||'Tender').replace(/\s+/g,'_')+'_PricedBOQ.xlsx');
+}
+
+function applyChipDrop(sel){
+  const username = sel.value;
+  if(!username){ return; }
+  document.getElementById('loginUser').value = username;
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginPass').focus();
+  // Reset other dropdowns
+  ['chipDropSystem','chipDropFinance','chipDropWanofi','chipDropMatisan'].forEach(id=>{
+    if(id!==sel.id){ const el=document.getElementById(id); if(el) el.value=''; }
+  });
+}
+
+async function editPaymentRow(prId, rowIdx){
+  const pr = payRequests.find(x=>x.id===prId); if(!pr) return;
+  let items=[];
+  try{ items=JSON.parse(pr.items||'[]'); }catch(e){}
+  const it = items[rowIdx]; if(!it) return;
+  const newName  = prompt('Item / Name:', it.item_name||'');
+  if(newName===null) return;
+  const newDesc  = prompt('Description:', it.description||'');
+  if(newDesc===null) return;
+  const newPaid  = prompt('To Be Paid (ETB):', it.to_be_paid||0);
+  if(newPaid===null) return;
+  const newTrTo  = prompt('Transfer To / Bank:', it.transfer_to||'');
+  if(newTrTo===null) return;
+  items[rowIdx] = {...it, item_name:newName, description:newDesc, to_be_paid:parseFloat(newPaid)||0, transfer_to:newTrTo};
+  const res = await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/payment_requests?id=eq.'+prId, {
+    method:'PATCH',
+    headers:{...TENDER_HDR, 'Prefer':'return=representation'},
+    body: JSON.stringify({items: JSON.stringify(items)})
+  });
+  if(res.ok){
+    const idx = payRequests.findIndex(x=>x.id===prId);
+    if(idx>=0) payRequests[idx].items = JSON.stringify(items);
+    showFlash('✓ Payment row updated.','flash','flashMsg');
+    viewPR(prId);
+  } else {
+    alert('Save failed. Please try again.');
+  }
 }
 
 </script>
