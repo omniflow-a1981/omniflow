@@ -4670,7 +4670,7 @@ function renderPRList(){
             <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
               <button onclick="viewPR('${pr.id}')" class="btn-secondary" style="font-size:11px;padding:5px 11px">View</button>
               ${canAct?`<button onclick="actOnPR('${pr.id}')" class="btn-primary" style="font-size:11px;padding:5px 12px;background:linear-gradient(135deg,#f59e0b,#d97706)">${next.charAt(0).toUpperCase()+next.slice(1)} &#10003;</button>`:''}
-              ${isPending?`<button onclick="requestPaymentPR('${pr.id}')" class="btn-primary" style="font-size:11px;padding:5px 11px;background:linear-gradient(135deg,#f59e0b,#d97706)">&#128226; Pay</button>`:''}
+              ${isPending?`<button onclick="viewPR('${pr.id}')" class="btn-primary" style="font-size:11px;padding:5px 11px;background:linear-gradient(135deg,#f59e0b,#d97706)">&#128226; Pay</button>`:''}
             </div>
           </div>
         </div>
@@ -4853,8 +4853,7 @@ function viewPR(id){
              ${s.canReverse?`<button onclick="reversePRStep('${pr.id}','${s.key}')" style="margin-top:4px;font-size:10px;padding:2px 8px;border:1px solid var(--amber);border-radius:5px;background:var(--amber-light);color:#92400e;cursor:pointer">↩ Reverse</button>`:''}
              ${s.canPartial&&parseFloat(pr.partial_amount||0)>0?`<div style="margin-top:4px;font-size:10px;background:#fef3c7;padding:2px 6px;border-radius:4px;color:#92400e">Partial: ${fmt(pr.partial_amount)}</div>`:''}
              ${s.canEdit?`<button onclick="editPR('${pr.id}')" style="margin-top:4px;font-size:10px;padding:2px 8px;border:1px solid var(--teal);border-radius:5px;background:var(--teal-light);color:var(--teal-dark);cursor:pointer">✏ Edit</button>`:''}
-             ${s.canEditPayment?`<button onclick="openEditPaymentModal('${pr.id}')" style="margin-top:4px;font-size:10px;padding:2px 8px;border:1px solid #16a34a;border-radius:5px;background:#f0fdf4;color:#166534;cursor:pointer">✏ Edit Payment</button>`:''}
-             `
+             ${s.canEditPayment?`<button onclick="openEditPaymentModal('${pr.id}')" style="margin-top:4px;font-size:10px;padding:2px 8px;border:1px solid #16a34a;border-radius:5px;background:#f0fdf4;color:#166534;cursor:pointer">✏ Edit Payment</button>`:''}`
           :`<div style="font-size:11px;color:var(--muted2);font-style:italic">${s.key==='checked'?'Finance/Mgmt':s.key==='approved'?'Director':s.key==='verified'?'GM/Admin':s.key==='paid'?'Finance':''}</div>
              <div style="margin-top:5px;border-top:1px solid var(--border);padding-top:4px;font-size:10px;color:var(--muted2)">Sign: ___________</div>
              <div style="font-size:10px;color:var(--muted2)">Date: ___________</div>`
@@ -5202,36 +5201,74 @@ async function actOnPR(id){
     if(!confirm('Confirm payment of '+fmt(pr.net_payable)+' has been PAID?')) return;
     const tid=tel.value.trim(), pm=mel?mel.value:'Bank Transfer', cmt=cel?cel.value.trim():'';
     try{
-      // Step 1: Mark PR as paid in Supabase
-      await fetch(PR_SB+'/payment_requests?id=eq.'+id,{
+      // Step 1: Mark PR as paid in Supabase — safe payload (only known columns)
+      const paidPayload = {
+        paid_by: currentUser.username,
+        paid_at: new Date().toISOString(),
+        status: 'paid',
+        transfer_id: tid,
+        pay_method: pm,
+        paid_comment: cmt,
+        transfer_slip: (prAttachments.transfer_slip&&prAttachments.transfer_slip.length)?JSON.stringify(prAttachments.transfer_slip):null,
+        pre_invoice: (prAttachments.pre_invoice&&prAttachments.pre_invoice.length&&(!pr.pre_invoice||pr.pre_invoice==='null'))?JSON.stringify(prAttachments.pre_invoice):(pr.pre_invoice||null),
+        post_invoice: (prAttachments.post_invoice&&prAttachments.post_invoice.length&&(!pr.post_invoice||pr.post_invoice==='null'))?JSON.stringify(prAttachments.post_invoice):(pr.post_invoice||null)
+      };
+      // Add optional columns only if they exist (avoids Supabase rejecting unknown columns)
+      const bankAcct = document.getElementById('prPayBank')?.selectedOptions?.[0]?.textContent?.trim()||'';
+      if(bankAcct) paidPayload.pay_bank_account = bankAcct;
+      const whtMode = document.querySelector('input[name="whtMode"]:checked')?.value;
+      if(whtMode) paidPayload.wht_applied = whtMode==='apply';
+
+      const patchRes = await fetch(PR_SB+'/payment_requests?id=eq.'+id,{
         method:'PATCH',
         headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
-        body:JSON.stringify({
-        paid_by:currentUser.username,
-        paid_at:new Date().toISOString(),
-        status:'paid',
-        transfer_id:tid,
-        pay_method:pm,
-        pay_bank_account:document.getElementById('prPayBank')?.selectedOptions?.[0]?.textContent?.trim()||'',
-        wht_applied:document.querySelector('input[name="whtMode"]:checked')?.value==='apply'||false,
-        paid_comment:cmt,
-        transfer_slip:(prAttachments.transfer_slip&&prAttachments.transfer_slip.length)?JSON.stringify(prAttachments.transfer_slip):null,
-        // Save Finance-uploaded invoices if preparer didn't attach any
-        pre_invoice:(prAttachments.pre_invoice&&prAttachments.pre_invoice.length&&(!pr.pre_invoice||pr.pre_invoice==='null'))?JSON.stringify(prAttachments.pre_invoice):pr.pre_invoice||null,
-        post_invoice:(prAttachments.post_invoice&&prAttachments.post_invoice.length&&(!pr.post_invoice||pr.post_invoice==='null'))?JSON.stringify(prAttachments.post_invoice):pr.post_invoice||null
-      })
+        body:JSON.stringify(paidPayload)
       });
 
-      // Step 2: Create ledger entry — Supabase save + local array + renderAll
+      if(!patchRes.ok){
+        const errText = await patchRes.text();
+        console.error('PR paid PATCH failed:', patchRes.status, errText);
+        // Try minimal payload as fallback
+        const fallbackRes = await fetch(PR_SB+'/payment_requests?id=eq.'+id,{
+          method:'PATCH',
+          headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
+          body:JSON.stringify({
+            paid_by:currentUser.username, paid_at:new Date().toISOString(),
+            status:'paid', transfer_id:tid, pay_method:pm, paid_comment:cmt,
+            transfer_slip:paidPayload.transfer_slip,
+            pre_invoice:paidPayload.pre_invoice, post_invoice:paidPayload.post_invoice
+          })
+        });
+        if(!fallbackRes.ok){
+          const fb = await fallbackRes.text();
+          alert('Payment save failed: '+fb+' Please try again or contact admin.');
+          return;
+        }
+      }
+
+      // Step 2: Update local payRequests array immediately so UI reflects change
+      const localPR = payRequests.find(x=>x.id===id);
+      if(localPR){
+        localPR.paid_by = currentUser.username;
+        localPR.paid_at = new Date().toISOString();
+        localPR.status = 'paid';
+        localPR.transfer_id = tid;
+        localPR.pay_method = pm;
+        localPR.paid_comment = cmt;
+        if(bankAcct) localPR.pay_bank_account = bankAcct;
+        if(paidPayload.transfer_slip) localPR.transfer_slip = paidPayload.transfer_slip;
+      }
+
+      // Step 3: Create ledger entry
       await createPRLedgerEntry(pr, tid, pm);
 
-      // Step 3: Show success flash BEFORE closing so user sees it
+      // Step 4: Show success flash BEFORE closing so user sees it
       showFlash('✓ Paid — transaction added to ledger.','prFlash','prFlashMsg');
 
-      // Step 4: Close modal
+      // Step 5: Close modal
       closePRDetail();
 
-      // Step 5: Reload PR list
+      // Step 6: Reload PR list fresh from Supabase
       await loadPayRequests();
       renderPRList();
 
