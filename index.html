@@ -5760,7 +5760,10 @@ function openEditPaymentModal(prId){
         </div>
         <div style="margin-bottom:10px">
           <label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Paying Bank Account</label>
-          <input type="text" id="epPayBank" value="${pr.pay_bank_account||''}" placeholder="Bank name / account" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:12px;outline:none">
+          <select id="epPayBank" onchange="onEditPayBankSel('${prId}')" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:12px;outline:none">
+            <option value="">— Select bank account —</option>
+          </select>
+          <div id="epPayBankDetail" style="font-size:11px;color:var(--teal-dark);margin-top:4px;display:none"></div>
         </div>
         <div style="margin-bottom:10px">
           <label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Paid Date</label>
@@ -5777,24 +5780,85 @@ function openEditPaymentModal(prId){
       </div>
     </div>`;
   document.body.appendChild(overlay);
+  // Populate bank dropdown after modal is in DOM
+  const divCode = (pr.division||'').split('.')[0].trim();
+  setTimeout(function(){ populateEditPayBankDrop(divCode, pr.pay_method||''); }, 50);
+}
+
+function onEditPayBankSel(prId){
+  const sel = document.getElementById('epPayBank');
+  const det = document.getElementById('epPayBankDetail');
+  if(!sel) return;
+  if(!sel.value || sel.value==='OTHER'){
+    if(det) det.style.display='none';
+    return;
+  }
+  const parts = sel.value.split('|');
+  const bankName=parts[1]||'', acc=parts[2]||'', branch=parts[3]||'';
+  if(det){
+    det.style.display='block';
+    det.textContent=bankName+(acc?' · A/C: '+acc:'')+(branch?' ('+branch+')':'');
+  }
+  const m=document.getElementById('epPayMethod');
+  if(m) m.value='Bank Transfer';
+}
+
+function populateEditPayBankDrop(divCode, currentPayMethod){
+  const sel = document.getElementById('epPayBank');
+  if(!sel) return;
+  while(sel.options.length>1) sel.remove(1);
+  // Determine which division's banks to show
+  const divsToShow = divCode ? [divCode] : ['WE1','WE2','WE3','ME1','ME2','ME3'];
+  divsToShow.forEach(function(div){
+    if(!DIV_BANKS_DEFAULT[div]) return;
+    const banks = getDivBanks(div);
+    if(!banks.length) return;
+    const grp = document.createElement('optgroup');
+    grp.label = div+' · '+(div.startsWith('WE')?'Wanofi Engineering':'Matisan Engineering');
+    banks.forEach(function(b){
+      const o = document.createElement('option');
+      o.value = div+'|'+b.name+'|'+b.account+'|'+b.branch;
+      const label = b.name+(b.account?' · '+b.account:'')+(b.branch?' ('+b.branch+')':'');
+      o.textContent = label;
+      // Pre-select if this matches current pay_method encoding
+      if(currentPayMethod && currentPayMethod.includes('||') && currentPayMethod.split('||')[1]===label){
+        o.selected = true;
+      }
+      grp.appendChild(o);
+    });
+    sel.appendChild(grp);
+  });
+  const og=document.createElement('optgroup'); og.label='Other';
+  const oo=document.createElement('option'); oo.value='OTHER'; oo.textContent='Other / enter manually';
+  og.appendChild(oo); sel.appendChild(og);
 }
 
 async function saveEditedPayment(prId){
   const tid  = document.getElementById('epTransferId')?.value?.trim()||'';
   const pm   = document.getElementById('epPayMethod')?.value||'';
-  const bank = document.getElementById('epPayBank')?.value?.trim()||'';
+  const bankSel = document.getElementById('epPayBank');
+  const bankVal = bankSel?.value||'';
+  const bankLabel = bankVal && bankVal!=='OTHER'
+    ? (bankSel?.selectedOptions?.[0]?.textContent?.trim()||'')
+    : '';
+  // Encode bank into pay_method using || (stored in existing Supabase column)
+  const pmEncoded = bankLabel ? pm+'||'+bankLabel : pm;
   const dt   = document.getElementById('epPaidDate')?.value||'';
   const cmt  = document.getElementById('epComment')?.value?.trim()||'';
   const btn  = document.querySelector('#editPayModal .btn-primary');
   if(btn){btn.disabled=true;btn.textContent='Saving...';}
   try{
-    const body = {transfer_id:tid, pay_method:pm, pay_bank_account:bank, paid_comment:cmt};
+    const body = {transfer_id:tid, pay_method:pmEncoded, paid_comment:cmt};
     if(dt) body.paid_at = new Date(dt).toISOString();
-    await fetch(PR_SB+'/payment_requests?id=eq.'+prId,{
+    const res = await fetch(PR_SB+'/payment_requests?id=eq.'+prId,{
       method:'PATCH',
       headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
       body:JSON.stringify(body)
     });
+    if(!res.ok){ const e=await res.text(); throw new Error(e); }
+    // Update local array immediately
+    const local = payRequests.find(x=>x.id===prId);
+    if(local){ local.transfer_id=tid; local.pay_method=pmEncoded; local.paid_comment=cmt; if(dt) local.paid_at=new Date(dt).toISOString(); }
     document.getElementById('editPayModal')?.remove();
     showFlash('✓ Payment details updated.','prFlash','prFlashMsg');
     await loadPayRequests();
