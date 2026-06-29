@@ -4735,7 +4735,7 @@ function viewPR(id){
     {key:'checked',  label:'Checked by',   canComment:true, canEdit:false,   canReverse:prCanAct(pr,'checked')&&pr.checked_by},
     {key:'approved', label:'Approved by',  canComment:true, canEdit:false,   canReverse:prCanAct(pr,'approved')&&pr.approved_by},
     {key:'verified', label:'Verified by',  canComment:true, canEdit:false,   canReverse:isAdmin&&!!pr.verified_by, canPartial:isAdmin&&next==='paid', canReject:isAdmin&&(next==='verified'||next==='paid')},
-    {key:'paid',     label:'Paid by',      canComment:true, canEdit:false,   canReverse:isAdmin&&!!pr.paid_by},
+    {key:'paid',     label:'Paid by',      canComment:true, canEdit:false,   canReverse:isAdmin&&!!pr.paid_by, canEditPayment:isFinanceOrAdmin()&&!!pr.paid_by},
   ];
 
   document.getElementById('prDetailContent').innerHTML=`
@@ -4853,6 +4853,7 @@ function viewPR(id){
              ${s.canReverse?`<button onclick="reversePRStep('${pr.id}','${s.key}')" style="margin-top:4px;font-size:10px;padding:2px 8px;border:1px solid var(--amber);border-radius:5px;background:var(--amber-light);color:#92400e;cursor:pointer">↩ Reverse</button>`:''}
              ${s.canPartial&&parseFloat(pr.partial_amount||0)>0?`<div style="margin-top:4px;font-size:10px;background:#fef3c7;padding:2px 6px;border-radius:4px;color:#92400e">Partial: ${fmt(pr.partial_amount)}</div>`:''}
              ${s.canEdit?`<button onclick="editPR('${pr.id}')" style="margin-top:4px;font-size:10px;padding:2px 8px;border:1px solid var(--teal);border-radius:5px;background:var(--teal-light);color:var(--teal-dark);cursor:pointer">✏ Edit</button>`:''}
+             ${s.canEditPayment?`<button onclick="openEditPaymentModal('${pr.id}')" style="margin-top:4px;font-size:10px;padding:2px 8px;border:1px solid #16a34a;border-radius:5px;background:#f0fdf4;color:#166534;cursor:pointer">✏ Edit Payment</button>`:''}
              `
           :`<div style="font-size:11px;color:var(--muted2);font-style:italic">${s.key==='checked'?'Finance/Mgmt':s.key==='approved'?'Director':s.key==='verified'?'GM/Admin':s.key==='paid'?'Finance':''}</div>
              <div style="margin-top:5px;border-top:1px solid var(--border);padding-top:4px;font-size:10px;color:var(--muted2)">Sign: ___________</div>
@@ -5198,7 +5199,6 @@ async function actOnPR(id){
       return;
     }
     // Post-payment: invoice not required — proceed with slip only
-    // Transfer slip validation now handled below
     if(!confirm('Confirm payment of '+fmt(pr.net_payable)+' has been PAID?')) return;
     const tid=tel.value.trim(), pm=mel?mel.value:'Bank Transfer', cmt=cel?cel.value.trim():'';
     try{
@@ -5690,6 +5690,81 @@ function deleteSubdivisionBtn(btn){deleteSubdivision(btn.dataset.coid,btn.datase
   window.addEventListener('load', function(){
     setTimeout(updateInstallBtn, 1000);
   });
+
+// ── EDIT PAYMENT DETAILS (Finance/Admin after paid) ──────────
+function openEditPaymentModal(prId){
+  const pr = payRequests.find(x=>x.id===prId); if(!pr) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'editPayModal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border-radius:16px;padding:24px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:90vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div style="font-family:'DM Serif Display',serif;font-size:18px;color:var(--ink)">Edit Payment Details</div>
+        <button onclick="document.getElementById('editPayModal').remove()" style="background:none;border:none;cursor:pointer;font-size:22px;color:var(--muted2);padding:0 4px">&times;</button>
+      </div>
+      <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:12px">Payment Details</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div>
+            <label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Transfer / Cheque Number</label>
+            <input type="text" id="epTransferId" value="${pr.transfer_id||''}" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;font-weight:700;outline:none">
+          </div>
+          <div>
+            <label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Payment Method</label>
+            <select id="epPayMethod" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;outline:none">
+              ${['Bank Transfer','Cheque','Cash','CBE Birr','Telebirr'].map(m=>`<option ${pr.pay_method===m?'selected':''}>${m}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div style="margin-bottom:10px">
+          <label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Paying Bank Account</label>
+          <input type="text" id="epPayBank" value="${pr.pay_bank_account||''}" placeholder="Bank name / account" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:12px;outline:none">
+        </div>
+        <div style="margin-bottom:10px">
+          <label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Paid Date</label>
+          <input type="date" id="epPaidDate" value="${pr.paid_at?pr.paid_at.slice(0,10):''}" style="width:100%;padding:8px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;outline:none">
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Payment Comment</label>
+          <textarea id="epComment" rows="2" style="width:100%;padding:7px 10px;border:1.5px solid #86efac;border-radius:7px;font-size:12px;outline:none;resize:vertical">${pr.paid_comment||''}</textarea>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="document.getElementById('editPayModal').remove()" class="btn-secondary">Cancel</button>
+        <button onclick="saveEditedPayment('${prId}')" class="btn-primary" style="background:linear-gradient(135deg,#16a34a,#15803d)">Save Payment Details</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function saveEditedPayment(prId){
+  const tid  = document.getElementById('epTransferId')?.value?.trim()||'';
+  const pm   = document.getElementById('epPayMethod')?.value||'';
+  const bank = document.getElementById('epPayBank')?.value?.trim()||'';
+  const dt   = document.getElementById('epPaidDate')?.value||'';
+  const cmt  = document.getElementById('epComment')?.value?.trim()||'';
+  const btn  = document.querySelector('#editPayModal .btn-primary');
+  if(btn){btn.disabled=true;btn.textContent='Saving...';}
+  try{
+    const body = {transfer_id:tid, pay_method:pm, pay_bank_account:bank, paid_comment:cmt};
+    if(dt) body.paid_at = new Date(dt).toISOString();
+    await fetch(PR_SB+'/payment_requests?id=eq.'+prId,{
+      method:'PATCH',
+      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify(body)
+    });
+    document.getElementById('editPayModal')?.remove();
+    showFlash('✓ Payment details updated.','prFlash','prFlashMsg');
+    await loadPayRequests();
+    renderPRList();
+    if(document.getElementById('prDetailModal')?.style.display!=='none') viewPR(prId);
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent='Save Payment Details';}
+    alert('Save failed: '+e.message);
+  }
+}
+
   </script>
 </body>
 </html>
