@@ -1862,7 +1862,7 @@ function getPRTransactions(){
     if(!groups[key]){
       groups[key] = {
         trf: pr.transfer_id.trim(), co: coId, divCode, divName,
-        paidDate, prs: [], totalAmt: 0, pay_method: (pr.pay_method||'').split('||')[0], bank_account: pr.pay_bank_account||(pr.pay_method||'').split('||')[1]||''
+        paidDate, prs: [], totalAmt: 0, pay_method: (pr.pay_method||'').split('||')[0], bank_account: (pr.pay_method||'').includes('||')?(pr.pay_method||'').split('||').slice(1).join('||'):(pr.pay_bank_account||'')
       };
     }
     const partial = parseFloat(pr.partial_amount||0);
@@ -1915,7 +1915,7 @@ function getPRTransactions(){
       amtUsd  : null,
       ref     : prGetType(pr) + ': ' + pr.project + sub,
       note    : 'PR Payment — ' + (pr.pay_method||'') + sub,
-      bank_account: pr.pay_bank_account||(pr.pay_method||'').split('||')[1]||'',
+      bank_account: (pr.pay_method||'').includes('||')?(pr.pay_method||'').split('||').slice(1).join('||'):(pr.pay_bank_account||''),
       isPR    : true
     };
   });
@@ -5219,10 +5219,6 @@ async function actOnPR(id){
         pre_invoice: (prAttachments.pre_invoice&&prAttachments.pre_invoice.length&&(!pr.pre_invoice||pr.pre_invoice==='null'))?JSON.stringify(prAttachments.pre_invoice):(pr.pre_invoice||null),
         post_invoice: (prAttachments.post_invoice&&prAttachments.post_invoice.length&&(!pr.post_invoice||pr.post_invoice==='null'))?JSON.stringify(prAttachments.post_invoice):(pr.post_invoice||null)
       };
-      // Add optional columns only if they exist (avoids Supabase rejecting unknown columns)
-      const whtMode = document.querySelector('input[name="whtMode"]:checked')?.value;
-      if(whtMode) paidPayload.wht_applied = whtMode==='apply';
-
       const patchRes = await fetch(PR_SB+'/payment_requests?id=eq.'+id,{
         method:'PATCH',
         headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
@@ -5232,22 +5228,8 @@ async function actOnPR(id){
       if(!patchRes.ok){
         const errText = await patchRes.text();
         console.error('PR paid PATCH failed:', patchRes.status, errText);
-        // Try minimal payload as fallback
-        const fallbackRes = await fetch(PR_SB+'/payment_requests?id=eq.'+id,{
-          method:'PATCH',
-          headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
-          body:JSON.stringify({
-            paid_by:currentUser.username, paid_at:new Date().toISOString(),
-            status:'paid', transfer_id:tid, pay_method:pm, paid_comment:cmt,
-            transfer_slip:paidPayload.transfer_slip,
-            pre_invoice:paidPayload.pre_invoice, post_invoice:paidPayload.post_invoice
-          })
-        });
-        if(!fallbackRes.ok){
-          const fb = await fallbackRes.text();
-          alert('Payment save failed: '+fb+' Please try again or contact admin.');
-          return;
-        }
+        alert('Payment save failed. Please try again.');
+        return;
       }
 
       // Step 2: Update local payRequests array immediately so UI reflects change
@@ -5259,7 +5241,6 @@ async function actOnPR(id){
         localPR.transfer_id = tid;
         localPR.pay_method = pmEncoded;
         localPR.paid_comment = cmt;
-        localPR.pay_bank_account = bankAcctLabel;
         if(paidPayload.transfer_slip) localPR.transfer_slip = paidPayload.transfer_slip;
       }
 
