@@ -1862,7 +1862,7 @@ function getPRTransactions(){
     if(!groups[key]){
       groups[key] = {
         trf: pr.transfer_id.trim(), co: coId, divCode, divName,
-        paidDate, prs: [], totalAmt: 0, pay_method: pr.pay_method||'', bank_account: pr.pay_bank_account||''
+        paidDate, prs: [], totalAmt: 0, pay_method: (pr.pay_method||'').split('||')[0], bank_account: pr.pay_bank_account||(pr.pay_method||'').split('||')[1]||''
       };
     }
     const partial = parseFloat(pr.partial_amount||0);
@@ -1886,7 +1886,7 @@ function getPRTransactions(){
       amt     : g.totalAmt,
       amtUsd  : null,
       ref     : projects + ' | TRF:' + g.trf,
-      note    : 'PR Payment — ' + g.pay_method + ' | TRF:' + g.trf + (g.prs.length > 1 ? ' (' + g.prs.length + ' requests)' : ''),
+      note    : 'PR Payment — ' + (g.pay_method||'').split('||')[0] + (g.bank_account?' | Bank: '+g.bank_account:'') + ' | TRF:' + g.trf + (g.prs.length > 1 ? ' (' + g.prs.length + ' requests)' : ''),
       bank_account: g.bank_account||'',
       isPR    : true
     };
@@ -1915,7 +1915,7 @@ function getPRTransactions(){
       amtUsd  : null,
       ref     : prGetType(pr) + ': ' + pr.project + sub,
       note    : 'PR Payment — ' + (pr.pay_method||'') + sub,
-      bank_account: pr.pay_bank_account||pr.pay_method||'',
+      bank_account: pr.pay_bank_account||(pr.pay_method||'').split('||')[1]||'',
       isPR    : true
     };
   });
@@ -4781,7 +4781,7 @@ function viewPR(id){
     ${pr.note?`<div style="background:var(--bg);border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:10px"><strong>Note:</strong> ${pr.note}</div>`:''}
     ${pr.rejected&&pr.reject_comment?`<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:10px;color:#991b1b"><strong>⚠ Rejection Reason:</strong> ${pr.reject_comment}</div>`:''}
     ${(()=>{const _ri=prReverseInfo(pr);return _ri?`<div style="background:#fff1f2;border:1.5px solid #fda4af;border-radius:10px;padding:12px 16px;font-size:13px;margin-bottom:12px"><div style="font-weight:800;color:#be123c;margin-bottom:4px">↩ Payment Request Reversed</div><div style="color:#9f1239;margin-bottom:6px"><strong>Reversed Step:</strong> ${_ri.step} &nbsp;|&nbsp; <strong>By:</strong> ${_ri.by}</div><div style="color:#9f1239;margin-bottom:6px"><strong>Reason:</strong> ${_ri.reason}</div><div style="background:#be123c;color:#fff;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:700">⚠ Please address the reason for this reversed PR before resubmitting.</div></div>`:'';})()}
-    ${pr.transfer_id?`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px"><strong style="color:#166534">Transfer ID:</strong> ${pr.transfer_id} | <strong style="color:#166534">Method:</strong> ${pr.pay_method||'—'}</div>`:''}
+    ${pr.transfer_id?`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px"><strong style="color:#166534">Transfer ID:</strong> ${pr.transfer_id} | <strong style="color:#166534">Method:</strong> ${(pr.pay_method||'—').split('||')[0]}${(pr.pay_method||'').includes('||')?' | <strong style="color:#166534">Bank:</strong> '+(pr.pay_method||'').split('||')[1]:''}</div>`:''}
 
     <!-- Action area for current step -->
     ${next==='paid'&&canAct?(setTimeout(function(){var divCode=(pr.division||'').split('.')[0].trim();populatePayBankDrop(divCode);},80),'')+'':''}
@@ -5202,20 +5202,24 @@ async function actOnPR(id){
     const tid=tel.value.trim(), pm=mel?mel.value:'Bank Transfer', cmt=cel?cel.value.trim():'';
     try{
       // Step 1: Mark PR as paid in Supabase — safe payload (only known columns)
+      const bankAcctRaw = document.getElementById('prPayBank')?.value||'';
+      const bankAcctLabel = bankAcctRaw && bankAcctRaw!=='OTHER'
+        ? (document.getElementById('prPayBank')?.selectedOptions?.[0]?.textContent?.trim()||'')
+        : '';
+      // Encode bank label into pay_method using || separator (stored in existing column)
+      const pmEncoded = bankAcctLabel ? pm+'||'+bankAcctLabel : pm;
       const paidPayload = {
         paid_by: currentUser.username,
         paid_at: new Date().toISOString(),
         status: 'paid',
         transfer_id: tid,
-        pay_method: pm,
+        pay_method: pmEncoded,
         paid_comment: cmt,
         transfer_slip: (prAttachments.transfer_slip&&prAttachments.transfer_slip.length)?JSON.stringify(prAttachments.transfer_slip):null,
         pre_invoice: (prAttachments.pre_invoice&&prAttachments.pre_invoice.length&&(!pr.pre_invoice||pr.pre_invoice==='null'))?JSON.stringify(prAttachments.pre_invoice):(pr.pre_invoice||null),
         post_invoice: (prAttachments.post_invoice&&prAttachments.post_invoice.length&&(!pr.post_invoice||pr.post_invoice==='null'))?JSON.stringify(prAttachments.post_invoice):(pr.post_invoice||null)
       };
       // Add optional columns only if they exist (avoids Supabase rejecting unknown columns)
-      const bankAcct = document.getElementById('prPayBank')?.selectedOptions?.[0]?.textContent?.trim()||'';
-      if(bankAcct) paidPayload.pay_bank_account = bankAcct;
       const whtMode = document.querySelector('input[name="whtMode"]:checked')?.value;
       if(whtMode) paidPayload.wht_applied = whtMode==='apply';
 
@@ -5253,9 +5257,9 @@ async function actOnPR(id){
         localPR.paid_at = new Date().toISOString();
         localPR.status = 'paid';
         localPR.transfer_id = tid;
-        localPR.pay_method = pm;
+        localPR.pay_method = pmEncoded;
         localPR.paid_comment = cmt;
-        if(bankAcct) localPR.pay_bank_account = bankAcct;
+        localPR.pay_bank_account = bankAcctLabel;
         if(paidPayload.transfer_slip) localPR.transfer_slip = paidPayload.transfer_slip;
       }
 
