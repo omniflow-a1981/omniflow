@@ -1167,15 +1167,22 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:8px">Progress Tracking Method</div>
       <div style="display:flex;gap:16px;margin-bottom:10px">
         <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="progMode" value="category" checked onchange="onProgModeChange()"> By Work Category (weighted %)</label>
-        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="progMode" value="wbs" onchange="onProgModeChange()"> By BOQ / WBS Items (from contract BOQ blocks)</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="progMode" value="manual_boq" onchange="onProgModeChange()"> Multiple Block BOQ (manual entry)</label>
       </div>
 
+      <!-- Category mode -->
       <div id="progBreakdownWrap">
         <div style="display:grid;grid-template-columns:1fr 90px 100px 36px;gap:6px;padding:6px 8px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">
           <span id="progBreakdownLabel">Category</span><span id="progWeightLabel">Weight %</span><span>Complete %</span><span></span>
         </div>
         <div id="progBreakdownRows"></div>
         <button onclick="addProgBreakdownRow()" class="btn-secondary" style="font-size:11px;padding:5px 12px;margin-top:6px">+ Add Row</button>
+      </div>
+      <!-- Manual BOQ mode -->
+      <div id="progManualBoqWrap" style="display:none">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Enter BOQ items for this progress report. Use blocks to group by section/floor/work type.</div>
+        <div id="progBoqBlocks"></div>
+        <button onclick="addProgBoqBlock()" class="btn-secondary" style="font-size:11px;padding:5px 12px;margin-top:6px">+ Add BOQ Block</button>
       </div>
 
       <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px">
@@ -6120,7 +6127,6 @@ function onProjDivisionChange(){
     const o = document.createElement('option');
     o.value = s.code;
     o.textContent = s.code+' — '+(s.project||s.name)+(s.client?' ('+s.client+')':'')+(existing?' [Already tracked]':'');
-    if(existing){ o.disabled = true; }
     subSel.appendChild(o);
   });
   const customOpt = document.createElement('option');
@@ -6244,16 +6250,14 @@ async function saveProject(){
     created_by: currentUser?.username||'user'
   };
   if(!payload.project_name){ alert('Project name is required.'); return; }
-  // Prevent duplicate project for the same subdivision (when creating new, not editing)
+  // Warn if duplicate subdivision project (but allow proceeding)
   if(!id && payload.subdivision_code){
     const dup = engProjects.find(function(p){
       return p.company_id===payload.company_id && p.division_code===payload.division_code && p.subdivision_code===payload.subdivision_code;
     });
     if(dup){
-      alert('A project for this subdivision already exists: "'+dup.project_name+'".\n\nOpening it for editing instead of creating a duplicate.');
-      closeProjectModal();
-      openProjectModal(dup.id);
-      return;
+      const proceed = confirm('A project for this subdivision already exists: "'+dup.project_name+'".\n\nClick OK to create another entry, or Cancel to go back.');
+      if(!proceed) return;
     }
   }
   if(id) await engFetch('/eng_projects?id=eq.'+id,'PATCH',payload);
@@ -6548,6 +6552,9 @@ function openProgressModal(){
     {label:'MEP (Mechanical/Electrical/Plumbing)', weight:30, complete:0},
     {label:'Finishing', weight:30, complete:0}
   ];
+  progManualBoqBlocks = [];
+  document.getElementById('progBreakdownWrap').style.display='block';
+  document.getElementById('progManualBoqWrap').style.display='none';
   renderProgBreakdownRows();
   onProgProjectChange();
   document.getElementById('progressModal').style.display='flex';
@@ -6556,13 +6563,20 @@ function closeProgressModal(){ document.getElementById('progressModal').style.di
 
 function onProgModeChange(){
   const mode = document.querySelector('input[name="progMode"]:checked').value;
-  document.getElementById('progBreakdownLabel').textContent = mode==='wbs' ? 'BOQ Item (from contract blocks)' : 'Category';
-  const wl = document.getElementById('progWeightLabel'); if(wl) wl.textContent = mode==='wbs' ? 'BOQ Amount' : 'Weight %';
-  if(mode==='wbs'){
-    loadBoqItemsForProgressProject();
-  } else {
-    progBreakdownRows = [{label:'Civil Works', weight:40, complete:0},{label:'MEP', weight:30, complete:0},{label:'Finishing', weight:30, complete:0}];
+  const catWrap = document.getElementById('progBreakdownWrap');
+  const boqWrap = document.getElementById('progManualBoqWrap');
+  if(mode==='category'){
+    if(catWrap) catWrap.style.display='block';
+    if(boqWrap) boqWrap.style.display='none';
+    document.getElementById('progBreakdownLabel').textContent = 'Category';
+    const wl=document.getElementById('progWeightLabel'); if(wl) wl.textContent='Weight %';
+    progBreakdownRows = [{label:'Civil Works',weight:40,complete:0},{label:'MEP',weight:30,complete:0},{label:'Finishing',weight:30,complete:0}];
     renderProgBreakdownRows();
+  } else {
+    if(catWrap) catWrap.style.display='none';
+    if(boqWrap) boqWrap.style.display='block';
+    if(!progManualBoqBlocks.length) progManualBoqBlocks = [{name:'Block 1',items:[{item_no:'',description:'',unit:'',quantity:0,unit_rate:0,amount:0}]}];
+    renderProgBoqBlocks();
   }
 }
 
@@ -6648,11 +6662,25 @@ async function saveProgress(){
   if(!projId){ alert('Please select a project.'); return; }
   const proj = engProjects.find(function(p){return p.id===projId;});
   const mode = document.querySelector('input[name="progMode"]:checked').value;
-  const totalWeight = progBreakdownRows.reduce(function(s,r){return s+(parseFloat(r.weight)||0);},0);
-  let overall = 0;
-  if(totalWeight>0){
-    progBreakdownRows.forEach(function(r){ overall += (parseFloat(r.weight)||0) * (parseFloat(r.complete)||0) / 100; });
-    overall = Math.round((overall/totalWeight)*1000)/10;
+  let overall = 0, breakdownData = progBreakdownRows;
+  if(mode==='category'){
+    const totalWeight = progBreakdownRows.reduce(function(s,r){return s+(parseFloat(r.weight)||0);},0);
+    if(totalWeight>0){
+      progBreakdownRows.forEach(function(r){ overall += (parseFloat(r.weight)||0)*(parseFloat(r.complete)||0)/100; });
+      overall = Math.round((overall/totalWeight)*1000)/10;
+    }
+  } else {
+    // Manual BOQ mode — compute overall from all blocks' total amounts vs executed
+    let totalAmt=0, execAmt=0;
+    progManualBoqBlocks.forEach(function(blk){
+      (blk.items||[]).forEach(function(it){
+        const amt = (parseFloat(it.quantity)||0)*(parseFloat(it.unit_rate)||0);
+        const execAmt2 = (parseFloat(it.quantity_executed)||0)*(parseFloat(it.unit_rate)||0);
+        totalAmt+=amt; execAmt+=execAmt2;
+      });
+    });
+    overall = totalAmt>0 ? Math.round((execAmt/totalAmt)*1000)/10 : 0;
+    breakdownData = progManualBoqBlocks;
   }
   const payload = {
     project_id: projId,
@@ -6662,7 +6690,7 @@ async function saveProgress(){
     report_period: document.getElementById('progPeriod').value.trim(),
     tracking_mode: mode,
     overall_percent: overall,
-    breakdown: JSON.stringify(progBreakdownRows),
+    breakdown: JSON.stringify(breakdownData),
     manpower_count: parseInt(document.getElementById('progManpower').value)||0,
     equipment_notes: document.getElementById('progEquipment').value.trim(),
     safety_incidents: parseInt(document.getElementById('progSafety').value)||0,
@@ -6690,9 +6718,20 @@ function openProgressDetail(id){
     '<div class="modal-header"><div class="modal-title">'+(proj?proj.project_name:'Progress Report')+'</div><button class="modal-close" onclick="closeProgressDetail()">&times;</button></div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:14px">'+r.report_date+(r.report_period?' · '+r.report_period:'')+'</div>'
     +'<div style="font-size:24px;font-weight:800;color:var(--teal-dark);margin-bottom:14px">'+(r.overall_percent||0)+'% Complete</div>'
-    +'<div style="margin-bottom:14px">'+breakdown.map(function(b){
-      return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border2)"><span>'+(b.label||'—')+' (wt '+b.weight+'%)</span><span style="font-weight:700">'+b.complete+'%</span></div>';
-    }).join('')+'</div>'
+    +(r.tracking_mode==='category'
+      ? '<div style="margin-bottom:14px">'+breakdown.map(function(b){
+          return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border2)"><span>'+(b.label||'—')+' (wt '+(b.weight||0)+'%)</span><span style="font-weight:700">'+(b.complete||0)+'%</span></div>';
+        }).join('')+'</div>'
+      : '<div style="margin-bottom:14px">'+breakdown.map(function(blk){
+          const blockTotal=(blk.items||[]).reduce(function(s,it){return s+(parseFloat(it.amount)||0);},0);
+          const rowsHtml=(blk.items||[]).map(function(it){
+            return '<tr><td style="padding:4px 6px;font-size:11px">'+(it.item_no||'')+'</td><td style="padding:4px 6px;font-size:11px">'+(it.description||'')+'</td><td style="padding:4px 6px;font-size:11px">'+(it.unit||'')+'</td><td style="padding:4px 6px;font-size:11px;text-align:right">'+(it.quantity||0)+'</td><td style="padding:4px 6px;font-size:11px;text-align:right">'+(it.unit_rate||0).toLocaleString()+'</td><td style="padding:4px 6px;font-size:11px;text-align:right;font-weight:700">'+(it.amount||0).toLocaleString()+'</td><td style="padding:4px 6px;font-size:11px;text-align:right">'+(it.quantity_executed||0)+'</td></tr>';
+          }).join('');
+          return '<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--ink2);margin-bottom:6px">'+blk.name+'</div>'
+            +'<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--bg);font-size:9px;font-weight:700;color:var(--muted)"><th style="padding:4px 6px;text-align:left">Item No.</th><th style="padding:4px 6px;text-align:left">Description</th><th style="padding:4px 6px;text-align:left">Unit</th><th style="padding:4px 6px;text-align:right">Qty</th><th style="padding:4px 6px;text-align:right">Unit Rate</th><th style="padding:4px 6px;text-align:right">Amount</th><th style="padding:4px 6px;text-align:right">Qty Exec.</th></tr></thead><tbody>'+rowsHtml+'</tbody></table>'
+            +'<div style="text-align:right;font-size:11px;color:var(--teal-dark);font-weight:700;margin-top:4px">Block Total: ETB '+blockTotal.toLocaleString('en-ET',{minimumFractionDigits:2})+'</div></div>';
+        }).join('')+'</div>'
+    )
     +'<div class="fr" style="margin-bottom:14px">'
       +'<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Manpower</div><div style="font-size:13px;font-weight:600">'+(r.manpower_count||0)+'</div></div>'
       +'<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Safety Incidents</div><div style="font-size:13px;font-weight:600">'+(r.safety_incidents||0)+'</div></div>'
@@ -6705,6 +6744,77 @@ function openProgressDetail(id){
     +'<div class="btn-row" style="margin-top:14px"><button class="btn-secondary" onclick="closeProgressDetail()">Close</button></div>';
   document.getElementById('progressDetailModal').style.display='flex';
 }
+
+
+// ── MANUAL BOQ MODE for Site Progress ──
+let progManualBoqBlocks = [];
+
+function addProgBoqBlock(){
+  progManualBoqBlocks.push({
+    name:'Block '+(progManualBoqBlocks.length+1),
+    items:[{item_no:'1',description:'',unit:'',quantity:0,unit_rate:0,amount:0,quantity_executed:0}]
+  });
+  renderProgBoqBlocks();
+}
+
+function renderProgBoqBlocks(){
+  const wrap = document.getElementById('progBoqBlocks'); if(!wrap) return;
+  if(!progManualBoqBlocks.length){
+    wrap.innerHTML='<div style="text-align:center;padding:14px;color:var(--muted);font-size:12px">Click "+ Add BOQ Block" to start.</div>';
+    return;
+  }
+  wrap.innerHTML = progManualBoqBlocks.map(function(blk,bi){
+    const rowsHtml = (blk.items||[]).map(function(it,ii){
+      return '<tr style="border-bottom:1px solid var(--border2)">'
+        +'<td style="padding:4px 5px"><input type="text" value="'+(it.item_no||'').replace(/"/g,'&quot;')+'" oninput="progManualBoqBlocks['+bi+'].items['+ii+'].item_no=this.value" style="width:50px;padding:4px 5px;border:1px solid var(--border);border-radius:5px;font-size:11px;background:var(--surface);color:var(--ink)"></td>'
+        +'<td style="padding:4px 5px"><input type="text" value="'+(it.description||'').replace(/"/g,'&quot;')+'" placeholder="Description" oninput="progManualBoqBlocks['+bi+'].items['+ii+'].description=this.value" style="width:100%;padding:4px 5px;border:1px solid var(--border);border-radius:5px;font-size:11px;background:var(--surface);color:var(--ink)"></td>'
+        +'<td style="padding:4px 5px"><input type="text" value="'+(it.unit||'').replace(/"/g,'&quot;')+'" placeholder="m²" oninput="progManualBoqBlocks['+bi+'].items['+ii+'].unit=this.value" style="width:50px;padding:4px 5px;border:1px solid var(--border);border-radius:5px;font-size:11px;background:var(--surface);color:var(--ink)"></td>'
+        +'<td style="padding:4px 5px"><input type="number" value="'+(it.quantity||0)+'" oninput="progManualBoqBlocks['+bi+'].items['+ii+'].quantity=parseFloat(this.value)||0;recalcProgBoqRow('+bi+','+ii+')" style="width:70px;padding:4px 5px;border:1px solid var(--border);border-radius:5px;font-size:11px;text-align:right;background:var(--surface);color:var(--ink)"></td>'
+        +'<td style="padding:4px 5px"><input type="number" value="'+(it.unit_rate||0)+'" oninput="progManualBoqBlocks['+bi+'].items['+ii+'].unit_rate=parseFloat(this.value)||0;recalcProgBoqRow('+bi+','+ii+')" style="width:80px;padding:4px 5px;border:1px solid var(--border);border-radius:5px;font-size:11px;text-align:right;background:var(--surface);color:var(--ink)"></td>'
+        +'<td style="padding:4px 5px;text-align:right;font-weight:700;font-size:11px;color:var(--ink2)" id="progBoqAmt-'+bi+'-'+ii+'">'+(it.amount||0).toLocaleString('en-ET',{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>'
+        +'<td style="padding:4px 5px"><input type="number" value="'+(it.quantity_executed||0)+'" oninput="progManualBoqBlocks['+bi+'].items['+ii+'].quantity_executed=parseFloat(this.value)||0" style="width:70px;padding:4px 5px;border:1px solid var(--border);border-radius:5px;font-size:11px;text-align:right;background:var(--surface);color:var(--ink)"></td>'
+        +'<td style="padding:4px 5px;text-align:center"><button onclick="progManualBoqBlocks['+bi+'].items.splice('+ii+',1);renderProgBoqBlocks()" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:14px;padding:1px 3px">×</button></td>'
+      +'</tr>';
+    }).join('');
+    return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+        +'<input type="text" value="'+(blk.name||'').replace(/"/g,'&quot;')+'" oninput="progManualBoqBlocks['+bi+'].name=this.value" placeholder="Block name" style="font-size:12px;font-weight:700;color:var(--ink2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;background:var(--bg)">'
+        +'<button onclick="progManualBoqBlocks.splice('+bi+',1);renderProgBoqBlocks()" style="background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--muted2);font-size:12px;padding:2px 8px">Remove Block</button>'
+      +'</div>'
+      +'<div style="overflow-x:auto">'
+        +'<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:600px">'
+          +'<thead><tr style="background:var(--bg);font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">'
+            +'<th style="padding:5px;text-align:left;border-bottom:1.5px solid var(--border);width:55px">Item No.</th>'
+            +'<th style="padding:5px;text-align:left;border-bottom:1.5px solid var(--border)">Description</th>'
+            +'<th style="padding:5px;text-align:left;border-bottom:1.5px solid var(--border);width:55px">Unit</th>'
+            +'<th style="padding:5px;text-align:right;border-bottom:1.5px solid var(--border);width:75px">Quantity</th>'
+            +'<th style="padding:5px;text-align:right;border-bottom:1.5px solid var(--border);width:85px">Unit Rate</th>'
+            +'<th style="padding:5px;text-align:right;border-bottom:1.5px solid var(--border);width:100px">Amount (Birr)</th>'
+            +'<th style="padding:5px;text-align:right;border-bottom:1.5px solid var(--border);width:75px">Qty Exec.</th>'
+            +'<th style="padding:5px;border-bottom:1.5px solid var(--border);width:28px"></th>'
+          +'</tr></thead>'
+          +'<tbody>'+rowsHtml+'</tbody>'
+        +'</table>'
+      +'</div>'
+      +'<button onclick="addProgBoqItemRow('+bi+')" class="btn-secondary" style="font-size:10px;padding:4px 10px;margin-top:6px">+ Add Item</button>'
+    +'</div>';
+  }).join('');
+}
+
+function recalcProgBoqRow(bi, ii){
+  const it = progManualBoqBlocks[bi]?.items[ii]; if(!it) return;
+  it.amount = Math.round((parseFloat(it.quantity)||0)*(parseFloat(it.unit_rate)||0)*100)/100;
+  const cell = document.getElementById('progBoqAmt-'+bi+'-'+ii);
+  if(cell) cell.textContent = it.amount.toLocaleString('en-ET',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function addProgBoqItemRow(bi){
+  if(!progManualBoqBlocks[bi]) return;
+  const nextNo = (progManualBoqBlocks[bi].items.length+1).toString();
+  progManualBoqBlocks[bi].items.push({item_no:nextNo,description:'',unit:'',quantity:0,unit_rate:0,amount:0,quantity_executed:0});
+  renderProgBoqBlocks();
+}
+
 function closeProgressDetail(){ document.getElementById('progressDetailModal').style.display='none'; }
 // ── BOQ BLOCKS (multiple per contract, with standard BOQ item tables) ──
 let engBoqBlocks = [], currentBoqBlockContractId = null, currentBoqBlockItems = [], currentBoqBlockId = null;
