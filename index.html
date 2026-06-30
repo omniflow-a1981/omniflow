@@ -5228,7 +5228,14 @@ async function actOnPR(id){
       if(!patchRes.ok){
         const errText = await patchRes.text();
         console.error('PR paid PATCH failed:', patchRes.status, errText);
-        alert('Payment save failed. Please try again.');
+        alert('Payment save failed: '+errText+'\nPlease try again or contact admin.');
+        return;
+      }
+      // Verify Supabase actually returned the updated row (return=representation)
+      const patchedRows = await patchRes.json().catch(()=>[]);
+      if(!Array.isArray(patchedRows) || !patchedRows.length || patchedRows[0].status!=='paid'){
+        console.error('PR paid PATCH returned no/invalid row:', patchedRows);
+        alert('Payment may not have saved correctly. Please check this PR and try again if it still shows as pending.');
         return;
       }
 
@@ -5829,7 +5836,9 @@ async function saveEditedPayment(prId){
   const btn  = document.querySelector('#editPayModal .btn-primary');
   if(btn){btn.disabled=true;btn.textContent='Saving...';}
   try{
-    const body = {transfer_id:tid, pay_method:pmEncoded, paid_comment:cmt};
+    const existingPR = payRequests.find(x=>x.id===prId);
+    const body = {transfer_id:tid, pay_method:pmEncoded, paid_comment:cmt, status:'paid'};
+    if(!existingPR?.paid_by) body.paid_by = currentUser.username;
     if(dt) body.paid_at = new Date(dt).toISOString();
     const res = await fetch(PR_SB+'/payment_requests?id=eq.'+prId,{
       method:'PATCH',
@@ -5837,9 +5846,18 @@ async function saveEditedPayment(prId){
       body:JSON.stringify(body)
     });
     if(!res.ok){ const e=await res.text(); throw new Error(e); }
+    const rows = await res.json().catch(()=>[]);
+    if(!Array.isArray(rows)||!rows.length||rows[0].status!=='paid'){
+      throw new Error('Supabase did not confirm paid status. Please check this PR again.');
+    }
     // Update local array immediately
     const local = payRequests.find(x=>x.id===prId);
-    if(local){ local.transfer_id=tid; local.pay_method=pmEncoded; local.paid_comment=cmt; if(dt) local.paid_at=new Date(dt).toISOString(); }
+    if(local){
+      local.transfer_id=tid; local.pay_method=pmEncoded; local.paid_comment=cmt;
+      local.status='paid';
+      if(!local.paid_by) local.paid_by = currentUser.username;
+      if(dt) local.paid_at=new Date(dt).toISOString();
+    }
     document.getElementById('editPayModal')?.remove();
     showFlash('✓ Payment details updated.','prFlash','prFlashMsg');
     await loadPayRequests();
