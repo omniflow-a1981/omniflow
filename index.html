@@ -894,15 +894,36 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
         </select>
       </div>
       <div class="ff"><label>Division</label>
-        <select id="projDivision"></select>
+        <select id="projDivision" onchange="onProjDivisionChange()"></select>
       </div>
     </div>
-    <div class="fr" style="margin-bottom:12px">
-      <div class="ff"><label>Project Name *</label><input type="text" id="projName" placeholder="e.g. G+4 Mixed Use Building"></div>
-      <div class="ff"><label>Client</label><input type="text" id="projClient" placeholder="Client name"></div>
+    <div class="ff" style="margin-bottom:12px">
+      <label>Subdivision / Site *</label>
+      <select id="projSubdivision" onchange="onProjSubdivisionChange()">
+        <option value="">— Select subdivision —</option>
+      </select>
+      <div id="projNoSubMsg" style="display:none;font-size:11px;color:#92400e;background:#fef9c3;padding:6px 10px;border-radius:7px;margin-top:6px">
+        No subdivisions exist yet for this division. Add one in <strong>Companies &amp; Divisions</strong> first, or add it quickly below.
+      </div>
+    </div>
+    <div id="projQuickAddSub" style="display:none;background:var(--bg);border-radius:10px;padding:12px 14px;margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--ink2);margin-bottom:8px">Quick-add subdivision</div>
+      <div class="fr" style="margin-bottom:8px">
+        <div class="ff"><label>Site Name *</label><input type="text" id="qaSubName" placeholder="e.g. New Office Block"></div>
+        <div class="ff"><label>Client</label><input type="text" id="qaSubClient" placeholder="Client name"></div>
+      </div>
+      <div class="fr" style="margin-bottom:8px">
+        <div class="ff"><label>Project / Description</label><input type="text" id="qaSubProject" placeholder="Project description"></div>
+        <div class="ff"><label>Location</label><input type="text" id="qaSubLocation" placeholder="Site location"></div>
+      </div>
+      <button class="btn-secondary" onclick="quickAddSubdivisionForProject()" style="font-size:11px;padding:6px 14px">+ Add &amp; Select</button>
     </div>
     <div class="fr" style="margin-bottom:12px">
-      <div class="ff"><label>Location</label><input type="text" id="projLocation" placeholder="Site location"></div>
+      <div class="ff"><label>Project Name *</label><input type="text" id="projName" placeholder="Auto-filled from subdivision, or type manually"></div>
+      <div class="ff"><label>Client</label><input type="text" id="projClient" placeholder="Auto-filled from subdivision"></div>
+    </div>
+    <div class="fr" style="margin-bottom:12px">
+      <div class="ff"><label>Location</label><input type="text" id="projLocation" placeholder="Auto-filled from subdivision"></div>
       <div class="ff"><label>Project Manager</label><input type="text" id="projManager" placeholder="Assigned PM"></div>
     </div>
     <div class="fr fr3" style="margin-bottom:12px">
@@ -5999,6 +6020,15 @@ function renderEngProjects(){
 
 function fmtETB2(n){ return 'ETB '+(parseFloat(n||0)).toLocaleString('en-ET',{maximumFractionDigits:0}); }
 
+function getDivSubdivisionsForCompany(coId, divCode){
+  // Pull real subdivisions from Companies & Divisions data (source of truth)
+  const co = companies.find(function(c){ return c.id===coId || c.code===coId; });
+  if(!co || !co.divisions) return [];
+  const div = co.divisions.find(function(d){ return d.code===divCode; });
+  if(!div || !div.subdivisions) return [];
+  return div.subdivisions;
+}
+
 function onProjCompanyChange(){
   const co = document.getElementById('projCompany').value;
   const divSel = document.getElementById('projDivision');
@@ -6007,6 +6037,81 @@ function onProjCompanyChange(){
     const o = document.createElement('option');
     o.value = d.code; o.textContent = d.code+' · '+d.name;
     divSel.appendChild(o);
+  });
+  onProjDivisionChange();
+}
+
+function onProjDivisionChange(){
+  const co = document.getElementById('projCompany').value;
+  const divCode = document.getElementById('projDivision').value;
+  const subSel = document.getElementById('projSubdivision');
+  const noSubMsg = document.getElementById('projNoSubMsg');
+  const quickAdd = document.getElementById('projQuickAddSub');
+  subSel.innerHTML = '<option value="">— Select subdivision —</option>';
+  const subs = getDivSubdivisionsForCompany(co, divCode);
+  subs.forEach(function(s){
+    const o = document.createElement('option');
+    o.value = s.code;
+    o.textContent = s.code+' — '+(s.project||s.name)+(s.client?' ('+s.client+')':'');
+    subSel.appendChild(o);
+  });
+  const customOpt = document.createElement('option');
+  customOpt.value = '__manual__';
+  customOpt.textContent = 'Other / Enter manually';
+  subSel.appendChild(customOpt);
+  if(!subs.length){
+    noSubMsg.style.display = 'block';
+    quickAdd.style.display = 'block';
+  } else {
+    noSubMsg.style.display = 'none';
+    quickAdd.style.display = 'none';
+  }
+}
+
+function onProjSubdivisionChange(){
+  const co = document.getElementById('projCompany').value;
+  const divCode = document.getElementById('projDivision').value;
+  const subCode = document.getElementById('projSubdivision').value;
+  const quickAdd = document.getElementById('projQuickAddSub');
+  if(subCode === '__manual__'){
+    quickAdd.style.display = 'none';
+    document.getElementById('projName').value = '';
+    document.getElementById('projClient').value = '';
+    document.getElementById('projLocation').value = '';
+    return;
+  }
+  quickAdd.style.display = 'none';
+  const subs = getDivSubdivisionsForCompany(co, divCode);
+  const s = subs.find(function(x){ return x.code===subCode; });
+  if(s){
+    document.getElementById('projName').value = s.project || s.name || '';
+    document.getElementById('projClient').value = s.client || '';
+    document.getElementById('projLocation').value = s.location || '';
+  }
+}
+
+function quickAddSubdivisionForProject(){
+  const co = document.getElementById('projCompany').value;
+  const divCode = document.getElementById('projDivision').value;
+  const name = document.getElementById('qaSubName').value.trim();
+  const client = document.getElementById('qaSubClient').value.trim();
+  const project = document.getElementById('qaSubProject').value.trim();
+  const location = document.getElementById('qaSubLocation').value.trim();
+  if(!name){ alert('Site name is required.'); return; }
+  const coObj = companies.find(function(c){ return c.id===co || c.code===co; });
+  if(!coObj){ alert('Company not found.'); return; }
+  let div = coObj.divisions.find(function(d){ return d.code===divCode; });
+  if(!div){ alert('Division not found.'); return; }
+  if(!div.subdivisions) div.subdivisions = [];
+  const subCode = divCode+'-S'+(div.subdivisions.length+1);
+  div.subdivisions.push({code:subCode, name:name, client:client, project:project||name, location:location});
+  ls('omni-companies', companies);
+  showFlash ? null : null;
+  onProjDivisionChange();
+  document.getElementById('projSubdivision').value = subCode;
+  onProjSubdivisionChange();
+  ['qaSubName','qaSubClient','qaSubProject','qaSubLocation'].forEach(function(id){
+    const el=document.getElementById(id); if(el) el.value='';
   });
 }
 
@@ -6020,6 +6125,10 @@ function openProjectModal(editId){
       document.getElementById('projCompany').value = p.company_id;
       onProjCompanyChange();
       document.getElementById('projDivision').value = p.division_code;
+      onProjDivisionChange();
+      if(p.subdivision_code){
+        document.getElementById('projSubdivision').value = p.subdivision_code;
+      }
       document.getElementById('projName').value = p.project_name||'';
       document.getElementById('projClient').value = p.client||'';
       document.getElementById('projLocation').value = p.location||'';
@@ -6047,9 +6156,11 @@ function closeProjectModal(){ document.getElementById('projectModal').style.disp
 
 async function saveProject(){
   const id = document.getElementById('projEditId').value;
+  const subCode = document.getElementById('projSubdivision').value;
   const payload = {
     company_id: document.getElementById('projCompany').value,
     division_code: document.getElementById('projDivision').value,
+    subdivision_code: (subCode && subCode!=='__manual__') ? subCode : '',
     project_name: document.getElementById('projName').value.trim(),
     client: document.getElementById('projClient').value.trim(),
     location: document.getElementById('projLocation').value.trim(),
