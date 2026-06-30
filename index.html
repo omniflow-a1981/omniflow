@@ -1127,10 +1127,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     </div>
     <!-- Upload zone for adding items via file -->
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
-      <span style="font-size:12px;font-weight:700;color:var(--ink2)">Contract Items:</span>
-      <button onclick="addBoqBlockItemRow()" class="btn-secondary" style="font-size:11px;padding:5px 12px">+ Add Item Manually</button>
-      <span style="font-size:11px;color:var(--muted)">or</span>
-      <button onclick="document.getElementById('boqBlockFileUpload').click()" class="btn-secondary" style="font-size:11px;padding:5px 12px">📎 Upload BOQ File</button>
+      <span style="font-size:12px;font-weight:700;color:var(--ink2)">Contract Items (read-only)</span>
+      <button id="boqToggleZeroBtn" onclick="toggleBoqZeroRows()" class="btn-secondary" style="font-size:11px;padding:5px 12px">Show all rows</button>
+      <button onclick="addBoqBlockItemRow()" class="btn-secondary" style="font-size:11px;padding:5px 12px">+ Add Item</button>
+      <button onclick="document.getElementById('boqBlockFileUpload').click()" class="btn-secondary" style="font-size:11px;padding:5px 12px">📎 Re-upload BOQ</button>
       <input type="file" id="boqBlockFileUpload" accept=".pdf,.xlsx,.xls" style="display:none" onchange="handleBoqBlockFileUpload(this.files[0])">
       <span id="boqBlockUploadStatus" style="font-size:11px;color:var(--muted)"></span>
     </div>
@@ -6836,6 +6836,19 @@ async function saveProgress(){
   };
   if(!payload.report_date){ alert('Report date is required.'); return; }
   await engFetch('/eng_progress_reports','POST',payload);
+  // Fix 4: Update quantity_executed (cumulative to-date) in eng_boq_block_items
+  if(mode==='manual_boq'){
+    const updateOps = [];
+    progManualBoqBlocks.forEach(function(blk){
+      (blk.items||[]).forEach(function(it){
+        if(it.boq_item_id){
+          const newToDate = (parseFloat(it.qty_todate)||0) + (parseFloat(it.qty_today)||0);
+          updateOps.push(engFetch('/eng_boq_block_items?id=eq.'+it.boq_item_id,'PATCH',{quantity_executed: newToDate}));
+        }
+      });
+    });
+    await Promise.all(updateOps);
+  }
   // Update project's percent_complete to latest report
   if(projId) await engFetch('/eng_projects?id=eq.'+projId,'PATCH',{percent_complete: overall});
   await Promise.all([loadEngProgress(), loadEngProjects()]);
@@ -6934,15 +6947,15 @@ function renderProgBoqBlocks(){
         +'<td style="'+ro+'">'+( it.item_no||'')+'</td>'
         +'<td style="'+ro+'">'+( it.description||'')+'</td>'
         +'<td style="'+ro+';text-align:center">'+( it.unit||'')+'</td>'
-        +'<td style="'+ro+';text-align:right">'+( it.contract_qty||0)+'</td>'
-        +'<td style="'+ro+';text-align:right">'+(parseFloat(it.unit_rate)||0).toLocaleString('en-ET',{minimumFractionDigits:2})+'</td>'
-        +'<td style="'+ro+';text-align:right;font-weight:700">'+contractAmt.toLocaleString('en-ET',{minimumFractionDigits:2})+'</td>'
+        +'<td style="'+ro+';text-align:right">'+fmtQty(it.contract_qty)+'</td>'
+        +'<td style="'+ro+';text-align:right">'+fmtRate(it.unit_rate)+'</td>'
+        +'<td style="'+ro+';text-align:right;font-weight:700">'+(contractAmt>0?fmtAmt(contractAmt):'—')+'</td>'
         // To-date (read-only, auto-calculated)
-        +'<td style="'+ro+';text-align:right;color:#1e40af">'+( parseFloat(it.qty_todate)||0)+'</td>'
-        +'<td style="'+ro+';text-align:right;color:#1e40af">'+amtToDate.toLocaleString('en-ET',{minimumFractionDigits:2})+'</td>'
+        +'<td style="'+ro+';text-align:right;color:#1e40af">'+fmtQty(it.qty_todate)+'</td>'
+        +'<td style="'+ro+';text-align:right;color:#1e40af">'+(amtToDate>0?fmtAmt(amtToDate):'—')+'</td>'
         // Today (editable)
         +'<td style="padding:4px 5px;background:#f0fdf4"><input type="number" value="'+(it.qty_today||0)+'" min="0" step="any" oninput="onProgQtyTodayChange('+bi+','+ii+',this.value)" style="width:80px;padding:4px 6px;border:1.5px solid #86efac;border-radius:5px;font-size:11px;text-align:right;background:#f0fdf4;color:#166534;font-weight:700;outline:none"></td>'
-        +'<td style="'+ro+';text-align:right;color:#166534;font-weight:700" id="progAmtToday-'+bi+'-'+ii+'">'+amtToday.toLocaleString('en-ET',{minimumFractionDigits:2})+'</td>'
+        +'<td style="'+ro+';text-align:right;color:#166534;font-weight:700" id="progAmtToday-'+bi+'-'+ii+'">'+( amtToday>0?fmtAmt(amtToday):'—')+'</td>'
       +'</tr>';
     }).join('');
     return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px">'
@@ -6986,11 +6999,11 @@ function onProgQtyTodayChange(bi, ii, val){
   it.qty_today = parseFloat(val)||0;
   it.amount_today = Math.round(it.qty_today*(parseFloat(it.unit_rate)||0)*100)/100;
   const amtCell = document.getElementById('progAmtToday-'+bi+'-'+ii);
-  if(amtCell) amtCell.textContent = it.amount_today.toLocaleString('en-ET',{minimumFractionDigits:2});
+  if(amtCell) amtCell.textContent = it.amount_today>0 ? fmtAmt(it.amount_today) : '—';
   // Update block today total
   const blkTodayTotal = (progManualBoqBlocks[bi].items||[]).reduce(function(s,x){return s+(parseFloat(x.amount_today)||0);},0);
   const blkCell = document.getElementById('progBlkTodayTotal-'+bi);
-  if(blkCell) blkCell.textContent = blkTodayTotal.toLocaleString('en-ET',{minimumFractionDigits:2});
+  if(blkCell) blkCell.textContent = blkTodayTotal>0 ? fmtAmt(blkTodayTotal)+' ETB' : '0';
   recalcProgBoqOverall();
 }
 
@@ -7251,23 +7264,57 @@ async function handleBoqBlockFileUpload(file){
   }catch(e){ status.textContent='Error: '+e.message; status.style.color='var(--red)'; }
 }
 
+let boqShowZeroRows = false;
+
+function toggleBoqZeroRows(){
+  boqShowZeroRows = !boqShowZeroRows;
+  const btn = document.getElementById('boqToggleZeroBtn');
+  if(btn) btn.textContent = boqShowZeroRows ? 'Hide summary rows' : 'Show all rows';
+  renderBoqBlockItemsTable();
+}
+
+function fmtQty(n){
+  const v = parseFloat(n)||0;
+  if(v===0) return '0';
+  if(Number.isInteger(v)) return v.toLocaleString();
+  return v.toLocaleString('en-ET',{maximumFractionDigits:4});
+}
+
+function fmtRate(n){
+  const v = parseFloat(n)||0;
+  if(v===0) return '0.00';
+  return v.toLocaleString('en-ET',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function fmtAmt(n){
+  const v = parseFloat(n)||0;
+  return v.toLocaleString('en-ET',{minimumFractionDigits:0,maximumFractionDigits:0});
+}
+
 function renderBoqBlockItemsTable(){
   const tbody = document.getElementById('boqBlockItemsBody'); if(!tbody) return;
-  const ro = 'padding:5px 6px;font-size:11px;color:var(--ink2);';
-  tbody.innerHTML = currentBoqBlockItems.map(function(it,i){
+  const ro = 'padding:5px 7px;font-size:11px;color:var(--ink2);vertical-align:middle;';
+  const roMuted = 'padding:5px 7px;font-size:11px;color:var(--muted);vertical-align:middle;';
+  // All items read-only (contract is fixed once uploaded)
+  const visibleItems = boqShowZeroRows
+    ? currentBoqBlockItems
+    : currentBoqBlockItems.filter(function(it){ return (parseFloat(it.quantity)||0)>0 || (it.description||'').length>3; });
+  tbody.innerHTML = visibleItems.map(function(it,i){
+    const actualIdx = currentBoqBlockItems.indexOf(it);
     const contractAmt = Math.round((parseFloat(it.quantity)||0)*(parseFloat(it.unit_rate)||0)*100)/100;
     const qtyToDate = parseFloat(it.quantity_executed)||0;
     const amtToDate = Math.round(qtyToDate*(parseFloat(it.unit_rate)||0)*100)/100;
-    return '<tr style="border-bottom:1px solid var(--border2)">'
-      +'<td style="padding:5px 6px"><input type="text" value="'+(it.item_no||'').replace(/"/g,"&quot;")+'" oninput="currentBoqBlockItems['+i+'].item_no=this.value" style="width:58px;padding:4px 5px;border:1px solid var(--border);border-radius:5px;font-size:11px;background:var(--surface);color:var(--ink)"></td>'
-      +'<td style="padding:5px 6px"><input type="text" value="'+(it.description||'').replace(/"/g,"&quot;")+'" placeholder="Description" oninput="currentBoqBlockItems['+i+'].description=this.value" style="width:100%;min-width:160px;padding:4px 5px;border:1px solid var(--border);border-radius:5px;font-size:11px;background:var(--surface);color:var(--ink)"></td>'
-      +'<td style="padding:5px 6px"><input type="text" value="'+(it.unit||'').replace(/"/g,"&quot;")+'" oninput="currentBoqBlockItems['+i+'].unit=this.value" style="width:50px;padding:4px 5px;border:1px solid var(--border);border-radius:5px;font-size:11px;background:var(--surface);color:var(--ink)"></td>'
-      +'<td style="padding:5px 6px"><input type="number" value="'+(it.quantity||0)+'" oninput="currentBoqBlockItems['+i+'].quantity=parseFloat(this.value)||0;recalcBoqItemRow('+i+')" style="width:78px;padding:4px 5px;border:1px solid var(--border);border-radius:5px;font-size:11px;text-align:right;background:var(--surface);color:var(--ink)"></td>'
-      +'<td style="padding:5px 6px"><input type="number" value="'+(it.unit_rate||0)+'" oninput="currentBoqBlockItems['+i+'].unit_rate=parseFloat(this.value)||0;recalcBoqItemRow('+i+')" style="width:88px;padding:4px 5px;border:1px solid var(--border);border-radius:5px;font-size:11px;text-align:right;background:var(--surface);color:var(--ink)"></td>'
-      +'<td style="'+ro+';text-align:right;font-weight:700" id="boqItemTotal-'+i+'">'+fmtETB2(contractAmt)+'</td>'
-      +'<td style="'+ro+';text-align:right;color:#1e40af;background:#eff6ff">'+qtyToDate.toLocaleString()+'</td>'
-      +'<td style="'+ro+';text-align:right;color:#1e40af;background:#eff6ff">'+fmtETB2(amtToDate)+'</td>'
-      +'<td style="padding:5px 6px;text-align:center"><button onclick="currentBoqBlockItems.splice('+i+',1);renderBoqBlockItemsTable()" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:16px;padding:2px 4px">×</button></td>'
+    const isHeader = (parseFloat(it.quantity)||0)===0 && (parseFloat(it.unit_rate)||0)===0;
+    const rowStyle = isHeader ? 'background:var(--bg);font-weight:700;' : '';
+    return '<tr style="border-bottom:1px solid var(--border2);'+rowStyle+'">'
+      +'<td style="'+roMuted+';width:65px">'+(it.item_no||'')+'</td>'
+      +'<td style="'+ro+';max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+(it.description||'').replace(/"/g,"&quot;")+'">'+( it.description||'')+'</td>'
+      +'<td style="'+roMuted+';width:50px;text-align:center">'+(it.unit||'')+'</td>'
+      +'<td style="'+ro+';text-align:right;width:85px">'+fmtQty(it.quantity)+'</td>'
+      +'<td style="'+ro+';text-align:right;width:95px">'+fmtRate(it.unit_rate)+'</td>'
+      +'<td style="'+ro+';text-align:right;font-weight:700;width:110px">'+(contractAmt>0?fmtAmt(contractAmt):'—')+'</td>'
+      +'<td style="'+ro+';text-align:right;color:#1e40af;background:#eff6ff;width:80px">'+fmtQty(qtyToDate)+'</td>'
+      +'<td style="'+ro+';text-align:right;color:#1e40af;background:#eff6ff;width:100px">'+(amtToDate>0?fmtAmt(amtToDate):'—')+'</td>'
     +'</tr>';
   }).join('');
   recalcBoqBlockTotal();
@@ -7282,13 +7329,16 @@ function recalcBoqItemRow(i){
 }
 
 function recalcBoqBlockTotal(){
-  const contractTotal = currentBoqBlockItems.reduce(function(s,it){return s+(parseFloat(it.total_amount)||(parseFloat(it.quantity)||0)*(parseFloat(it.unit_rate)||0));},0);
-  const execTotal = currentBoqBlockItems.reduce(function(s,it){
-    return s+(parseFloat(it.quantity_executed)||0)*(parseFloat(it.unit_rate)||0);
+  // EVM: progress = (To Date executed value) / Contract Total
+  const contractTotal = currentBoqBlockItems.reduce(function(s,it){
+    return s+(parseFloat(it.total_amount)||Math.round((parseFloat(it.quantity)||0)*(parseFloat(it.unit_rate)||0)*100)/100);
   },0);
-  const pct = contractTotal>0 ? Math.round((execTotal/contractTotal)*1000)/10 : 0;
-  const tEl=document.getElementById('boqBlockGrandTotal'); if(tEl) tEl.textContent=fmtETB2(contractTotal);
-  const eEl=document.getElementById('boqBlockExecTotal'); if(eEl) eEl.textContent=fmtETB2(execTotal);
+  const execToDate = currentBoqBlockItems.reduce(function(s,it){
+    return s+Math.round((parseFloat(it.quantity_executed)||0)*(parseFloat(it.unit_rate)||0)*100)/100;
+  },0);
+  const pct = contractTotal>0 ? Math.round((execToDate/contractTotal)*1000)/10 : 0;
+  const tEl=document.getElementById('boqBlockGrandTotal'); if(tEl) tEl.textContent=fmtAmt(contractTotal)+' ETB';
+  const eEl=document.getElementById('boqBlockExecTotal'); if(eEl) eEl.textContent=fmtAmt(execToDate)+' ETB';
   const pEl=document.getElementById('boqBlockExecPct'); if(pEl) pEl.textContent=pct+'%';
 }
 
