@@ -1006,15 +1006,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       <button class="modal-close" onclick="closeContractModal()">&times;</button>
     </div>
     <input type="hidden" id="contrEditId">
-    <div class="ff" style="margin-bottom:12px">
+    <div class="ff" style="margin-bottom:8px">
       <label>Linked Project *</label>
       <select id="contrProjectId" onchange="onContrProjectChange()"></select>
     </div>
+    <div id="contrProjectInfoBanner" style="display:none;background:var(--bg);border-radius:9px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--ink2)"></div>
+    <input type="hidden" id="contrClient">
     <div class="fr" style="margin-bottom:12px">
       <div class="ff"><label>Contract Number</label><input type="text" id="contrNo" placeholder="e.g. WE/2026/014"></div>
       <div class="ff"><label>Contract Title *</label><input type="text" id="contrTitle" placeholder="Contract title"></div>
     </div>
-    <div class="ff" style="margin-bottom:12px"><label>Client</label><input type="text" id="contrClient" placeholder="Client / Employer"></div>
     <div class="fr" style="margin-bottom:12px">
       <div class="ff"><label>Contract Type</label>
         <input type="text" id="contrType" list="contrTypeList" placeholder="e.g. Lump Sum, Unit Price, Cost Plus...">
@@ -1062,6 +1063,67 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   </div>
 </div>
 
+<!-- BOQ Blocks List Modal (per contract) -->
+<div class="modal-overlay" id="boqBlocksModal">
+  <div class="modal-box" style="max-width:760px">
+    <div class="modal-header">
+      <div class="modal-title">BOQ Blocks — <span id="boqBlocksContractTitle"></span></div>
+      <button class="modal-close" onclick="closeBoqBlocksView()">&times;</button>
+    </div>
+    <div style="background:var(--bg);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:8px">+ New BOQ Block</div>
+      <div class="fr" style="margin-bottom:8px">
+        <div class="ff"><label>Block Name *</label><input type="text" id="newBlockName" placeholder="e.g. Block A - Substructure"></div>
+        <div class="ff"><label>Description</label><input type="text" id="newBlockDesc" placeholder="Brief description"></div>
+      </div>
+      <div class="ff" style="margin-bottom:8px"><label>Specification (optional)</label><textarea id="newBlockSpec" style="min-height:42px" placeholder="Material/work specification notes..."></textarea></div>
+      <button class="btn-primary" onclick="addBoqBlock()" style="font-size:12px;padding:7px 14px">+ Add Block</button>
+    </div>
+    <div id="boqBlocksList"></div>
+    <div class="btn-row" style="margin-top:14px">
+      <button class="btn-secondary" onclick="closeBoqBlocksView()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- BOQ Block Item Table Modal (standard BOQ form per block) -->
+<div class="modal-overlay" id="boqBlockItemsModal">
+  <div class="modal-box" style="max-width:920px">
+    <div class="modal-header">
+      <div class="modal-title">BOQ — <span id="boqBlockItemsTitle"></span></div>
+      <button class="modal-close" onclick="closeBoqBlockItems()">&times;</button>
+    </div>
+    <div id="boqBlockSpecBox" style="display:none;background:#fef9c3;border-radius:9px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:#92400e"></div>
+    <div style="overflow-x:auto;margin-bottom:12px">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:760px">
+        <thead>
+          <tr style="background:var(--bg);font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">
+            <th style="padding:8px 8px;text-align:left;border-bottom:1.5px solid var(--border);width:70px">Item No.</th>
+            <th style="padding:8px 8px;text-align:left;border-bottom:1.5px solid var(--border)">Description</th>
+            <th style="padding:8px 8px;text-align:left;border-bottom:1.5px solid var(--border);width:70px">Unit</th>
+            <th style="padding:8px 8px;text-align:right;border-bottom:1.5px solid var(--border);width:90px">Quantity</th>
+            <th style="padding:8px 8px;text-align:right;border-bottom:1.5px solid var(--border);width:100px">Unit Rate</th>
+            <th style="padding:8px 8px;text-align:right;border-bottom:1.5px solid var(--border);width:120px">Total Amount (Birr)</th>
+            <th style="padding:8px 8px;text-align:right;border-bottom:1.5px solid var(--border);width:90px">Qty Executed</th>
+            <th style="padding:8px 8px;text-align:center;border-bottom:1.5px solid var(--border);width:36px"></th>
+          </tr>
+        </thead>
+        <tbody id="boqBlockItemsBody"></tbody>
+      </table>
+    </div>
+    <button onclick="addBoqBlockItemRow()" class="btn-secondary" style="font-size:11px;padding:6px 14px;margin-bottom:14px">+ Add Item</button>
+    <div style="background:var(--bg);border-radius:10px;padding:14px 18px;max-width:340px;margin-left:auto;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;color:var(--teal-dark)"><span>BOQ Total</span><span id="boqBlockGrandTotal">ETB 0</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:6px"><span>Execution Progress</span><span id="boqBlockExecPct" style="font-weight:700;color:var(--ink2)">0%</span></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="saveBoqBlockItems()">Save BOQ Items</button>
+      <button class="btn-secondary" onclick="closeBoqBlockItems()">Close</button>
+    </div>
+  </div>
+</div>
+
+
 
 <!-- ════ ENGINEERING — SITE PROGRESS REPORTS ════ -->
 <div id="pgEngProgress" class="page">
@@ -1091,10 +1153,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       <div class="modal-title">New Progress Report</div>
       <button class="modal-close" onclick="closeProgressModal()">&times;</button>
     </div>
-    <div class="ff" style="margin-bottom:12px">
+    <div class="ff" style="margin-bottom:8px">
       <label>Project *</label>
       <select id="progProjectId" onchange="onProgProjectChange()"></select>
     </div>
+    <div id="progProjectInfoBanner" style="display:none;background:var(--bg);border-radius:9px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--ink2)"></div>
     <div class="fr" style="margin-bottom:12px">
       <div class="ff"><label>Report Date *</label><input type="date" id="progDate"></div>
       <div class="ff"><label>Report Period</label><input type="text" id="progPeriod" placeholder="e.g. Week 12, June 2026"></div>
@@ -1104,12 +1167,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:8px">Progress Tracking Method</div>
       <div style="display:flex;gap:16px;margin-bottom:10px">
         <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="progMode" value="category" checked onchange="onProgModeChange()"> By Work Category (weighted %)</label>
-        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="progMode" value="wbs" onchange="onProgModeChange()"> By BOQ / WBS Items</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="progMode" value="wbs" onchange="onProgModeChange()"> By BOQ / WBS Items (from contract BOQ blocks)</label>
       </div>
 
       <div id="progBreakdownWrap">
         <div style="display:grid;grid-template-columns:1fr 90px 100px 36px;gap:6px;padding:6px 8px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">
-          <span id="progBreakdownLabel">Category</span><span>Weight %</span><span>Complete %</span><span></span>
+          <span id="progBreakdownLabel">Category</span><span id="progWeightLabel">Weight %</span><span>Complete %</span><span></span>
         </div>
         <div id="progBreakdownRows"></div>
         <button onclick="addProgBreakdownRow()" class="btn-secondary" style="font-size:11px;padding:5px 12px;margin-top:6px">+ Add Row</button>
@@ -6049,10 +6112,15 @@ function onProjDivisionChange(){
   const quickAdd = document.getElementById('projQuickAddSub');
   subSel.innerHTML = '<option value="">— Select subdivision —</option>';
   const subs = getDivSubdivisionsForCompany(co, divCode);
+  const editingId = document.getElementById('projEditId').value;
   subs.forEach(function(s){
+    const existing = engProjects.find(function(p){
+      return p.company_id===co && p.division_code===divCode && p.subdivision_code===s.code && p.id!==editingId;
+    });
     const o = document.createElement('option');
     o.value = s.code;
-    o.textContent = s.code+' — '+(s.project||s.name)+(s.client?' ('+s.client+')':'');
+    o.textContent = s.code+' — '+(s.project||s.name)+(s.client?' ('+s.client+')':'')+(existing?' [Already tracked]':'');
+    if(existing){ o.disabled = true; }
     subSel.appendChild(o);
   });
   const customOpt = document.createElement('option');
@@ -6176,6 +6244,18 @@ async function saveProject(){
     created_by: currentUser?.username||'user'
   };
   if(!payload.project_name){ alert('Project name is required.'); return; }
+  // Prevent duplicate project for the same subdivision (when creating new, not editing)
+  if(!id && payload.subdivision_code){
+    const dup = engProjects.find(function(p){
+      return p.company_id===payload.company_id && p.division_code===payload.division_code && p.subdivision_code===payload.subdivision_code;
+    });
+    if(dup){
+      alert('A project for this subdivision already exists: "'+dup.project_name+'".\n\nOpening it for editing instead of creating a duplicate.');
+      closeProjectModal();
+      openProjectModal(dup.id);
+      return;
+    }
+  }
   if(id) await engFetch('/eng_projects?id=eq.'+id,'PATCH',payload);
   else await engFetch('/eng_projects','POST',payload);
   await loadEngProjects();
@@ -6217,12 +6297,14 @@ function closeProjectDetail(){ document.getElementById('projectDetailModal').sty
 
 // ── CONTRACT MANAGEMENT ───────────────
 async function loadEngContracts(){
-  const [proj, contr] = await Promise.all([
+  const [proj, contr, blocks] = await Promise.all([
     engProjects.length ? Promise.resolve(engProjects) : engFetch('/eng_projects?order=created_at.desc&select=*'),
-    engFetch('/eng_contracts?order=created_at.desc&select=*')
+    engFetch('/eng_contracts?order=created_at.desc&select=*'),
+    engFetch('/eng_boq_blocks?order=display_order&select=*')
   ]);
   if(!engProjects.length) engProjects = Array.isArray(proj)?proj:[];
   engContracts = Array.isArray(contr) ? contr : [];
+  engBoqBlocks = Array.isArray(blocks) ? blocks : [];
   renderEngContracts();
 }
 
@@ -6243,7 +6325,9 @@ function renderEngContracts(){
   }
   wrap.innerHTML = list.map(function(c){
     const proj = engProjects.find(function(p){return p.id===c.project_id;});
-    return '<div class="pr-card" style="cursor:pointer" onclick="openContractModal(' + "'" + c.id + "'" + ')">'
+    const blockCount = engBoqBlocks.filter(function(b){return b.contract_id===c.id;}).length;
+    return '<div class="pr-card">'
+      +'<div style="cursor:pointer" onclick="openContractModal(' + "'" + c.id + "'" + ')">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
         +'<div>'
           +'<div style="font-size:14px;font-weight:700;color:var(--ink2);margin-bottom:3px">'+c.contract_title+(c.contract_no?' · '+c.contract_no:'')+'</div>'
@@ -6256,6 +6340,11 @@ function renderEngContracts(){
         +(c.signed_date?'<div style="font-size:11px;color:var(--muted)">Signed: <strong style="color:var(--ink)">'+c.signed_date+'</strong></div>':'')
         +(c.completion_date?'<div style="font-size:11px;color:var(--muted)">Completion: <strong style="color:var(--ink)">'+c.completion_date+'</strong></div>':'')
         +(c.retention_pct?'<div style="font-size:11px;color:var(--muted)">Retention: <strong style="color:var(--ink)">'+c.retention_pct+'%</strong></div>':'')
+      +'</div>'
+      +'</div>'
+      +'<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border2)">'
+        +'<button data-cid="'+c.id+'" onclick="event.stopPropagation();openBoqBlocksViewBtn(this)" class="btn-secondary" style="font-size:11px;padding:6px 12px">'
+        +'📐 BOQ Blocks ('+blockCount+')</button>'
       +'</div>'
     +'</div>';
   }).join('');
@@ -6274,7 +6363,17 @@ function populateContrProjectDropdown(){
 function onContrProjectChange(){
   const sel = document.getElementById('contrProjectId');
   const p = engProjects.find(function(x){return x.id===sel.value;});
-  if(p && !document.getElementById('contrClient').value) document.getElementById('contrClient').value = p.client||'';
+  const banner = document.getElementById('contrProjectInfoBanner');
+  if(p){
+    document.getElementById('contrClient').value = p.client||'';
+    const coName = p.company_id==='WE' ? 'Wanofi Engineering Plc' : 'Matisan Engineering Plc';
+    banner.style.display = 'block';
+    banner.innerHTML = '<strong>'+(p.client||'—')+'</strong> · '+(p.location||'—')+' · '+p.division_code+' · '+coName+'<div style="font-size:10px;color:var(--muted);margin-top:2px">Auto-filled from project — no need to re-enter</div>';
+  } else {
+    document.getElementById('contrClient').value = '';
+    banner.style.display = 'none';
+    banner.innerHTML = '';
+  }
 }
 
 function openContractModal(editId){
@@ -6308,6 +6407,7 @@ function openContractModal(editId){
     });
     document.getElementById('contrStatus').value = 'active';
   }
+  onContrProjectChange();
   document.getElementById('contractModal').style.display='flex';
 }
 function closeContractModal(){ document.getElementById('contractModal').style.display='none'; }
@@ -6416,7 +6516,21 @@ function populateProgressProjectDropdown(){
     sel.appendChild(o);
   });
 }
-function onProgProjectChange(){}
+function onProgProjectChange(){
+  const sel = document.getElementById('progProjectId');
+  const p = engProjects.find(function(x){return x.id===sel.value;});
+  const banner = document.getElementById('progProjectInfoBanner');
+  if(p){
+    const coName = p.company_id==='WE' ? 'Wanofi Engineering Plc' : 'Matisan Engineering Plc';
+    banner.style.display = 'block';
+    banner.innerHTML = '<strong>'+(p.client||'—')+'</strong> · '+(p.location||'—')+' · '+p.division_code+' · '+coName+'<div style="font-size:10px;color:var(--muted);margin-top:2px">Auto-filled from project — no need to re-enter</div>';
+  } else {
+    banner.style.display = 'none';
+    banner.innerHTML = '';
+  }
+  const modeEl = document.querySelector('input[name="progMode"]:checked');
+  if(modeEl && modeEl.value==='wbs') loadBoqItemsForProgressProject();
+}
 
 function openProgressModal(){
   populateProgressProjectDropdown();
@@ -6435,27 +6549,81 @@ function openProgressModal(){
     {label:'Finishing', weight:30, complete:0}
   ];
   renderProgBreakdownRows();
+  onProgProjectChange();
   document.getElementById('progressModal').style.display='flex';
 }
 function closeProgressModal(){ document.getElementById('progressModal').style.display='none'; }
 
 function onProgModeChange(){
   const mode = document.querySelector('input[name="progMode"]:checked').value;
-  document.getElementById('progBreakdownLabel').textContent = mode==='wbs' ? 'BOQ / WBS Item' : 'Category';
-  progBreakdownRows = mode==='wbs'
-    ? [{label:'', weight:100, complete:0}]
-    : [{label:'Civil Works', weight:40, complete:0},{label:'MEP', weight:30, complete:0},{label:'Finishing', weight:30, complete:0}];
+  document.getElementById('progBreakdownLabel').textContent = mode==='wbs' ? 'BOQ Item (from contract blocks)' : 'Category';
+  const wl = document.getElementById('progWeightLabel'); if(wl) wl.textContent = mode==='wbs' ? 'BOQ Amount' : 'Weight %';
+  if(mode==='wbs'){
+    loadBoqItemsForProgressProject();
+  } else {
+    progBreakdownRows = [{label:'Civil Works', weight:40, complete:0},{label:'MEP', weight:30, complete:0},{label:'Finishing', weight:30, complete:0}];
+    renderProgBreakdownRows();
+  }
+}
+
+async function loadBoqItemsForProgressProject(){
+  const projId = document.getElementById('progProjectId')?.value;
+  if(!projId){
+    progBreakdownRows = [{label:'Select a project first, then choose BOQ items', weight:0, complete:0}];
+    renderProgBreakdownRows();
+    return;
+  }
+  const contracts = engContracts.filter(function(c){ return c.project_id===projId; });
+  const contractIds = contracts.map(function(c){ return c.id; });
+  if(!contractIds.length){
+    progBreakdownRows = [];
+    renderProgBreakdownRows();
+    const wrap = document.getElementById('progBreakdownRows');
+    if(wrap) wrap.innerHTML = '<div style="padding:14px;text-align:center;color:var(--muted);font-size:12px">No contract/BOQ blocks exist for this project yet. Add a contract with BOQ blocks in Contract Management first, or switch to Work Category mode.</div>';
+    return;
+  }
+  const blocks = await engFetch('/eng_boq_blocks?contract_id=in.('+contractIds.join(',')+')&select=*');
+  const blockIds = (Array.isArray(blocks)?blocks:[]).map(function(b){ return b.id; });
+  if(!blockIds.length){
+    progBreakdownRows = [];
+    renderProgBreakdownRows();
+    const wrap = document.getElementById('progBreakdownRows');
+    if(wrap) wrap.innerHTML = '<div style="padding:14px;text-align:center;color:var(--muted);font-size:12px">No BOQ blocks found. Add BOQ blocks under this project\'s contract first.</div>';
+    return;
+  }
+  const items = await engFetch('/eng_boq_block_items?block_id=in.('+blockIds.join(',')+')&order=display_order&select=*');
+  progBreakdownRows = (Array.isArray(items)?items:[]).map(function(it){
+    const totalAmt = parseFloat(it.total_amount)||0;
+    const qty = parseFloat(it.quantity)||0;
+    const qtyExec = parseFloat(it.quantity_executed)||0;
+    const pctComplete = qty>0 ? Math.round((qtyExec/qty)*1000)/10 : 0;
+    return {
+      label: (it.item_no?it.item_no+' — ':'')+it.description,
+      weight: totalAmt,    // weight by BOQ amount (cost-weighted progress, standard EVM practice)
+      complete: pctComplete,
+      boq_item_id: it.id
+    };
+  });
   renderProgBreakdownRows();
 }
 
 function renderProgBreakdownRows(){
   const wrap = document.getElementById('progBreakdownRows'); if(!wrap) return;
+  const mode = document.querySelector('input[name="progMode"]:checked')?.value||'category';
+  const isWbs = mode==='wbs';
   wrap.innerHTML = progBreakdownRows.map(function(row,i){
+    const labelField = isWbs
+      ? '<div style="padding:6px 8px;font-size:12px;color:var(--ink2)">'+(row.label||'').replace(/</g,'&lt;')+'</div>'
+      : '<input type="text" value="'+(row.label||'').replace(/"/g,'&quot;')+'" placeholder="e.g. Civil Works" oninput="progBreakdownRows['+i+'].label=this.value" style="padding:6px 8px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:var(--surface);color:var(--ink)">';
+    const weightField = isWbs
+      ? '<div style="padding:6px 8px;font-size:11px;color:var(--muted)">'+fmtETB2(row.weight)+'</div>'
+      : '<input type="number" value="'+(row.weight||0)+'" min="0" max="100" oninput="progBreakdownRows['+i+'].weight=parseFloat(this.value)||0;recalcProgOverall()" style="padding:6px 8px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:var(--surface);color:var(--ink)">';
+    const removeBtn = isWbs ? '' : '<button onclick="progBreakdownRows.splice('+i+',1);renderProgBreakdownRows();recalcProgOverall()" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:16px;padding:2px 4px">×</button>';
     return '<div style="display:grid;grid-template-columns:1fr 90px 100px 36px;gap:6px;padding:5px 0;align-items:center">'
-      +'<input type="text" value="'+(row.label||'').replace(/"/g,'&quot;')+'" placeholder="e.g. Civil Works" oninput="progBreakdownRows['+i+'].label=this.value" style="padding:6px 8px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:var(--surface);color:var(--ink)">'
-      +'<input type="number" value="'+(row.weight||0)+'" min="0" max="100" oninput="progBreakdownRows['+i+'].weight=parseFloat(this.value)||0;recalcProgOverall()" style="padding:6px 8px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:var(--surface);color:var(--ink)">'
+      +labelField
+      +weightField
       +'<input type="number" value="'+(row.complete||0)+'" min="0" max="100" oninput="progBreakdownRows['+i+'].complete=parseFloat(this.value)||0;recalcProgOverall()" style="padding:6px 8px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:var(--surface);color:var(--ink)">'
-      +'<button onclick="progBreakdownRows.splice('+i+',1);renderProgBreakdownRows();recalcProgOverall()" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:16px;padding:2px 4px">×</button>'
+      +removeBtn
     +'</div>';
   }).join('');
   recalcProgOverall();
@@ -6538,6 +6706,172 @@ function openProgressDetail(id){
   document.getElementById('progressDetailModal').style.display='flex';
 }
 function closeProgressDetail(){ document.getElementById('progressDetailModal').style.display='none'; }
+// ── BOQ BLOCKS (multiple per contract, with standard BOQ item tables) ──
+let engBoqBlocks = [], currentBoqBlockContractId = null, currentBoqBlockItems = [], currentBoqBlockId = null;
+
+async function loadEngBoqBlocks(){
+  const data = await engFetch('/eng_boq_blocks?order=display_order&select=*');
+  engBoqBlocks = Array.isArray(data) ? data : [];
+}
+
+function openBoqBlocksViewBtn(btn){
+  openBoqBlocksView(btn.dataset.cid);
+}
+
+async function openBoqBlocksView(contractId){
+  currentBoqBlockContractId = contractId;
+  const c = engContracts.find(function(x){ return x.id===contractId; });
+  document.getElementById('boqBlocksContractTitle').textContent = c ? c.contract_title : '';
+  document.getElementById('newBlockName').value = '';
+  document.getElementById('newBlockDesc').value = '';
+  document.getElementById('newBlockSpec').value = '';
+  await loadEngBoqBlocks();
+  renderBoqBlocksList();
+  document.getElementById('boqBlocksModal').style.display = 'flex';
+}
+function closeBoqBlocksView(){ document.getElementById('boqBlocksModal').style.display = 'none'; renderEngContracts(); }
+
+function renderBoqBlocksList(){
+  const wrap = document.getElementById('boqBlocksList'); if(!wrap) return;
+  const blocks = engBoqBlocks.filter(function(b){ return b.contract_id===currentBoqBlockContractId; });
+  if(!blocks.length){
+    wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:12px">No BOQ blocks yet. Add one above.</div>';
+    return;
+  }
+  wrap.innerHTML = blocks.map(function(b){
+    return '<div class="pr-card" style="margin-bottom:10px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">'
+        +'<div>'
+          +'<div style="font-size:13px;font-weight:700;color:var(--ink2)">'+b.block_name+'</div>'
+          +(b.block_description?'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+b.block_description+'</div>':'')
+        +'</div>'
+        +'<div style="display:flex;gap:6px">'
+          +'<button data-bid="'+b.id+'" data-bname="'+b.block_name.replace(/"/g,'&quot;')+'" onclick="openBoqBlockItemsBtn(this)" class="btn-primary" style="font-size:11px;padding:5px 12px">Open BOQ Table</button>'
+          +'<button data-bid="'+b.id+'" onclick="deleteBoqBlockBtn(this)" style="background:none;border:1px solid var(--border);border-radius:7px;cursor:pointer;color:var(--muted2);font-size:16px;padding:2px 8px">×</button>'
+        +'</div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+
+async function addBoqBlock(){
+  const name = document.getElementById('newBlockName').value.trim();
+  if(!name){ alert('Block name is required.'); return; }
+  const desc = document.getElementById('newBlockDesc').value.trim();
+  const spec = document.getElementById('newBlockSpec').value.trim();
+  const c = engContracts.find(function(x){ return x.id===currentBoqBlockContractId; });
+  const payload = {
+    contract_id: currentBoqBlockContractId,
+    project_id: c ? c.project_id : null,
+    block_name: name,
+    block_description: desc,
+    specification: spec,
+    display_order: engBoqBlocks.filter(function(b){return b.contract_id===currentBoqBlockContractId;}).length,
+    created_by: currentUser?.username||'user'
+  };
+  await engFetch('/eng_boq_blocks','POST',payload);
+  document.getElementById('newBlockName').value='';
+  document.getElementById('newBlockDesc').value='';
+  document.getElementById('newBlockSpec').value='';
+  await loadEngBoqBlocks();
+  renderBoqBlocksList();
+}
+
+function deleteBoqBlockBtn(btn){
+  if(!confirm('Delete this BOQ block and all its items? This cannot be undone.')) return;
+  engFetch('/eng_boq_blocks?id=eq.'+btn.dataset.bid,'DELETE').then(async function(){
+    await loadEngBoqBlocks();
+    renderBoqBlocksList();
+  });
+}
+
+function openBoqBlockItemsBtn(btn){
+  openBoqBlockItems(btn.dataset.bid, btn.dataset.bname);
+}
+
+async function openBoqBlockItems(blockId, blockName){
+  currentBoqBlockId = blockId;
+  document.getElementById('boqBlockItemsTitle').textContent = blockName||'';
+  const block = engBoqBlocks.find(function(b){ return b.id===blockId; });
+  const specBox = document.getElementById('boqBlockSpecBox');
+  if(block && block.specification){
+    specBox.style.display = 'block';
+    specBox.innerHTML = '<strong>Specification:</strong> '+block.specification;
+  } else {
+    specBox.style.display = 'none';
+  }
+  const items = await engFetch('/eng_boq_block_items?block_id=eq.'+blockId+'&order=display_order&select=*');
+  currentBoqBlockItems = Array.isArray(items) ? items.map(function(it){return {...it};}) : [];
+  if(!currentBoqBlockItems.length) currentBoqBlockItems = [{item_no:'',description:'',unit:'',quantity:0,unit_rate:0,total_amount:0,quantity_executed:0}];
+  renderBoqBlockItemsTable();
+  document.getElementById('boqBlockItemsModal').style.display = 'flex';
+}
+function closeBoqBlockItems(){
+  document.getElementById('boqBlockItemsModal').style.display = 'none';
+  loadEngBoqBlocks().then(renderBoqBlocksList);
+}
+
+function renderBoqBlockItemsTable(){
+  const tbody = document.getElementById('boqBlockItemsBody'); if(!tbody) return;
+  tbody.innerHTML = currentBoqBlockItems.map(function(it,i){
+    return '<tr style="border-bottom:1px solid var(--border2)">'
+      +'<td style="padding:5px 6px"><input type="text" value="'+(it.item_no||'').replace(/"/g,'&quot;')+'" oninput="currentBoqBlockItems['+i+'].item_no=this.value" style="width:60px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--ink)"></td>'
+      +'<td style="padding:5px 6px"><input type="text" value="'+(it.description||'').replace(/"/g,'&quot;')+'" placeholder="Item description" oninput="currentBoqBlockItems['+i+'].description=this.value" style="width:100%;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--ink)"></td>'
+      +'<td style="padding:5px 6px"><input type="text" value="'+(it.unit||'').replace(/"/g,'&quot;')+'" placeholder="m³/m²..." oninput="currentBoqBlockItems['+i+'].unit=this.value" style="width:60px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--ink)"></td>'
+      +'<td style="padding:5px 6px"><input type="number" value="'+(it.quantity||0)+'" oninput="currentBoqBlockItems['+i+'].quantity=parseFloat(this.value)||0;recalcBoqItemRow('+i+')" style="width:80px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:right;background:var(--surface);color:var(--ink)"></td>'
+      +'<td style="padding:5px 6px"><input type="number" value="'+(it.unit_rate||0)+'" oninput="currentBoqBlockItems['+i+'].unit_rate=parseFloat(this.value)||0;recalcBoqItemRow('+i+')" style="width:90px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:right;background:var(--surface);color:var(--ink)"></td>'
+      +'<td style="padding:5px 6px;text-align:right;font-weight:700;color:var(--ink2)" id="boqItemTotal-'+i+'">'+fmtETB2(it.total_amount)+'</td>'
+      +'<td style="padding:5px 6px"><input type="number" value="'+(it.quantity_executed||0)+'" oninput="currentBoqBlockItems['+i+'].quantity_executed=parseFloat(this.value)||0" style="width:80px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:right;background:var(--surface);color:var(--ink)"></td>'
+      +'<td style="padding:5px 6px;text-align:center"><button onclick="currentBoqBlockItems.splice('+i+',1);renderBoqBlockItemsTable()" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:16px;padding:2px 4px">×</button></td>'
+    +'</tr>';
+  }).join('');
+  recalcBoqBlockTotal();
+}
+
+function recalcBoqItemRow(i){
+  const it = currentBoqBlockItems[i]; if(!it) return;
+  it.total_amount = Math.round((parseFloat(it.quantity)||0) * (parseFloat(it.unit_rate)||0) * 100)/100;
+  const cell = document.getElementById('boqItemTotal-'+i);
+  if(cell) cell.textContent = fmtETB2(it.total_amount);
+  recalcBoqBlockTotal();
+}
+
+function recalcBoqBlockTotal(){
+  const total = currentBoqBlockItems.reduce(function(s,it){ return s+(parseFloat(it.total_amount)||0); },0);
+  const totalQty = currentBoqBlockItems.reduce(function(s,it){ return s+(parseFloat(it.quantity)||0); },0);
+  const execQty = currentBoqBlockItems.reduce(function(s,it){ return s+(parseFloat(it.quantity_executed)||0); },0);
+  const pct = totalQty>0 ? Math.round((execQty/totalQty)*1000)/10 : 0;
+  const tEl = document.getElementById('boqBlockGrandTotal'); if(tEl) tEl.textContent = fmtETB2(total);
+  const pEl = document.getElementById('boqBlockExecPct'); if(pEl) pEl.textContent = pct+'%';
+}
+
+function addBoqBlockItemRow(){
+  currentBoqBlockItems.push({item_no:'',description:'',unit:'',quantity:0,unit_rate:0,total_amount:0,quantity_executed:0});
+  renderBoqBlockItemsTable();
+}
+
+async function saveBoqBlockItems(){
+  if(!currentBoqBlockId){ alert('No block selected.'); return; }
+  await engFetch('/eng_boq_block_items?block_id=eq.'+currentBoqBlockId,'DELETE');
+  const ops = currentBoqBlockItems.filter(function(it){ return (it.description||'').trim(); }).map(function(it,i){
+    return engFetch('/eng_boq_block_items','POST',{
+      block_id: currentBoqBlockId,
+      item_no: it.item_no||'',
+      description: it.description||'',
+      unit: it.unit||'',
+      quantity: parseFloat(it.quantity)||0,
+      unit_rate: parseFloat(it.unit_rate)||0,
+      total_amount: parseFloat(it.total_amount)||0,
+      quantity_executed: parseFloat(it.quantity_executed)||0,
+      display_order: i
+    });
+  });
+  await Promise.all(ops);
+  showFlash ? showFlash('✓ BOQ items saved.','engContrFlash','engContrFlashMsg') : null;
+  closeBoqBlockItems();
+}
+
+
 
 </script>
 
