@@ -1197,8 +1197,37 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       <div class="ff"><label>Safety Incidents</label><input type="number" id="progSafety" min="0" placeholder="0"></div>
     </div>
     <div class="ff" style="margin-bottom:12px"><label>Equipment on Site</label><input type="text" id="progEquipment" placeholder="e.g. 1 excavator, 2 mixers"></div>
-    <div class="ff" style="margin-bottom:12px"><label>Weather / Site Remarks</label><input type="text" id="progWeather" placeholder="e.g. Clear weather, no disruptions"></div>
-    <div class="ff" style="margin-bottom:12px"><label>Issues / Delays</label><textarea id="progIssues" style="min-height:46px" placeholder="Any issues affecting progress..."></textarea></div>
+    <div class="ff" style="margin-bottom:12px">
+      <label>Weather / Site Conditions</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
+        <select id="progWeatherCondition" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:12px;background:var(--surface);color:var(--ink);outline:none">
+          <option value="">— Select condition —</option>
+          <option value="Sunny">☀️ Sunny</option>
+          <option value="Partly cloudy">⛅ Partly cloudy</option>
+          <option value="Overcast">🌥 Overcast</option>
+          <option value="Light rain">🌦 Light rain</option>
+          <option value="Heavy rain">🌧 Heavy rain</option>
+          <option value="Stormy">⛈ Stormy</option>
+          <option value="Dusty / windy">💨 Dusty / windy</option>
+          <option value="Extreme heat">🌡 Extreme heat</option>
+        </select>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:12px;color:var(--muted)">Disruption:</span>
+          <input type="number" id="progDisruptionAmt" min="0" step="0.5" placeholder="0" style="width:70px;padding:7px 8px;border:1.5px solid var(--border);border-radius:9px;font-size:12px;background:var(--surface);color:var(--ink);outline:none">
+          <select id="progDisruptionUnit" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:12px;background:var(--surface);color:var(--ink);outline:none">
+            <option value="hours">hours</option>
+            <option value="days">days</option>
+          </select>
+        </div>
+      </div>
+      <input type="text" id="progWeather" placeholder="Additional remarks (optional)..." style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:12px;background:var(--surface);color:var(--ink);outline:none">
+    </div>
+    <div class="ff" style="margin-bottom:12px">
+      <label>Issues / Delays</label>
+      <div id="progIssueRows" style="margin-bottom:6px"></div>
+      <button type="button" onclick="addProgIssueRow()" class="btn-secondary" style="font-size:11px;padding:5px 12px">+ Add Issue</button>
+      <input type="hidden" id="progIssues">
+    </div>
     <div class="ff" style="margin-bottom:14px"><label>Additional Notes</label><textarea id="progNotes" style="min-height:46px" placeholder="Other notes..."></textarea></div>
     <div class="btn-row">
       <button class="btn-primary" onclick="saveProgress()">Save Progress Report</button>
@@ -6545,6 +6574,12 @@ function openProgressModal(){
   document.getElementById('progEquipment').value = '';
   document.getElementById('progWeather').value = '';
   document.getElementById('progIssues').value = '';
+  const wc = document.getElementById('progWeatherCondition'); if(wc) wc.value='';
+  const da = document.getElementById('progDisruptionAmt'); if(da) da.value='';
+  const du = document.getElementById('progDisruptionUnit'); if(du) du.value='hours';
+  progIssueRows = [];
+  renderProgIssueRows();
+  addProgIssueRow(); // start with one blank row
   document.getElementById('progNotes').value = '';
   document.querySelector('input[name="progMode"][value="category"]').checked = true;
   progBreakdownRows = [
@@ -6575,7 +6610,10 @@ function onProgModeChange(){
   } else {
     if(catWrap) catWrap.style.display='none';
     if(boqWrap) boqWrap.style.display='block';
-    if(!progManualBoqBlocks.length) progManualBoqBlocks = [{name:'Block 1',items:[{item_no:'',description:'',unit:'',quantity:0,unit_rate:0,amount:0}]}];
+    if(!progManualBoqBlocks.length) progManualBoqBlocks = [
+      {name:'A. Substructure',items:[{item_no:'',description:'',unit:'',quantity:0,unit_rate:0,amount:0,quantity_executed:0}]},
+      {name:'B. Superstructure',items:[{item_no:'',description:'',unit:'',quantity:0,unit_rate:0,amount:0,quantity_executed:0}]}
+    ];
     renderProgBoqBlocks();
   }
 }
@@ -6694,8 +6732,28 @@ async function saveProgress(){
     manpower_count: parseInt(document.getElementById('progManpower').value)||0,
     equipment_notes: document.getElementById('progEquipment').value.trim(),
     safety_incidents: parseInt(document.getElementById('progSafety').value)||0,
-    weather_remarks: document.getElementById('progWeather').value.trim(),
-    issues_delays: document.getElementById('progIssues').value.trim(),
+    weather_remarks: (function(){
+      const cond = document.getElementById('progWeatherCondition')?.value||'';
+      const disAmt = document.getElementById('progDisruptionAmt')?.value||'';
+      const disUnit = document.getElementById('progDisruptionUnit')?.value||'hours';
+      const extra = document.getElementById('progWeather')?.value?.trim()||'';
+      let parts = [];
+      if(cond) parts.push(cond);
+      if(disAmt && parseFloat(disAmt)>0) parts.push('Disruption: '+disAmt+' '+disUnit);
+      if(extra) parts.push(extra);
+      return parts.join(' · ');
+    })(),
+    issues_delays: (function(){
+      const rows = document.querySelectorAll('.prog-issue-row');
+      const parts = [];
+      rows.forEach(function(row){
+        const desc = row.querySelector('.pi-desc')?.value?.trim()||'';
+        const amt = row.querySelector('.pi-amt')?.value||'';
+        const unit = row.querySelector('.pi-unit')?.value||'hours';
+        if(desc) parts.push(desc + (amt&&parseFloat(amt)>0?' ('+amt+' '+unit+')':''));
+      });
+      return parts.join(' | ');
+    })(),
     notes: document.getElementById('progNotes').value.trim(),
     prepared_by: currentUser?.username||'user'
   };
@@ -6749,9 +6807,39 @@ function openProgressDetail(id){
 // ── MANUAL BOQ MODE for Site Progress ──
 let progManualBoqBlocks = [];
 
+const PROG_BLOCK_DEFAULTS = ['A. Substructure','B. Superstructure','C. Roofing','D. External Works','E. Finishing','F. MEP','G. Provisional Items'];
+
+// ── STRUCTURED ISSUE ROWS ──
+let progIssueRows = [];
+
+function addProgIssueRow(){
+  progIssueRows.push({description:'',amount:'',unit:'hours'});
+  renderProgIssueRows();
+}
+
+function renderProgIssueRows(){
+  const wrap = document.getElementById('progIssueRows'); if(!wrap) return;
+  if(!progIssueRows.length){
+    wrap.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:4px 0">No issues logged. Click + Add Issue to record a delay or problem.</div>';
+    return;
+  }
+  wrap.innerHTML = progIssueRows.map(function(row,i){
+    return '<div class="prog-issue-row" style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">'
+      +'<input type="text" class="pi-desc" value="'+(row.description||'').replace(/"/g,'&quot;')+'" placeholder="Issue description..." oninput="progIssueRows['+i+'].description=this.value" style="flex:1;min-width:160px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;background:var(--surface);color:var(--ink);outline:none">'
+      +'<input type="number" class="pi-amt" value="'+(row.amount||'')+'" placeholder="0" min="0" step="0.5" oninput="progIssueRows['+i+'].amount=this.value" style="width:60px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;background:var(--surface);color:var(--ink);outline:none;text-align:right">'
+      +'<select class="pi-unit" onchange="progIssueRows['+i+'].unit=this.value" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;background:var(--surface);color:var(--ink);outline:none">'
+        +'<option value="hours"'+(row.unit==='hours'?' selected':'')+'>hours</option>'
+        +'<option value="days"'+(row.unit==='days'?' selected':'')+'>days</option>'
+      +'</select>'
+      +'<button onclick="progIssueRows.splice('+i+',1);renderProgIssueRows()" style="background:none;border:1px solid var(--border);border-radius:7px;cursor:pointer;color:var(--muted2);font-size:16px;padding:2px 8px">×</button>'
+    +'</div>';
+  }).join('');
+}
+
 function addProgBoqBlock(){
+  const suggestedName = PROG_BLOCK_DEFAULTS[progManualBoqBlocks.length] || 'Block '+(progManualBoqBlocks.length+1);
   progManualBoqBlocks.push({
-    name:'Block '+(progManualBoqBlocks.length+1),
+    name: suggestedName,
     items:[{item_no:'1',description:'',unit:'',quantity:0,unit_rate:0,amount:0,quantity_executed:0}]
   });
   renderProgBoqBlocks();
