@@ -252,6 +252,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 .modal-overlay.open{display:flex}
 .modal-box{background:var(--surface);border-radius:18px;padding:28px;width:100%;max-width:560px;box-shadow:0 20px 60px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto}
 .modal-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--ink);margin-bottom:20px}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.modal-header .modal-title{margin-bottom:0}
+.modal-close{background:none;border:none;font-size:22px;line-height:1;color:var(--muted2);cursor:pointer;padding:0 4px}
 .modal-title em{color:var(--teal);font-style:normal}
 
 /* ── BALANCES ── */
@@ -552,6 +555,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   <a class="nav-item" href="#" onclick="nav('Payables',this)" id="payablesNav">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>Outstanding Payables
   </a>
+  <div class="sb-sec">Engineering</div>
+  <a class="nav-item" href="#" onclick="nav('EngProjects',this)" id="engProjectsNav">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg>Project Tracking
+  </a>
+  <a class="nav-item" href="#" onclick="nav('EngContracts',this)" id="engContractsNav">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Contract Management
+  </a>
+  <a class="nav-item" href="#" onclick="nav('EngProgress',this)" id="engProgressNav">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="M18 9l-5 5-3-3-4 4"/></svg>Site Progress
+  </a>
   <div class="sb-sec">Settings</div>
   <a class="nav-item" href="#" onclick="nav('PayReq',this)" id="payreqNav">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Payment Requests
@@ -827,6 +840,287 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   <!-- By company -->
   <div id="payGrid"></div>
 </div>
+
+
+<!-- ════ ENGINEERING — PROJECT TRACKING ════ -->
+<div id="pgEngProjects" class="page">
+  <div class="page-header">
+    <div><div class="page-title">Project <em>Tracking</em></div><div class="page-subtitle">Wanofi Engineering (WE1, WE2) &amp; Matisan Engineering (ME1)</div></div>
+    <button class="btn-primary" onclick="openProjectModal()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Project
+    </button>
+  </div>
+  <div class="flash-bar" id="engProjFlash"><span id="engProjFlashMsg"></span></div>
+
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+    <select id="epfCompany" onchange="renderEngProjects()" style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px">
+      <option value="">All Companies</option>
+      <option value="WE">Wanofi Engineering</option>
+      <option value="ME">Matisan Engineering</option>
+    </select>
+    <select id="epfDivision" onchange="renderEngProjects()" style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px">
+      <option value="">All Divisions</option>
+      <option value="WE1">WE1 · Design</option>
+      <option value="WE2">WE2 · Supervision</option>
+      <option value="ME1">ME1 · Construction</option>
+    </select>
+    <select id="epfStatus" onchange="renderEngProjects()" style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px">
+      <option value="">All Status</option>
+      <option value="not_started">Not Started</option>
+      <option value="in_progress">In Progress</option>
+      <option value="on_hold">On Hold</option>
+      <option value="completed">Completed</option>
+    </select>
+    <input type="text" id="epfSearch" oninput="renderEngProjects()" placeholder="Search project, client..." style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px;flex:1;min-width:180px">
+  </div>
+
+  <div id="engProjectsGrid" style="display:grid;gap:14px"></div>
+</div>
+
+<!-- Project Modal -->
+<div class="modal-overlay" id="projectModal">
+  <div class="modal-box" style="max-width:680px">
+    <div class="modal-header">
+      <div class="modal-title" id="projModalTitle">New Project</div>
+      <button class="modal-close" onclick="closeProjectModal()">&times;</button>
+    </div>
+    <input type="hidden" id="projEditId">
+    <div class="fr" style="margin-bottom:12px">
+      <div class="ff"><label>Company</label>
+        <select id="projCompany" onchange="onProjCompanyChange()">
+          <option value="WE">Wanofi Engineering Plc</option>
+          <option value="ME">Matisan Engineering Plc</option>
+        </select>
+      </div>
+      <div class="ff"><label>Division</label>
+        <select id="projDivision"></select>
+      </div>
+    </div>
+    <div class="fr" style="margin-bottom:12px">
+      <div class="ff"><label>Project Name *</label><input type="text" id="projName" placeholder="e.g. G+4 Mixed Use Building"></div>
+      <div class="ff"><label>Client</label><input type="text" id="projClient" placeholder="Client name"></div>
+    </div>
+    <div class="fr" style="margin-bottom:12px">
+      <div class="ff"><label>Location</label><input type="text" id="projLocation" placeholder="Site location"></div>
+      <div class="ff"><label>Project Manager</label><input type="text" id="projManager" placeholder="Assigned PM"></div>
+    </div>
+    <div class="fr fr3" style="margin-bottom:12px">
+      <div class="ff"><label>Start Date</label><input type="date" id="projStart"></div>
+      <div class="ff"><label>End Date (Planned)</label><input type="date" id="projEnd"></div>
+      <div class="ff"><label>% Complete</label><input type="number" id="projPercent" min="0" max="100" value="0"></div>
+    </div>
+    <div class="fr" style="margin-bottom:12px">
+      <div class="ff"><label>Status</label>
+        <select id="projStatus">
+          <option value="not_started">Not Started</option>
+          <option value="in_progress">In Progress</option>
+          <option value="on_hold">On Hold</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+      <div class="ff"><label>Phase</label>
+        <select id="projPhase">
+          <option value="planning">Planning</option>
+          <option value="mobilization">Mobilization</option>
+          <option value="execution">Execution</option>
+          <option value="defects_liability">Defects Liability</option>
+          <option value="closed">Closed</option>
+        </select>
+      </div>
+    </div>
+    <div class="fr" style="margin-bottom:12px">
+      <div class="ff"><label>Budget (ETB)</label><input type="number" id="projBudgetEtb" min="0" placeholder="0"></div>
+      <div class="ff"><label>Budget (USD, optional)</label><input type="number" id="projBudgetUsd" min="0" placeholder="0"></div>
+    </div>
+    <div class="ff" style="margin-bottom:14px"><label>Description / Scope</label><textarea id="projDescription" style="min-height:56px" placeholder="Brief project scope..."></textarea></div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="saveProject()">Save Project</button>
+      <button class="btn-secondary" onclick="closeProjectModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Project Detail Modal -->
+<div class="modal-overlay" id="projectDetailModal">
+  <div class="modal-box" style="max-width:760px" id="projectDetailContent"></div>
+</div>
+
+
+<!-- ════ ENGINEERING — CONTRACT MANAGEMENT ════ -->
+<div id="pgEngContracts" class="page">
+  <div class="page-header">
+    <div><div class="page-title">Contract <em>Management</em></div><div class="page-subtitle">All signed contracts across Wanofi &amp; Matisan projects</div></div>
+    <button class="btn-primary" onclick="openContractModal()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Contract
+    </button>
+  </div>
+  <div class="flash-bar" id="engContrFlash"><span id="engContrFlashMsg"></span></div>
+
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+    <select id="ecfCompany" onchange="renderEngContracts()" style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px">
+      <option value="">All Companies</option>
+      <option value="WE">Wanofi Engineering</option>
+      <option value="ME">Matisan Engineering</option>
+    </select>
+    <select id="ecfStatus" onchange="renderEngContracts()" style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px">
+      <option value="">All Status</option>
+      <option value="draft">Draft</option>
+      <option value="active">Active</option>
+      <option value="completed">Completed</option>
+      <option value="terminated">Terminated</option>
+    </select>
+    <input type="text" id="ecfSearch" oninput="renderEngContracts()" placeholder="Search contract, client..." style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px;flex:1;min-width:180px">
+  </div>
+
+  <div id="engContractsGrid" style="display:grid;gap:14px"></div>
+</div>
+
+<!-- Contract Modal -->
+<div class="modal-overlay" id="contractModal">
+  <div class="modal-box" style="max-width:720px">
+    <div class="modal-header">
+      <div class="modal-title" id="contrModalTitle">New Contract</div>
+      <button class="modal-close" onclick="closeContractModal()">&times;</button>
+    </div>
+    <input type="hidden" id="contrEditId">
+    <div class="ff" style="margin-bottom:12px">
+      <label>Linked Project *</label>
+      <select id="contrProjectId" onchange="onContrProjectChange()"></select>
+    </div>
+    <div class="fr" style="margin-bottom:12px">
+      <div class="ff"><label>Contract Number</label><input type="text" id="contrNo" placeholder="e.g. WE/2026/014"></div>
+      <div class="ff"><label>Contract Title *</label><input type="text" id="contrTitle" placeholder="Contract title"></div>
+    </div>
+    <div class="ff" style="margin-bottom:12px"><label>Client</label><input type="text" id="contrClient" placeholder="Client / Employer"></div>
+    <div class="fr" style="margin-bottom:12px">
+      <div class="ff"><label>Contract Type</label>
+        <input type="text" id="contrType" list="contrTypeList" placeholder="e.g. Lump Sum, Unit Price, Cost Plus...">
+        <datalist id="contrTypeList">
+          <option value="Lump Sum">
+          <option value="Unit Price (Remeasured)">
+          <option value="Cost Plus">
+          <option value="Lump Sum + Unit Price">
+          <option value="Design-Build">
+          <option value="Consultancy / Professional Service">
+        </datalist>
+      </div>
+      <div class="ff"><label>Status</label>
+        <select id="contrStatus">
+          <option value="draft">Draft</option>
+          <option value="active" selected>Active</option>
+          <option value="completed">Completed</option>
+          <option value="terminated">Terminated</option>
+        </select>
+      </div>
+    </div>
+    <div class="fr" style="margin-bottom:12px">
+      <div class="ff"><label>Contract Value (ETB)</label><input type="number" id="contrValueEtb" min="0" placeholder="0"></div>
+      <div class="ff"><label>Contract Value (USD, optional)</label><input type="number" id="contrValueUsd" min="0" placeholder="0"></div>
+    </div>
+    <div class="fr fr3" style="margin-bottom:12px">
+      <div class="ff"><label>Signed Date</label><input type="date" id="contrSigned"></div>
+      <div class="ff"><label>Commencement Date</label><input type="date" id="contrCommence"></div>
+      <div class="ff"><label>Completion Date</label><input type="date" id="contrCompletion"></div>
+    </div>
+    <div class="fr fr3" style="margin-bottom:12px">
+      <div class="ff"><label>Retention %</label><input type="number" id="contrRetention" min="0" max="100" step="0.5" placeholder="5"></div>
+      <div class="ff"><label>Advance Payment %</label><input type="number" id="contrAdvance" min="0" max="100" step="0.5" placeholder="20"></div>
+      <div class="ff"><label>Performance Bond %</label><input type="number" id="contrBond" min="0" max="100" step="0.5" placeholder="10"></div>
+    </div>
+    <div class="fr" style="margin-bottom:12px">
+      <div class="ff"><label>Defects Liability (months)</label><input type="number" id="contrDLP" min="0" placeholder="12"></div>
+      <div class="ff"><label>Payment Terms</label><input type="text" id="contrPaymentTerms" placeholder="e.g. Monthly IPC, 30 days"></div>
+    </div>
+    <div class="ff" style="margin-bottom:14px"><label>Notes</label><textarea id="contrNotes" style="min-height:50px" placeholder="Any remarks..."></textarea></div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="saveContract()">Save Contract</button>
+      <button class="btn-secondary" onclick="closeContractModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════ ENGINEERING — SITE PROGRESS REPORTS ════ -->
+<div id="pgEngProgress" class="page">
+  <div class="page-header">
+    <div><div class="page-title">Site Progress <em>Reports</em></div><div class="page-subtitle">Weekly / periodic progress tracking per project</div></div>
+    <button class="btn-primary" onclick="openProgressModal()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Progress Report
+    </button>
+  </div>
+  <div class="flash-bar" id="engProgFlash"><span id="engProgFlashMsg"></span></div>
+
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+    <select id="eprfProject" onchange="renderEngProgress()" style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px;min-width:220px">
+      <option value="">All Projects</option>
+    </select>
+    <input type="text" id="eprfSearch" oninput="renderEngProgress()" placeholder="Search reports..." style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px;flex:1;min-width:180px">
+  </div>
+
+  <div id="engProgressGrid" style="display:grid;gap:14px"></div>
+</div>
+
+<!-- Progress Report Modal -->
+<div class="modal-overlay" id="progressModal">
+  <div class="modal-box" style="max-width:760px">
+    <div class="modal-header">
+      <div class="modal-title">New Progress Report</div>
+      <button class="modal-close" onclick="closeProgressModal()">&times;</button>
+    </div>
+    <div class="ff" style="margin-bottom:12px">
+      <label>Project *</label>
+      <select id="progProjectId" onchange="onProgProjectChange()"></select>
+    </div>
+    <div class="fr" style="margin-bottom:12px">
+      <div class="ff"><label>Report Date *</label><input type="date" id="progDate"></div>
+      <div class="ff"><label>Report Period</label><input type="text" id="progPeriod" placeholder="e.g. Week 12, June 2026"></div>
+    </div>
+
+    <div style="background:var(--bg);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:8px">Progress Tracking Method</div>
+      <div style="display:flex;gap:16px;margin-bottom:10px">
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="progMode" value="category" checked onchange="onProgModeChange()"> By Work Category (weighted %)</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="progMode" value="wbs" onchange="onProgModeChange()"> By BOQ / WBS Items</label>
+      </div>
+
+      <div id="progBreakdownWrap">
+        <div style="display:grid;grid-template-columns:1fr 90px 100px 36px;gap:6px;padding:6px 8px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">
+          <span id="progBreakdownLabel">Category</span><span>Weight %</span><span>Complete %</span><span></span>
+        </div>
+        <div id="progBreakdownRows"></div>
+        <button onclick="addProgBreakdownRow()" class="btn-secondary" style="font-size:11px;padding:5px 12px;margin-top:6px">+ Add Row</button>
+      </div>
+
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px">
+        <span style="font-size:12px;font-weight:700;color:var(--ink2)">Overall Progress:</span>
+        <span id="progOverallPct" style="font-size:18px;font-weight:800;color:var(--teal-dark)">0%</span>
+        <span style="font-size:11px;color:var(--muted)">(auto-calculated from weighted breakdown)</span>
+      </div>
+    </div>
+
+    <div class="fr" style="margin-bottom:12px">
+      <div class="ff"><label>Manpower on Site</label><input type="number" id="progManpower" min="0" placeholder="0"></div>
+      <div class="ff"><label>Safety Incidents</label><input type="number" id="progSafety" min="0" placeholder="0"></div>
+    </div>
+    <div class="ff" style="margin-bottom:12px"><label>Equipment on Site</label><input type="text" id="progEquipment" placeholder="e.g. 1 excavator, 2 mixers"></div>
+    <div class="ff" style="margin-bottom:12px"><label>Weather / Site Remarks</label><input type="text" id="progWeather" placeholder="e.g. Clear weather, no disruptions"></div>
+    <div class="ff" style="margin-bottom:12px"><label>Issues / Delays</label><textarea id="progIssues" style="min-height:46px" placeholder="Any issues affecting progress..."></textarea></div>
+    <div class="ff" style="margin-bottom:14px"><label>Additional Notes</label><textarea id="progNotes" style="min-height:46px" placeholder="Other notes..."></textarea></div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="saveProgress()">Save Progress Report</button>
+      <button class="btn-secondary" onclick="closeProgressModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Progress Report Detail Modal -->
+<div class="modal-overlay" id="progressDetailModal">
+  <div class="modal-box" style="max-width:680px" id="progressDetailContent"></div>
+</div>
+
 
 <!-- ════ PAYMENT REQUESTS ════ -->
 <div id="pgPayReq" class="page">
@@ -1746,6 +2040,9 @@ function nav(id,el){
     if(!isFinanceOrAdmin()&&!isPrOut){showAccessDenied();return;}
     renderPayables();
   }
+  if(id==='EngProjects'){ loadEngProjects(); }
+  if(id==='EngContracts'){ loadEngContracts(); }
+  if(id==='EngProgress'){ loadEngProgress(); }
 }
 function showAccessDenied(){
   alert('Access restricted. Your account can only access Add Transaction and Ledger within the allowed date window (today and yesterday).');
@@ -5609,6 +5906,528 @@ function addSubdivisionBtn(btn){addSubdivision(btn.dataset.coid,btn.dataset.dc);
 function editSubdivisionBtn(btn){editSubdivision(btn.dataset.coid,btn.dataset.dc,btn.dataset.sc);}
 function deleteSubdivisionBtn(btn){deleteSubdivision(btn.dataset.coid,btn.dataset.dc,btn.dataset.sc);}
 
+// ══════════════════════════════════════
+// ENGINEERING — PROJECT TRACKING, CONTRACT MANAGEMENT, SITE PROGRESS
+// ══════════════════════════════════════
+let engProjects = [], engContracts = [], engProgressReports = [];
+
+async function engFetch(path, method, body){
+  method = method || 'GET';
+  const opts = {method, headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'}};
+  if(body) opts.body = JSON.stringify(body);
+  try{
+    const res = await fetch(PR_SB+path, opts);
+    if(res.status===204) return {ok:true};
+    const text = await res.text();
+    return text ? JSON.parse(text) : [];
+  }catch(e){ console.error('engFetch error:', e); return []; }
+}
+
+const ENG_DIVISIONS = {
+  WE: [{code:'WE1',name:'Design'},{code:'WE2',name:'Supervision'}],
+  ME: [{code:'ME1',name:'Construction'}]
+};
+
+function engStatusBadge(status){
+  const map = {
+    not_started:['#f1f5f9','#64748b','Not Started'],
+    in_progress:['#dbeafe','#1e40af','In Progress'],
+    on_hold:['#fef3c7','#92400e','On Hold'],
+    completed:['#d1fae5','#065f46','Completed']
+  };
+  const [bg,cl,label] = map[status]||map.not_started;
+  return '<span style="background:'+bg+';color:'+cl+';padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">'+label+'</span>';
+}
+function engPhaseBadge(phase){
+  const labels = {planning:'Planning',mobilization:'Mobilization',execution:'Execution',defects_liability:'Defects Liability',closed:'Closed'};
+  return '<span style="background:#f1f5f9;color:#475569;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:600">'+(labels[phase]||phase)+'</span>';
+}
+function engContractStatusBadge(status){
+  const map = {draft:['#f1f5f9','#64748b','Draft'],active:['#dbeafe','#1e40af','Active'],completed:['#d1fae5','#065f46','Completed'],terminated:['#fee2e2','#991b1b','Terminated']};
+  const [bg,cl,label] = map[status]||map.draft;
+  return '<span style="background:'+bg+';color:'+cl+';padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">'+label+'</span>';
+}
+
+// ── PROJECT TRACKING ──────────────────
+async function loadEngProjects(){
+  const data = await engFetch('/eng_projects?order=created_at.desc&select=*');
+  engProjects = Array.isArray(data) ? data : [];
+  renderEngProjects();
+}
+
+function renderEngProjects(){
+  const wrap = document.getElementById('engProjectsGrid'); if(!wrap) return;
+  const co = document.getElementById('epfCompany')?.value||'';
+  const div = document.getElementById('epfDivision')?.value||'';
+  const st = document.getElementById('epfStatus')?.value||'';
+  const q = (document.getElementById('epfSearch')?.value||'').toLowerCase();
+  let list = engProjects.filter(p=>{
+    if(co && p.company_id!==co) return false;
+    if(div && p.division_code!==div) return false;
+    if(st && p.status!==st) return false;
+    if(q && !((p.project_name||'').toLowerCase().includes(q)||(p.client||'').toLowerCase().includes(q))) return false;
+    return true;
+  });
+  if(!list.length){
+    wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">No projects found. Click <strong>New Project</strong> to add one.</div>';
+    return;
+  }
+  wrap.innerHTML = list.map(p=>{
+    const pct = parseFloat(p.percent_complete||0);
+    const coName = p.company_id==='WE' ? 'Wanofi Engineering' : 'Matisan Engineering';
+    return '<div class="pr-card" style="cursor:pointer" onclick="openProjectDetail(' + "'" + p.id + "'" + ')">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
+        +'<div>'
+          +'<div style="font-size:14px;font-weight:700;color:var(--ink2);margin-bottom:4px">'+(p.project_name||'Unnamed Project')+'</div>'
+          +'<div style="font-size:12px;color:var(--muted)">'+(p.client||'—')+' · '+(p.location||'—')+' · '+p.division_code+' · '+coName+'</div>'
+        +'</div>'
+        +'<div style="display:flex;gap:6px;align-items:center">'+engStatusBadge(p.status)+engPhaseBadge(p.phase)+'</div>'
+      +'</div>'
+      +'<div style="margin-top:10px">'
+        +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px"><span>Progress</span><span style="font-weight:700;color:var(--teal-dark)">'+pct+'%</span></div>'
+        +'<div style="height:6px;background:var(--bg);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--teal),var(--teal-dark));border-radius:4px"></div></div>'
+      +'</div>'
+      +'<div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap">'
+        +(p.budget_etb>0?'<div style="font-size:11px;color:var(--muted)">Budget: <strong style="color:var(--ink)">'+fmtETB2(p.budget_etb)+'</strong></div>':'')
+        +(p.start_date?'<div style="font-size:11px;color:var(--muted)">Start: <strong style="color:var(--ink)">'+p.start_date+'</strong></div>':'')
+        +(p.end_date?'<div style="font-size:11px;color:var(--muted)">Target End: <strong style="color:var(--ink)">'+p.end_date+'</strong></div>':'')
+        +(p.project_manager?'<div style="font-size:11px;color:var(--muted)">PM: <strong style="color:var(--ink)">'+p.project_manager+'</strong></div>':'')
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+
+function fmtETB2(n){ return 'ETB '+(parseFloat(n||0)).toLocaleString('en-ET',{maximumFractionDigits:0}); }
+
+function onProjCompanyChange(){
+  const co = document.getElementById('projCompany').value;
+  const divSel = document.getElementById('projDivision');
+  divSel.innerHTML = '';
+  (ENG_DIVISIONS[co]||[]).forEach(function(d){
+    const o = document.createElement('option');
+    o.value = d.code; o.textContent = d.code+' · '+d.name;
+    divSel.appendChild(o);
+  });
+}
+
+function openProjectModal(editId){
+  document.getElementById('projModalTitle').textContent = editId ? 'Edit Project' : 'New Project';
+  document.getElementById('projEditId').value = editId||'';
+  onProjCompanyChange();
+  if(editId){
+    const p = engProjects.find(x=>x.id===editId);
+    if(p){
+      document.getElementById('projCompany').value = p.company_id;
+      onProjCompanyChange();
+      document.getElementById('projDivision').value = p.division_code;
+      document.getElementById('projName').value = p.project_name||'';
+      document.getElementById('projClient').value = p.client||'';
+      document.getElementById('projLocation').value = p.location||'';
+      document.getElementById('projManager').value = p.project_manager||'';
+      document.getElementById('projStart').value = p.start_date||'';
+      document.getElementById('projEnd').value = p.end_date||'';
+      document.getElementById('projPercent').value = p.percent_complete||0;
+      document.getElementById('projStatus').value = p.status||'not_started';
+      document.getElementById('projPhase').value = p.phase||'planning';
+      document.getElementById('projBudgetEtb').value = p.budget_etb||'';
+      document.getElementById('projBudgetUsd').value = p.budget_usd||'';
+      document.getElementById('projDescription').value = p.description||'';
+    }
+  } else {
+    ['projName','projClient','projLocation','projManager','projStart','projEnd','projBudgetEtb','projBudgetUsd','projDescription'].forEach(function(id){
+      const el=document.getElementById(id); if(el) el.value='';
+    });
+    document.getElementById('projPercent').value = 0;
+    document.getElementById('projStatus').value = 'not_started';
+    document.getElementById('projPhase').value = 'planning';
+  }
+  document.getElementById('projectModal').style.display='flex';
+}
+function closeProjectModal(){ document.getElementById('projectModal').style.display='none'; }
+
+async function saveProject(){
+  const id = document.getElementById('projEditId').value;
+  const payload = {
+    company_id: document.getElementById('projCompany').value,
+    division_code: document.getElementById('projDivision').value,
+    project_name: document.getElementById('projName').value.trim(),
+    client: document.getElementById('projClient').value.trim(),
+    location: document.getElementById('projLocation').value.trim(),
+    project_manager: document.getElementById('projManager').value.trim(),
+    start_date: document.getElementById('projStart').value||null,
+    end_date: document.getElementById('projEnd').value||null,
+    percent_complete: parseFloat(document.getElementById('projPercent').value)||0,
+    status: document.getElementById('projStatus').value,
+    phase: document.getElementById('projPhase').value,
+    budget_etb: parseFloat(document.getElementById('projBudgetEtb').value)||0,
+    budget_usd: parseFloat(document.getElementById('projBudgetUsd').value)||0,
+    description: document.getElementById('projDescription').value.trim(),
+    created_by: currentUser?.username||'user'
+  };
+  if(!payload.project_name){ alert('Project name is required.'); return; }
+  if(id) await engFetch('/eng_projects?id=eq.'+id,'PATCH',payload);
+  else await engFetch('/eng_projects','POST',payload);
+  await loadEngProjects();
+  closeProjectModal();
+  showFlash('✓ Project saved.','engProjFlash','engProjFlashMsg');
+}
+
+function openProjectDetail(id){
+  const p = engProjects.find(x=>x.id===id); if(!p) return;
+  const pct = parseFloat(p.percent_complete||0);
+  const coName = p.company_id==='WE' ? 'Wanofi Engineering Plc' : 'Matisan Engineering Plc';
+  const relatedContracts = engContracts.filter(c=>c.project_id===id);
+  const relatedReports = engProgressReports.filter(r=>r.project_id===id).sort(function(a,b){return (b.report_date||'').localeCompare(a.report_date||'');});
+  const content = document.getElementById('projectDetailContent');
+  content.innerHTML =
+    '<div class="modal-header"><div class="modal-title">'+p.project_name+'</div><button class="modal-close" onclick="closeProjectDetail()">&times;</button></div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:14px">'+engStatusBadge(p.status)+engPhaseBadge(p.phase)+'</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:16px">'+(p.client||'—')+' · '+(p.location||'—')+' · '+p.division_code+' · '+coName+'</div>'
+    +'<div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:5px"><span>Overall Progress</span><span style="font-weight:700;color:var(--teal-dark)">'+pct+'%</span></div><div style="height:8px;background:var(--bg);border-radius:5px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--teal),var(--teal-dark))"></div></div></div>'
+    +'<div class="fr" style="margin-bottom:16px">'
+      +'<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Start Date</div><div style="font-size:13px;font-weight:600">'+(p.start_date||'—')+'</div></div>'
+      +'<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Target End</div><div style="font-size:13px;font-weight:600">'+(p.end_date||'—')+'</div></div>'
+    +'</div>'
+    +(p.budget_etb>0?'<div style="margin-bottom:16px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Budget</div><div style="font-size:15px;font-weight:700;color:var(--teal-dark)">'+fmtETB2(p.budget_etb)+(p.budget_usd>0?' / $'+p.budget_usd.toLocaleString():'')+'</div></div>':'')
+    +(p.description?'<div style="margin-bottom:16px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Description</div><div style="font-size:13px;color:var(--ink)">'+p.description+'</div></div>':'')
+    +'<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:8px">Contracts ('+relatedContracts.length+')</div>'
+      +(relatedContracts.length? relatedContracts.map(function(c){return '<div style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;font-size:12px"><strong>'+c.contract_title+'</strong> · '+(c.contract_type||'—')+' · '+fmtETB2(c.contract_value_etb)+' '+engContractStatusBadge(c.status)+'</div>';}).join('') : '<div style="font-size:12px;color:var(--muted)">No contracts linked yet.</div>')
+    +'</div>'
+    +'<div><div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:8px">Recent Progress Reports ('+relatedReports.length+')</div>'
+      +(relatedReports.length? relatedReports.slice(0,5).map(function(r){return '<div style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;font-size:12px"><strong>'+r.report_date+'</strong> '+(r.report_period?'('+r.report_period+')':'')+' — '+(r.overall_percent||0)+'% complete</div>';}).join('') : '<div style="font-size:12px;color:var(--muted)">No progress reports yet.</div>')
+    +'</div>'
+    +'<div class="btn-row" style="margin-top:18px">'
+      +'<button class="btn-primary" onclick="closeProjectDetail();openProjectModal(' + "'" + p.id + "'" + ')">✏ Edit Project</button>'
+      +'<button class="btn-secondary" onclick="closeProjectDetail()">Close</button>'
+    +'</div>';
+  document.getElementById('projectDetailModal').style.display='flex';
+}
+function closeProjectDetail(){ document.getElementById('projectDetailModal').style.display='none'; }
+
+// ── CONTRACT MANAGEMENT ───────────────
+async function loadEngContracts(){
+  const [proj, contr] = await Promise.all([
+    engProjects.length ? Promise.resolve(engProjects) : engFetch('/eng_projects?order=created_at.desc&select=*'),
+    engFetch('/eng_contracts?order=created_at.desc&select=*')
+  ]);
+  if(!engProjects.length) engProjects = Array.isArray(proj)?proj:[];
+  engContracts = Array.isArray(contr) ? contr : [];
+  renderEngContracts();
+}
+
+function renderEngContracts(){
+  const wrap = document.getElementById('engContractsGrid'); if(!wrap) return;
+  const co = document.getElementById('ecfCompany')?.value||'';
+  const st = document.getElementById('ecfStatus')?.value||'';
+  const q = (document.getElementById('ecfSearch')?.value||'').toLowerCase();
+  let list = engContracts.filter(function(c){
+    if(co && c.company_id!==co) return false;
+    if(st && c.status!==st) return false;
+    if(q && !((c.contract_title||'').toLowerCase().includes(q)||(c.client||'').toLowerCase().includes(q))) return false;
+    return true;
+  });
+  if(!list.length){
+    wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">No contracts found. Click <strong>New Contract</strong> to add one.</div>';
+    return;
+  }
+  wrap.innerHTML = list.map(function(c){
+    const proj = engProjects.find(function(p){return p.id===c.project_id;});
+    return '<div class="pr-card" style="cursor:pointer" onclick="openContractModal(' + "'" + c.id + "'" + ')">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
+        +'<div>'
+          +'<div style="font-size:14px;font-weight:700;color:var(--ink2);margin-bottom:3px">'+c.contract_title+(c.contract_no?' · '+c.contract_no:'')+'</div>'
+          +'<div style="font-size:12px;color:var(--muted)">'+(proj?proj.project_name:'—')+' · '+(c.client||'—')+' · '+(c.contract_type||'—')+'</div>'
+        +'</div>'
+        +engContractStatusBadge(c.status)
+      +'</div>'
+      +'<div style="display:flex;gap:18px;margin-top:10px;flex-wrap:wrap">'
+        +'<div style="font-size:11px;color:var(--muted)">Value: <strong style="color:var(--teal-dark)">'+fmtETB2(c.contract_value_etb)+'</strong></div>'
+        +(c.signed_date?'<div style="font-size:11px;color:var(--muted)">Signed: <strong style="color:var(--ink)">'+c.signed_date+'</strong></div>':'')
+        +(c.completion_date?'<div style="font-size:11px;color:var(--muted)">Completion: <strong style="color:var(--ink)">'+c.completion_date+'</strong></div>':'')
+        +(c.retention_pct?'<div style="font-size:11px;color:var(--muted)">Retention: <strong style="color:var(--ink)">'+c.retention_pct+'%</strong></div>':'')
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+
+function populateContrProjectDropdown(){
+  const sel = document.getElementById('contrProjectId'); if(!sel) return;
+  sel.innerHTML = '<option value="">— Select project —</option>';
+  engProjects.forEach(function(p){
+    const o = document.createElement('option');
+    o.value = p.id;
+    o.textContent = p.project_name+' ('+p.division_code+')';
+    sel.appendChild(o);
+  });
+}
+function onContrProjectChange(){
+  const sel = document.getElementById('contrProjectId');
+  const p = engProjects.find(function(x){return x.id===sel.value;});
+  if(p && !document.getElementById('contrClient').value) document.getElementById('contrClient').value = p.client||'';
+}
+
+function openContractModal(editId){
+  populateContrProjectDropdown();
+  document.getElementById('contrModalTitle').textContent = editId ? 'Edit Contract' : 'New Contract';
+  document.getElementById('contrEditId').value = editId||'';
+  if(editId){
+    const c = engContracts.find(function(x){return x.id===editId;});
+    if(c){
+      document.getElementById('contrProjectId').value = c.project_id||'';
+      document.getElementById('contrNo').value = c.contract_no||'';
+      document.getElementById('contrTitle').value = c.contract_title||'';
+      document.getElementById('contrClient').value = c.client||'';
+      document.getElementById('contrType').value = c.contract_type||'';
+      document.getElementById('contrStatus').value = c.status||'active';
+      document.getElementById('contrValueEtb').value = c.contract_value_etb||'';
+      document.getElementById('contrValueUsd').value = c.contract_value_usd||'';
+      document.getElementById('contrSigned').value = c.signed_date||'';
+      document.getElementById('contrCommence').value = c.commencement_date||'';
+      document.getElementById('contrCompletion').value = c.completion_date||'';
+      document.getElementById('contrRetention').value = c.retention_pct||'';
+      document.getElementById('contrAdvance').value = c.advance_payment_pct||'';
+      document.getElementById('contrBond').value = c.performance_bond_pct||'';
+      document.getElementById('contrDLP').value = c.defects_liability_months||'';
+      document.getElementById('contrPaymentTerms').value = c.payment_terms||'';
+      document.getElementById('contrNotes').value = c.notes||'';
+    }
+  } else {
+    ['contrNo','contrTitle','contrClient','contrType','contrValueEtb','contrValueUsd','contrSigned','contrCommence','contrCompletion','contrRetention','contrAdvance','contrBond','contrDLP','contrPaymentTerms','contrNotes'].forEach(function(id){
+      const el=document.getElementById(id); if(el) el.value='';
+    });
+    document.getElementById('contrStatus').value = 'active';
+  }
+  document.getElementById('contractModal').style.display='flex';
+}
+function closeContractModal(){ document.getElementById('contractModal').style.display='none'; }
+
+async function saveContract(){
+  const id = document.getElementById('contrEditId').value;
+  const projId = document.getElementById('contrProjectId').value;
+  if(!projId){ alert('Please select a linked project.'); return; }
+  const proj = engProjects.find(function(p){return p.id===projId;});
+  const payload = {
+    project_id: projId,
+    company_id: proj?proj.company_id:'',
+    division_code: proj?proj.division_code:'',
+    contract_no: document.getElementById('contrNo').value.trim(),
+    contract_title: document.getElementById('contrTitle').value.trim(),
+    client: document.getElementById('contrClient').value.trim(),
+    contract_type: document.getElementById('contrType').value.trim(),
+    status: document.getElementById('contrStatus').value,
+    contract_value_etb: parseFloat(document.getElementById('contrValueEtb').value)||0,
+    contract_value_usd: parseFloat(document.getElementById('contrValueUsd').value)||0,
+    signed_date: document.getElementById('contrSigned').value||null,
+    commencement_date: document.getElementById('contrCommence').value||null,
+    completion_date: document.getElementById('contrCompletion').value||null,
+    retention_pct: parseFloat(document.getElementById('contrRetention').value)||0,
+    advance_payment_pct: parseFloat(document.getElementById('contrAdvance').value)||0,
+    performance_bond_pct: parseFloat(document.getElementById('contrBond').value)||0,
+    defects_liability_months: parseInt(document.getElementById('contrDLP').value)||0,
+    payment_terms: document.getElementById('contrPaymentTerms').value.trim(),
+    notes: document.getElementById('contrNotes').value.trim(),
+    created_by: currentUser?.username||'user'
+  };
+  if(!payload.contract_title){ alert('Contract title is required.'); return; }
+  if(id) await engFetch('/eng_contracts?id=eq.'+id,'PATCH',payload);
+  else await engFetch('/eng_contracts','POST',payload);
+  await loadEngContracts();
+  closeContractModal();
+  showFlash('✓ Contract saved.','engContrFlash','engContrFlashMsg');
+}
+
+// ── SITE PROGRESS REPORTS ─────────────
+let progBreakdownRows = [];
+
+async function loadEngProgress(){
+  const [proj, prog] = await Promise.all([
+    engProjects.length ? Promise.resolve(engProjects) : engFetch('/eng_projects?order=created_at.desc&select=*'),
+    engFetch('/eng_progress_reports?order=report_date.desc&select=*')
+  ]);
+  if(!engProjects.length) engProjects = Array.isArray(proj)?proj:[];
+  engProgressReports = Array.isArray(prog) ? prog : [];
+  populateProgressProjectFilter();
+  renderEngProgress();
+}
+
+function populateProgressProjectFilter(){
+  const sel = document.getElementById('eprfProject'); if(!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">All Projects</option>';
+  engProjects.forEach(function(p){
+    const o = document.createElement('option');
+    o.value = p.id; o.textContent = p.project_name+' ('+p.division_code+')';
+    sel.appendChild(o);
+  });
+  sel.value = cur;
+}
+
+function renderEngProgress(){
+  const wrap = document.getElementById('engProgressGrid'); if(!wrap) return;
+  const projFilter = document.getElementById('eprfProject')?.value||'';
+  const q = (document.getElementById('eprfSearch')?.value||'').toLowerCase();
+  let list = engProgressReports.filter(function(r){
+    if(projFilter && r.project_id!==projFilter) return false;
+    if(q){
+      const proj = engProjects.find(function(p){return p.id===r.project_id;});
+      const hay = ((proj?proj.project_name:'')+' '+(r.report_period||'')+' '+(r.notes||'')).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  if(!list.length){
+    wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">No progress reports found. Click <strong>New Progress Report</strong> to add one.</div>';
+    return;
+  }
+  wrap.innerHTML = list.map(function(r){
+    const proj = engProjects.find(function(p){return p.id===r.project_id;});
+    const pct = parseFloat(r.overall_percent||0);
+    return '<div class="pr-card" style="cursor:pointer" onclick="openProgressDetail(' + "'" + r.id + "'" + ')">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
+        +'<div>'
+          +'<div style="font-size:14px;font-weight:700;color:var(--ink2);margin-bottom:3px">'+(proj?proj.project_name:'—')+'</div>'
+          +'<div style="font-size:12px;color:var(--muted)">'+r.report_date+(r.report_period?' · '+r.report_period:'')+' · '+(r.tracking_mode==='wbs'?'BOQ/WBS tracking':'Category tracking')+'</div>'
+        +'</div>'
+        +'<div style="font-size:16px;font-weight:800;color:var(--teal-dark)">'+pct+'%</div>'
+      +'</div>'
+      +'<div style="height:6px;background:var(--bg);border-radius:4px;overflow:hidden;margin-top:8px"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--teal),var(--teal-dark))"></div></div>'
+      +(r.issues_delays?'<div style="margin-top:8px;font-size:11px;color:#92400e;background:#fef9c3;padding:5px 9px;border-radius:6px">⚠ '+r.issues_delays+'</div>':'')
+    +'</div>';
+  }).join('');
+}
+
+function populateProgressProjectDropdown(){
+  const sel = document.getElementById('progProjectId'); if(!sel) return;
+  sel.innerHTML = '<option value="">— Select project —</option>';
+  engProjects.forEach(function(p){
+    const o = document.createElement('option');
+    o.value = p.id; o.textContent = p.project_name+' ('+p.division_code+')';
+    sel.appendChild(o);
+  });
+}
+function onProgProjectChange(){}
+
+function openProgressModal(){
+  populateProgressProjectDropdown();
+  document.getElementById('progDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('progPeriod').value = '';
+  document.getElementById('progManpower').value = '';
+  document.getElementById('progSafety').value = '';
+  document.getElementById('progEquipment').value = '';
+  document.getElementById('progWeather').value = '';
+  document.getElementById('progIssues').value = '';
+  document.getElementById('progNotes').value = '';
+  document.querySelector('input[name="progMode"][value="category"]').checked = true;
+  progBreakdownRows = [
+    {label:'Civil Works', weight:40, complete:0},
+    {label:'MEP (Mechanical/Electrical/Plumbing)', weight:30, complete:0},
+    {label:'Finishing', weight:30, complete:0}
+  ];
+  renderProgBreakdownRows();
+  document.getElementById('progressModal').style.display='flex';
+}
+function closeProgressModal(){ document.getElementById('progressModal').style.display='none'; }
+
+function onProgModeChange(){
+  const mode = document.querySelector('input[name="progMode"]:checked').value;
+  document.getElementById('progBreakdownLabel').textContent = mode==='wbs' ? 'BOQ / WBS Item' : 'Category';
+  progBreakdownRows = mode==='wbs'
+    ? [{label:'', weight:100, complete:0}]
+    : [{label:'Civil Works', weight:40, complete:0},{label:'MEP', weight:30, complete:0},{label:'Finishing', weight:30, complete:0}];
+  renderProgBreakdownRows();
+}
+
+function renderProgBreakdownRows(){
+  const wrap = document.getElementById('progBreakdownRows'); if(!wrap) return;
+  wrap.innerHTML = progBreakdownRows.map(function(row,i){
+    return '<div style="display:grid;grid-template-columns:1fr 90px 100px 36px;gap:6px;padding:5px 0;align-items:center">'
+      +'<input type="text" value="'+(row.label||'').replace(/"/g,'&quot;')+'" placeholder="e.g. Civil Works" oninput="progBreakdownRows['+i+'].label=this.value" style="padding:6px 8px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:var(--surface);color:var(--ink)">'
+      +'<input type="number" value="'+(row.weight||0)+'" min="0" max="100" oninput="progBreakdownRows['+i+'].weight=parseFloat(this.value)||0;recalcProgOverall()" style="padding:6px 8px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:var(--surface);color:var(--ink)">'
+      +'<input type="number" value="'+(row.complete||0)+'" min="0" max="100" oninput="progBreakdownRows['+i+'].complete=parseFloat(this.value)||0;recalcProgOverall()" style="padding:6px 8px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:var(--surface);color:var(--ink)">'
+      +'<button onclick="progBreakdownRows.splice('+i+',1);renderProgBreakdownRows();recalcProgOverall()" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:16px;padding:2px 4px">×</button>'
+    +'</div>';
+  }).join('');
+  recalcProgOverall();
+}
+function addProgBreakdownRow(){
+  progBreakdownRows.push({label:'',weight:0,complete:0});
+  renderProgBreakdownRows();
+}
+function recalcProgOverall(){
+  const totalWeight = progBreakdownRows.reduce(function(s,r){return s+(parseFloat(r.weight)||0);},0);
+  let weighted = 0;
+  if(totalWeight>0){
+    progBreakdownRows.forEach(function(r){ weighted += (parseFloat(r.weight)||0) * (parseFloat(r.complete)||0) / 100; });
+    weighted = (weighted/totalWeight)*100;
+  }
+  const el = document.getElementById('progOverallPct');
+  if(el) el.textContent = Math.round(weighted*10)/10 + '%';
+}
+
+async function saveProgress(){
+  const projId = document.getElementById('progProjectId').value;
+  if(!projId){ alert('Please select a project.'); return; }
+  const proj = engProjects.find(function(p){return p.id===projId;});
+  const mode = document.querySelector('input[name="progMode"]:checked').value;
+  const totalWeight = progBreakdownRows.reduce(function(s,r){return s+(parseFloat(r.weight)||0);},0);
+  let overall = 0;
+  if(totalWeight>0){
+    progBreakdownRows.forEach(function(r){ overall += (parseFloat(r.weight)||0) * (parseFloat(r.complete)||0) / 100; });
+    overall = Math.round((overall/totalWeight)*1000)/10;
+  }
+  const payload = {
+    project_id: projId,
+    company_id: proj?proj.company_id:'',
+    division_code: proj?proj.division_code:'',
+    report_date: document.getElementById('progDate').value,
+    report_period: document.getElementById('progPeriod').value.trim(),
+    tracking_mode: mode,
+    overall_percent: overall,
+    breakdown: JSON.stringify(progBreakdownRows),
+    manpower_count: parseInt(document.getElementById('progManpower').value)||0,
+    equipment_notes: document.getElementById('progEquipment').value.trim(),
+    safety_incidents: parseInt(document.getElementById('progSafety').value)||0,
+    weather_remarks: document.getElementById('progWeather').value.trim(),
+    issues_delays: document.getElementById('progIssues').value.trim(),
+    notes: document.getElementById('progNotes').value.trim(),
+    prepared_by: currentUser?.username||'user'
+  };
+  if(!payload.report_date){ alert('Report date is required.'); return; }
+  await engFetch('/eng_progress_reports','POST',payload);
+  // Update project's percent_complete to latest report
+  if(projId) await engFetch('/eng_projects?id=eq.'+projId,'PATCH',{percent_complete: overall});
+  await Promise.all([loadEngProgress(), loadEngProjects()]);
+  closeProgressModal();
+  showFlash('✓ Progress report saved.','engProgFlash','engProgFlashMsg');
+}
+
+function openProgressDetail(id){
+  const r = engProgressReports.find(function(x){return x.id===id;}); if(!r) return;
+  const proj = engProjects.find(function(p){return p.id===r.project_id;});
+  let breakdown = [];
+  try{ breakdown = typeof r.breakdown==='string' ? JSON.parse(r.breakdown) : (r.breakdown||[]); }catch(e){}
+  const content = document.getElementById('progressDetailContent');
+  content.innerHTML =
+    '<div class="modal-header"><div class="modal-title">'+(proj?proj.project_name:'Progress Report')+'</div><button class="modal-close" onclick="closeProgressDetail()">&times;</button></div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:14px">'+r.report_date+(r.report_period?' · '+r.report_period:'')+'</div>'
+    +'<div style="font-size:24px;font-weight:800;color:var(--teal-dark);margin-bottom:14px">'+(r.overall_percent||0)+'% Complete</div>'
+    +'<div style="margin-bottom:14px">'+breakdown.map(function(b){
+      return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border2)"><span>'+(b.label||'—')+' (wt '+b.weight+'%)</span><span style="font-weight:700">'+b.complete+'%</span></div>';
+    }).join('')+'</div>'
+    +'<div class="fr" style="margin-bottom:14px">'
+      +'<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Manpower</div><div style="font-size:13px;font-weight:600">'+(r.manpower_count||0)+'</div></div>'
+      +'<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Safety Incidents</div><div style="font-size:13px;font-weight:600">'+(r.safety_incidents||0)+'</div></div>'
+    +'</div>'
+    +(r.equipment_notes?'<div style="margin-bottom:10px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Equipment</div><div style="font-size:13px">'+r.equipment_notes+'</div></div>':'')
+    +(r.weather_remarks?'<div style="margin-bottom:10px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Weather/Site</div><div style="font-size:13px">'+r.weather_remarks+'</div></div>':'')
+    +(r.issues_delays?'<div style="margin-bottom:10px;background:#fef9c3;padding:8px 12px;border-radius:8px"><div style="font-size:10px;color:#92400e;text-transform:uppercase;font-weight:700">Issues / Delays</div><div style="font-size:13px;color:#92400e">'+r.issues_delays+'</div></div>':'')
+    +(r.notes?'<div style="margin-bottom:10px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Notes</div><div style="font-size:13px">'+r.notes+'</div></div>':'')
+    +'<div style="font-size:11px;color:var(--muted);margin-top:14px">Prepared by '+(r.prepared_by||'—')+'</div>'
+    +'<div class="btn-row" style="margin-top:14px"><button class="btn-secondary" onclick="closeProgressDetail()">Close</button></div>';
+  document.getElementById('progressDetailModal').style.display='flex';
+}
+function closeProgressDetail(){ document.getElementById('progressDetailModal').style.display='none'; }
+
 </script>
 
   <!-- PWA Service Worker + Install prompt -->
@@ -5869,6 +6688,8 @@ async function saveEditedPayment(prId){
   }
 }
 
-  </script>
+  
+
+</script>
 </body>
 </html>
