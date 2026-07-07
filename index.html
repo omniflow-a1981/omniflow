@@ -929,7 +929,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     <div class="fr fr3" style="margin-bottom:12px">
       <div class="ff"><label>Start Date</label><input type="date" id="projStart"></div>
       <div class="ff"><label>End Date (Planned)</label><input type="date" id="projEnd"></div>
-      <div class="ff"><label>% Complete</label><input type="number" id="projPercent" min="0" max="100" value="0"></div>
+      <div class="ff"><label>% Complete <span style="font-size:10px;color:var(--muted)">(auto from BOQ progress reports)</span></label><div id="projPercentDisplay" style="padding:7px 10px;background:var(--bg);border-radius:9px;font-size:13px;font-weight:700;color:var(--teal-dark)">0%</div><input type="hidden" id="projPercent" value="0"></div>
     </div>
     <div class="fr" style="margin-bottom:12px">
       <div class="ff"><label>Status</label>
@@ -1207,8 +1207,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     <div style="background:var(--bg);border-radius:10px;padding:12px 14px;margin-bottom:14px">
       <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:8px">Progress Tracking Method</div>
       <div style="display:flex;gap:16px;margin-bottom:10px">
-        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="progMode" value="category" checked onchange="onProgModeChange()"> By Work Category (weighted %)</label>
-        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="progMode" value="manual_boq" onchange="onProgModeChange()"> Multiple Block BOQ (manual entry)</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="progMode" value="manual_boq" checked onchange="onProgModeChange()"> Multiple Block BOQ — auto-linked from Contract BOQ</label>
       </div>
 
       <!-- Category mode -->
@@ -1222,6 +1221,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       <!-- Manual BOQ mode -->
       <div id="progManualBoqWrap" style="display:none">
         <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Enter BOQ items for this progress report. Use blocks to group by section/floor/work type.</div>
+        <div id="progBoqColToggles" style="display:none;gap:6px;flex-wrap:wrap;margin-bottom:8px;padding:8px 10px;background:var(--bg);border-radius:8px;font-size:11px">
+          <span style="font-weight:700;color:var(--ink2);margin-right:4px">Show columns:</span>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="boqColUnit" checked onchange="renderProgBoqBlocks()"> Unit</label>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="boqColContractQty" checked onchange="renderProgBoqBlocks()"> Contract Qty</label>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="boqColRate" onchange="renderProgBoqBlocks()"> Unit Rate</label>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="boqColContractAmt" checked onchange="renderProgBoqBlocks()"> Contract Amt</label>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="boqColToDateQty" checked onchange="renderProgBoqBlocks()"> To Date Qty</label>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="boqColToDateAmt" checked onchange="renderProgBoqBlocks()"> To Date Amt</label>
+        </div>
         <div id="progBoqBlocks"></div>
         <div id="progBoqAddHint" style="font-size:11px;color:var(--muted);margin-top:6px;display:none">Blocks are auto-loaded from the contract BOQ. Add blocks in Contract Management.</div>
       </div>
@@ -1229,7 +1237,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px">
         <span style="font-size:12px;font-weight:700;color:var(--ink2)">Overall Progress:</span>
         <span id="progOverallPct" style="font-size:18px;font-weight:800;color:var(--teal-dark)">0%</span>
-        <span style="font-size:11px;color:var(--muted)">(auto-calculated from weighted breakdown)</span>
+        <span id="progOverallLabel" style="font-size:11px;color:var(--muted)">(EVM: To Date + Today ÷ Contract Total × 100)</span>
       </div>
     </div>
 
@@ -6074,11 +6082,13 @@ let engProjects = [], engContracts = [], engProgressReports = [];
 
 async function engFetch(path, method, body){
   method = method || 'GET';
-  const opts = {method, headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'}};
+  const prefer = (method==='PATCH'||method==='DELETE') ? 'return=minimal' : 'return=representation';
+  const opts = {method, headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':prefer}};
   if(body) opts.body = JSON.stringify(body);
   try{
     const res = await fetch(PR_SB+path, opts);
-    if(res.status===204) return {ok:true};
+    if(res.status===204||res.status===200&&prefer==='return=minimal') return {ok:true};
+    if(res.status>=400){ const err=await res.text(); console.error('engFetch',method,path,res.status,err); return {ok:false,error:err}; }
     const text = await res.text();
     return text ? JSON.parse(text) : [];
   }catch(e){ console.error('engFetch error:', e); return []; }
@@ -6280,6 +6290,7 @@ function openProjectModal(editId){
       document.getElementById('projStart').value = p.start_date||'';
       document.getElementById('projEnd').value = p.end_date||'';
       document.getElementById('projPercent').value = p.percent_complete||0;
+      const pdisp=document.getElementById('projPercentDisplay'); if(pdisp) pdisp.textContent=(p.percent_complete||0)+'%';
       document.getElementById('projStatus').value = p.status||'not_started';
       document.getElementById('projPhase').value = p.phase||'planning';
       document.getElementById('projBudgetEtb').value = p.budget_etb||'';
@@ -6602,8 +6613,8 @@ function onProgProjectChange(){
     banner.style.display = 'none';
     banner.innerHTML = '';
   }
-  const modeEl = document.querySelector('input[name="progMode"]:checked');
-  if(modeEl && modeEl.value==='manual_boq') loadContractBoqForProgress();
+  // Always load contract BOQ for EVM calculation
+  loadContractBoqForProgress();
 }
 
 function openProgressModal(){
@@ -6622,37 +6633,27 @@ function openProgressModal(){
   renderProgIssueRows();
   addProgIssueRow(); // start with one blank row
   document.getElementById('progNotes').value = '';
-  document.querySelector('input[name="progMode"][value="category"]').checked = true;
-  progBreakdownRows = [
-    {label:'Civil Works', weight:40, complete:0},
-    {label:'MEP (Mechanical/Electrical/Plumbing)', weight:30, complete:0},
-    {label:'Finishing', weight:30, complete:0}
-  ];
+  const boqModeEl = document.querySelector('input[name="progMode"][value="manual_boq"]');
+  if(boqModeEl) boqModeEl.checked = true;
   progManualBoqBlocks = [];
-  document.getElementById('progBreakdownWrap').style.display='block';
-  document.getElementById('progManualBoqWrap').style.display='none';
-  renderProgBreakdownRows();
+  progBreakdownRows = [];
+  progContractBoqLoaded = false;
+  const catWrap2 = document.getElementById('progBreakdownWrap');
+  const boqWrap2 = document.getElementById('progManualBoqWrap');
+  if(catWrap2) catWrap2.style.display='none';
+  if(boqWrap2) boqWrap2.style.display='block';
   onProgProjectChange();
   document.getElementById('progressModal').style.display='flex';
 }
 function closeProgressModal(){ document.getElementById('progressModal').style.display='none'; }
 
 function onProgModeChange(){
-  const mode = document.querySelector('input[name="progMode"]:checked').value;
+  // EVM-only: always BOQ mode
   const catWrap = document.getElementById('progBreakdownWrap');
   const boqWrap = document.getElementById('progManualBoqWrap');
-  if(mode==='category'){
-    if(catWrap) catWrap.style.display='block';
-    if(boqWrap) boqWrap.style.display='none';
-    document.getElementById('progBreakdownLabel').textContent = 'Category';
-    const wl=document.getElementById('progWeightLabel'); if(wl) wl.textContent='Weight %';
-    progBreakdownRows = [{label:'Civil Works',weight:40,complete:0},{label:'MEP',weight:30,complete:0},{label:'Finishing',weight:30,complete:0}];
-    renderProgBreakdownRows();
-  } else {
-    if(catWrap) catWrap.style.display='none';
-    if(boqWrap) boqWrap.style.display='block';
-    loadContractBoqForProgress();
-  }
+  if(catWrap) catWrap.style.display='none';
+  if(boqWrap) boqWrap.style.display='block';
+  loadContractBoqForProgress();
 }
 
 // loadContractBoqForProgress: loads contract BOQ blocks+items for the selected project
@@ -6711,7 +6712,8 @@ async function loadContractBoqForProgress(){
         const contractQty = parseFloat(it.quantity)||0;
         const contractRate = parseFloat(it.unit_rate)||0;
         const contractAmt = parseFloat(it.total_amount)||0;
-        const qtyToDate = parseFloat(toDateQty[it.id]||0);
+        // quantity_executed in DB is cumulative and updated by saveProgress - most reliable
+        const qtyToDate = parseFloat(it.quantity_executed||0) || parseFloat(toDateQty[it.id]||0);
         return {
           boq_item_id: it.id,
           item_no: it.item_no||'',
@@ -6729,6 +6731,8 @@ async function loadContractBoqForProgress(){
     };
   });
   progContractBoqLoaded = true;
+  const colBar = document.getElementById('progBoqColToggles');
+  if(colBar) colBar.style.display = 'flex';
   renderProgBoqBlocks();
 }
 
@@ -6763,14 +6767,9 @@ function addProgBreakdownRow(){
   renderProgBreakdownRows();
 }
 function recalcProgOverall(){
-  const totalWeight = progBreakdownRows.reduce(function(s,r){return s+(parseFloat(r.weight)||0);},0);
-  let weighted = 0;
-  if(totalWeight>0){
-    progBreakdownRows.forEach(function(r){ weighted += (parseFloat(r.weight)||0) * (parseFloat(r.complete)||0) / 100; });
-    weighted = (weighted/totalWeight)*100;
-  }
-  const el = document.getElementById('progOverallPct');
-  if(el) el.textContent = Math.round(weighted*10)/10 + '%';
+  // Always EVM: (To Date + Today executed value) / Contract Total × 100
+  // When in BOQ mode, recalcProgBoqOverall handles it; this is called from breakdown rows (now hidden)
+  recalcProgBoqOverall();
 }
 
 async function saveProgress(){
@@ -6778,32 +6777,23 @@ async function saveProgress(){
   if(!projId){ alert('Please select a project.'); return; }
   const proj = engProjects.find(function(p){return p.id===projId;});
   const mode = document.querySelector('input[name="progMode"]:checked').value;
-  let overall = 0, breakdownData = progBreakdownRows;
-  if(mode==='category'){
-    const totalWeight = progBreakdownRows.reduce(function(s,r){return s+(parseFloat(r.weight)||0);},0);
-    if(totalWeight>0){
-      progBreakdownRows.forEach(function(r){ overall += (parseFloat(r.weight)||0)*(parseFloat(r.complete)||0)/100; });
-      overall = Math.round((overall/totalWeight)*1000)/10;
-    }
-  } else {
-    // Contract BOQ mode — compute overall from contract total vs (to-date + today)
-    let contractTotal=0, newToDateAmt=0;
-    progManualBoqBlocks.forEach(function(blk){
-      (blk.items||[]).forEach(function(it){
-        contractTotal += parseFloat(it.contract_amount)||0;
-        newToDateAmt += (parseFloat(it.amount_todate)||0) + (parseFloat(it.amount_today)||0);
-      });
+  // Always EVM: (To Date + Today executed value) ÷ Contract Total × 100
+  let overall = 0, breakdownData = progManualBoqBlocks;
+  let contractTotal=0, newToDateAmt=0;
+  progManualBoqBlocks.forEach(function(blk){
+    (blk.items||[]).forEach(function(it){
+      contractTotal += parseFloat(it.contract_amount)||0;
+      newToDateAmt += (parseFloat(it.amount_todate)||0) + (parseFloat(it.amount_today)||0);
     });
-    overall = contractTotal>0 ? Math.round((newToDateAmt/contractTotal)*1000)/10 : 0;
-    breakdownData = progManualBoqBlocks;
-  }
+  });
+  overall = contractTotal>0 ? Math.round((newToDateAmt/contractTotal)*1000)/10 : 0;
   const payload = {
     project_id: projId,
     company_id: proj?proj.company_id:'',
     division_code: proj?proj.division_code:'',
     report_date: document.getElementById('progDate').value,
     report_period: document.getElementById('progPeriod').value.trim(),
-    tracking_mode: mode,
+    tracking_mode: 'manual_boq',
     overall_percent: overall,
     breakdown: JSON.stringify(breakdownData),
     manpower_count: parseInt(document.getElementById('progManpower').value)||0,
@@ -6841,13 +6831,19 @@ async function saveProgress(){
     const updateOps = [];
     progManualBoqBlocks.forEach(function(blk){
       (blk.items||[]).forEach(function(it){
-        if(it.boq_item_id){
-          const newToDate = (parseFloat(it.qty_todate)||0) + (parseFloat(it.qty_today)||0);
-          updateOps.push(engFetch('/eng_boq_block_items?id=eq.'+it.boq_item_id,'PATCH',{quantity_executed: newToDate}));
+        if(it.boq_item_id && (parseFloat(it.qty_today)||0) > 0){
+          const newToDate = Math.round(((parseFloat(it.qty_todate)||0) + (parseFloat(it.qty_today)||0))*10000)/10000;
+          updateOps.push(
+            fetch(PR_SB+'/eng_boq_block_items?id=eq.'+it.boq_item_id, {
+              method:'PATCH',
+              headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=minimal'},
+              body:JSON.stringify({quantity_executed: newToDate})
+            }).then(function(r){ if(!r.ok) r.text().then(function(t){console.error('BOQ item PATCH failed:',it.boq_item_id,r.status,t);}); })
+          );
         }
       });
     });
-    await Promise.all(updateOps);
+    if(updateOps.length) await Promise.all(updateOps);
   }
   // Update project's percent_complete to latest report
   if(projId) await engFetch('/eng_projects?id=eq.'+projId,'PATCH',{percent_complete: overall});
@@ -6943,19 +6939,16 @@ function renderProgBoqBlocks(){
       const amtToday = parseFloat(it.amount_today)||0;
       const amtToDate = parseFloat(it.amount_todate)||0;
       return '<tr style="border-bottom:1px solid var(--border2)">'
-        // Read-only contract columns
         +'<td style="'+ro+'">'+( it.item_no||'')+'</td>'
-        +'<td style="'+ro+'">'+( it.description||'')+'</td>'
+        +'<td style="'+ro+';max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+(it.description||'').replace(/"/g,"&quot;")+'">'+( it.description||'')+'</td>'
         +'<td style="'+ro+';text-align:center">'+( it.unit||'')+'</td>'
+        +'<td style="padding:4px 5px;background:#f0fdf4"><input type="number" value="'+(it.qty_today||0)+'" min="0" step="any" oninput="onProgQtyTodayChange('+bi+','+ii+',this.value)" style="width:82px;padding:4px 6px;border:1.5px solid #86efac;border-radius:5px;font-size:11px;text-align:right;background:#f0fdf4;color:#166534;font-weight:700;outline:none"></td>'
+        +'<td style="'+ro+';text-align:right;color:#166534;font-weight:700;background:#f0fdf4" id="progAmtToday-'+bi+'-'+ii+'">'+( amtToday>0?fmtAmt(amtToday):'—')+'</td>'
+        +'<td style="'+ro+';text-align:right;color:#1e40af">'+fmtQty(it.qty_todate)+'</td>'
+        +'<td style="'+ro+';text-align:right;color:#1e40af">'+( amtToDate>0?fmtAmt(amtToDate):'—')+'</td>'
         +'<td style="'+ro+';text-align:right">'+fmtQty(it.contract_qty)+'</td>'
         +'<td style="'+ro+';text-align:right">'+fmtRate(it.unit_rate)+'</td>'
-        +'<td style="'+ro+';text-align:right;font-weight:700">'+(contractAmt>0?fmtAmt(contractAmt):'—')+'</td>'
-        // To-date (read-only, auto-calculated)
-        +'<td style="'+ro+';text-align:right;color:#1e40af">'+fmtQty(it.qty_todate)+'</td>'
-        +'<td style="'+ro+';text-align:right;color:#1e40af">'+(amtToDate>0?fmtAmt(amtToDate):'—')+'</td>'
-        // Today (editable)
-        +'<td style="padding:4px 5px;background:#f0fdf4"><input type="number" value="'+(it.qty_today||0)+'" min="0" step="any" oninput="onProgQtyTodayChange('+bi+','+ii+',this.value)" style="width:80px;padding:4px 6px;border:1.5px solid #86efac;border-radius:5px;font-size:11px;text-align:right;background:#f0fdf4;color:#166534;font-weight:700;outline:none"></td>'
-        +'<td style="'+ro+';text-align:right;color:#166534;font-weight:700" id="progAmtToday-'+bi+'-'+ii+'">'+( amtToday>0?fmtAmt(amtToday):'—')+'</td>'
+        +'<td style="'+ro+';text-align:right;font-weight:700">'+( contractAmt>0?fmtAmt(contractAmt):'—')+'</td>'
       +'</tr>';
     }).join('');
     return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px">'
@@ -6964,16 +6957,16 @@ function renderProgBoqBlocks(){
         +'<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:900px">'
           +'<thead>'
             +'<tr style="background:var(--bg);font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">'
-              +'<th style="padding:5px 6px;text-align:left;border-bottom:1.5px solid var(--border);width:55px">Item No.</th>'
+              +'<th style="padding:5px 6px;text-align:left;border-bottom:1.5px solid var(--border);width:50px">Item No.</th>'
               +'<th style="padding:5px 6px;text-align:left;border-bottom:1.5px solid var(--border)">Description</th>'
-              +'<th style="padding:5px 6px;text-align:center;border-bottom:1.5px solid var(--border);width:55px">Unit</th>'
-              +'<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);width:75px">Contract Qty</th>'
-              +'<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);width:90px">Unit Rate</th>'
-              +'<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);width:100px">Contract Amt</th>'
-              +'<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);width:80px;color:#1e40af">To Date Qty</th>'
-              +'<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);width:100px;color:#1e40af">To Date Amt</th>'
+              +'<th style="padding:5px 6px;text-align:center;border-bottom:1.5px solid var(--border);width:45px">Unit</th>'
               +'<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);width:90px;color:#166534;background:#f0fdf4">This Day Qty ✏</th>'
               +'<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);width:100px;color:#166534;background:#f0fdf4">This Day Amt</th>'
+              +'<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);width:75px;color:#1e40af">To Date Qty</th>'
+              +'<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);width:95px;color:#1e40af">To Date Amt</th>'
+              +'<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);width:75px">Contract Qty</th>'
+              +'<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);width:80px">Unit Rate</th>'
+              +'<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);width:100px">Contract Amt</th>'
             +'</tr>'
           +'</thead>'
           +'<tbody>'+rowsHtml+'</tbody>'
@@ -7020,6 +7013,8 @@ function recalcProgBoqOverall(){
   const pct = contractTotal>0 ? Math.round((newToDate/contractTotal)*1000)/10 : 0;
   const el = document.getElementById('progOverallPct');
   if(el) el.textContent = pct+'%';
+  const lbl = document.getElementById('progOverallLabel');
+  if(lbl) lbl.textContent = '(EVM: '+fmtAmt(newToDate)+' ÷ '+fmtAmt(contractTotal)+' × 100 = '+pct+'%)';
 }
 
 function closeProgressDetail(){ document.getElementById('progressDetailModal').style.display='none'; }
@@ -7276,8 +7271,7 @@ function toggleBoqZeroRows(){
 function fmtQty(n){
   const v = parseFloat(n)||0;
   if(v===0) return '0';
-  if(Number.isInteger(v)) return v.toLocaleString();
-  return v.toLocaleString('en-ET',{maximumFractionDigits:4});
+  return v.toLocaleString('en-ET',{minimumFractionDigits:0,maximumFractionDigits:2});
 }
 
 function fmtRate(n){
@@ -7288,7 +7282,7 @@ function fmtRate(n){
 
 function fmtAmt(n){
   const v = parseFloat(n)||0;
-  return v.toLocaleString('en-ET',{minimumFractionDigits:0,maximumFractionDigits:0});
+  return v.toLocaleString('en-ET',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 
 function renderBoqBlockItemsTable(){
