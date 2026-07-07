@@ -1221,14 +1221,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       <!-- Manual BOQ mode -->
       <div id="progManualBoqWrap" style="display:none">
         <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Enter BOQ items for this progress report. Use blocks to group by section/floor/work type.</div>
-        <div id="progBoqColToggles" style="display:none;gap:6px;flex-wrap:wrap;margin-bottom:8px;padding:8px 10px;background:var(--bg);border-radius:8px;font-size:11px">
-          <span style="font-weight:700;color:var(--ink2);margin-right:4px">Show columns:</span>
+        <div id="progBoqColToggles" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;padding:10px 12px;background:var(--bg);border-radius:9px;font-size:11px;align-items:center">
+          <span style="font-weight:700;color:var(--ink2);margin-right:4px;font-size:12px">Show columns:</span>
+          <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:0 4px">Qty:</span>
           <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="boqColUnit" checked onchange="renderProgBoqBlocks()"> Unit</label>
-          <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="boqColContractQty" checked onchange="renderProgBoqBlocks()"> Contract Qty</label>
-          <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="boqColRate" onchange="renderProgBoqBlocks()"> Unit Rate</label>
-          <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="boqColContractAmt" checked onchange="renderProgBoqBlocks()"> Contract Amt</label>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="boqColPrevQty" checked onchange="renderProgBoqBlocks()"> Previous Qty</label>
           <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="boqColToDateQty" checked onchange="renderProgBoqBlocks()"> To Date Qty</label>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="boqColContractQty" checked onchange="renderProgBoqBlocks()"> Contract Qty</label>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="boqColExceedQty" onchange="renderProgBoqBlocks()"> Exceeding Qty</label>
+          <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:0 4px">Amount:</span>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="boqColPrevAmt" onchange="renderProgBoqBlocks()"> Previous Amt</label>
           <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="boqColToDateAmt" checked onchange="renderProgBoqBlocks()"> To Date Amt</label>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="boqColContractAmt" checked onchange="renderProgBoqBlocks()"> Contract Amt</label>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="boqColRate" onchange="renderProgBoqBlocks()"> Unit Rate</label>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="boqColExceedAmt" onchange="renderProgBoqBlocks()"> Exceeding Amt</label>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="boqColExceedPct" onchange="renderProgBoqBlocks()"> % Exceeding</label>
         </div>
         <div id="progBoqBlocks"></div>
         <div id="progBoqAddHint" style="font-size:11px;color:var(--muted);margin-top:6px;display:none">Blocks are auto-loaded from the contract BOQ. Add blocks in Contract Management.</div>
@@ -6922,64 +6929,150 @@ function renderProgIssueRows(){
   }).join('');
 }
 
+// Column visibility helper
+function boqColVisible(id){ const el=document.getElementById(id); return el ? el.checked : true; }
+
 function renderProgBoqBlocks(){
   const wrap = document.getElementById('progBoqBlocks'); if(!wrap) return;
   if(!progManualBoqBlocks.length){
     wrap.innerHTML='<div style="text-align:center;padding:14px;color:var(--muted);font-size:12px">No BOQ blocks loaded.</div>';
     return;
   }
-  // Read-only view for contract columns, only qty_today is editable
-  const ro = 'padding:5px 6px;font-size:11px;color:var(--ink2);';
+  // Show column toggles
+  const colBar = document.getElementById('progBoqColToggles');
+  if(colBar) colBar.style.display='flex';
+
+  // Column visibility flags
+  const showUnit     = boqColVisible('boqColUnit');
+  const showPrevQty  = boqColVisible('boqColPrevQty');
+  const showTdQty    = boqColVisible('boqColToDateQty');
+  const showConQty   = boqColVisible('boqColContractQty');
+  const showExQty    = boqColVisible('boqColExceedQty');
+  const showPrevAmt  = boqColVisible('boqColPrevAmt');
+  const showTdAmt    = boqColVisible('boqColToDateAmt');
+  const showConAmt   = boqColVisible('boqColContractAmt');
+  const showRate     = boqColVisible('boqColRate');
+  const showExAmt    = boqColVisible('boqColExceedAmt');
+  const showExPct    = boqColVisible('boqColExceedPct');
+
+  const ro    = 'padding:5px 6px;font-size:11px;color:var(--ink2);vertical-align:middle;';
+  const roB   = 'padding:5px 6px;font-size:11px;color:#1e40af;vertical-align:middle;';    // to-date blue
+  const roR   = 'padding:5px 6px;font-size:11px;color:#991b1b;vertical-align:middle;';    // exceeding red
+  const roM   = 'padding:5px 6px;font-size:11px;color:var(--muted);vertical-align:middle;'; // prev muted
+
+  function th(label, extraStyle, color){
+    const colorStyle = color?'color:'+color+';':'';
+    const bgStyle = color==='#166534'?'background:#f0fdf4;':color==='#991b1b'?'background:#fee2e2;':color==='#1e40af'?'background:#eff6ff;':'';
+    return '<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);'+colorStyle+bgStyle+(extraStyle||'')+'">' + label + '</th>';
+  }
+
+  // Build header row — grouped by QTY then AMOUNT
+  // Fixed: Item No, Description, Unit (optional), This Day Qty ✏ (always)
+  // Qty group: Prev Qty, To Date Qty, Contract Qty, Exceeding Qty
+  // Amount group: This Day Amt, Prev Amt, To Date Amt, Contract Amt, Rate, Exceeding Amt, % Exceeding
+  let hdr = '<tr style="background:var(--bg);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.3px">';
+  hdr += '<th style="padding:5px 6px;text-align:left;border-bottom:1.5px solid var(--border);width:50px">Item No.</th>';
+  hdr += '<th style="padding:5px 6px;text-align:left;border-bottom:1.5px solid var(--border)">Description</th>';
+  if(showUnit) hdr += '<th style="padding:5px 6px;text-align:center;border-bottom:1.5px solid var(--border);width:45px;color:var(--muted)">Unit</th>';
+  // === QTY GROUP ===
+  if(showPrevQty) hdr += th('Prev Qty','width:75px;','var(--muted)');
+  hdr += th('This Qty ✏','width:90px;','#166534');  // always visible
+  if(showTdQty)  hdr += th('To Date Qty','width:80px;','#1e40af');
+  if(showConQty) hdr += th('Contract Qty','width:80px;','');
+  if(showExQty)  hdr += th('Exceeding Qty','width:80px;','#991b1b');
+  // === AMOUNT GROUP ===
+  hdr += th('This Day Amt','width:95px;','#166534');  // always visible
+  if(showPrevAmt) hdr += th('Prev Amt','width:95px;','var(--muted)');
+  if(showTdAmt)   hdr += th('To Date Amt','width:100px;','#1e40af');
+  if(showConAmt)  hdr += th('Contract Amt','width:100px;','');
+  if(showRate)    hdr += th('Unit Rate','width:80px;','');
+  if(showExAmt)   hdr += th('Exceeding Amt','width:100px;','#991b1b');
+  if(showExPct)   hdr += th('% Exceeding','width:75px;','#991b1b');
+  hdr += '</tr>';
+
   wrap.innerHTML = progManualBoqBlocks.map(function(blk,bi){
-    const blkContractTotal = (blk.items||[]).reduce(function(s,it){return s+(parseFloat(it.contract_amount)||0);},0);
-    const blkTodayTotal = (blk.items||[]).reduce(function(s,it){return s+(parseFloat(it.amount_today)||0);},0);
-    const blkToDateTotal = (blk.items||[]).reduce(function(s,it){return s+(parseFloat(it.amount_todate)||0);},0);
+    // Block totals
+    let blkContractTotal=0, blkTodayTotal=0, blkToDateQtyTotal=0, blkPrevTotal=0, blkExQtyTotal=0, blkExAmtTotal=0;
+    (blk.items||[]).forEach(function(it){
+      const cQty   = parseFloat(it.contract_qty)||0;
+      const cRate  = parseFloat(it.unit_rate)||0;
+      const cAmt   = parseFloat(it.contract_amount)||0;
+      const prevQty= parseFloat(it.qty_todate)||0;
+      const todQty = parseFloat(it.qty_today)||0;
+      const tdQty  = prevQty + todQty;
+      const exQty  = Math.max(0, tdQty - cQty);
+      blkContractTotal += cAmt;
+      blkPrevTotal     += prevQty*cRate;
+      blkTodayTotal    += todQty*cRate;
+      blkToDateQtyTotal+= tdQty;
+      blkExQtyTotal    += exQty;
+      blkExAmtTotal    += exQty*cRate;
+    });
+
     const rowsHtml = (blk.items||[]).map(function(it,ii){
-      const contractAmt = parseFloat(it.contract_amount)||0;
-      const amtToday = parseFloat(it.amount_today)||0;
-      const amtToDate = parseFloat(it.amount_todate)||0;
-      return '<tr style="border-bottom:1px solid var(--border2)">'
-        +'<td style="'+ro+'">'+( it.item_no||'')+'</td>'
-        +'<td style="'+ro+';max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+(it.description||'').replace(/"/g,"&quot;")+'">'+( it.description||'')+'</td>'
-        +'<td style="'+ro+';text-align:center">'+( it.unit||'')+'</td>'
-        +'<td style="padding:4px 5px;background:#f0fdf4"><input type="number" value="'+(it.qty_today||0)+'" min="0" step="any" oninput="onProgQtyTodayChange('+bi+','+ii+',this.value)" style="width:82px;padding:4px 6px;border:1.5px solid #86efac;border-radius:5px;font-size:11px;text-align:right;background:#f0fdf4;color:#166534;font-weight:700;outline:none"></td>'
-        +'<td style="'+ro+';text-align:right;color:#166534;font-weight:700;background:#f0fdf4" id="progAmtToday-'+bi+'-'+ii+'">'+( amtToday>0?fmtAmt(amtToday):'—')+'</td>'
-        +'<td style="'+ro+';text-align:right;color:#1e40af">'+fmtQty(it.qty_todate)+'</td>'
-        +'<td style="'+ro+';text-align:right;color:#1e40af">'+( amtToDate>0?fmtAmt(amtToDate):'—')+'</td>'
-        +'<td style="'+ro+';text-align:right">'+fmtQty(it.contract_qty)+'</td>'
-        +'<td style="'+ro+';text-align:right">'+fmtRate(it.unit_rate)+'</td>'
-        +'<td style="'+ro+';text-align:right;font-weight:700">'+( contractAmt>0?fmtAmt(contractAmt):'—')+'</td>'
-      +'</tr>';
+      const cQty   = parseFloat(it.contract_qty)||0;
+      const cRate  = parseFloat(it.unit_rate)||0;
+      const cAmt   = parseFloat(it.contract_amount)||0;
+      const prevQty= parseFloat(it.qty_todate)||0;       // qty executed before today
+      const todQty = parseFloat(it.qty_today)||0;         // today's entry
+      const tdQty  = prevQty + todQty;                    // to-date = prev + today
+      const exQty  = Math.max(0, tdQty - cQty);           // exceeding qty (0 if within contract)
+      const prevAmt= Math.round(prevQty*cRate*100)/100;
+      const todAmt = Math.round(todQty*cRate*100)/100;
+      const tdAmt  = Math.round(tdQty*cRate*100)/100;
+      const exAmt  = Math.round(exQty*cRate*100)/100;
+      const exPct  = cQty>0 ? Math.round((exQty/cQty)*10000)/100 : 0;
+      const isExceeding = exQty>0;
+
+      let row = '<tr style="border-bottom:1px solid var(--border2)'+(isExceeding?';background:#fff5f5;':'')+'">';
+      row += '<td style="'+ro+'font-weight:600">'+( it.item_no||'')+'</td>';
+      row += '<td style="'+ro+'max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+(it.description||'').replace(/"/g,"&quot;")+'">'+( it.description||'')+'</td>';
+      if(showUnit)    row += '<td style="'+ro+'text-align:center">'+( it.unit||'')+'</td>';
+      // QTY columns
+      if(showPrevQty) row += '<td style="'+roM+'text-align:right">'+fmtQty(prevQty)+'</td>';
+      // THIS QTY — always, editable, live
+      row += '<td style="padding:4px 5px;background:#f0fdf4;vertical-align:middle"><input type="number" value="'+todQty+'" min="0" step="any" oninput="onProgQtyTodayChange('+bi+','+ii+',this.value)" style="width:82px;padding:4px 6px;border:1.5px solid #86efac;border-radius:5px;font-size:11px;text-align:right;background:#f0fdf4;color:#166534;font-weight:700;outline:none"></td>';
+      if(showTdQty)   row += '<td style="'+roB+'text-align:right;font-weight:700" id="progTdQty-'+bi+'-'+ii+'">'+fmtQty(tdQty)+'</td>';
+      if(showConQty)  row += '<td style="'+ro+'text-align:right">'+fmtQty(cQty)+'</td>';
+      if(showExQty)   row += '<td style="'+(isExceeding?roR:ro)+'text-align:right;font-weight:'+(isExceeding?'700':'400')+'">'+( exQty>0?fmtQty(exQty):'—')+'</td>';
+      // AMOUNT columns
+      // THIS AMT — always
+      row += '<td style="'+ro+'text-align:right;color:#166534;font-weight:700;background:#f0fdf4" id="progAmtToday-'+bi+'-'+ii+'">'+( todAmt>0?fmtAmt(todAmt):'—')+'</td>';
+      if(showPrevAmt) row += '<td style="'+roM+'text-align:right">'+( prevAmt>0?fmtAmt(prevAmt):'—')+'</td>';
+      if(showTdAmt)   row += '<td style="'+roB+'text-align:right" id="progTdAmt-'+bi+'-'+ii+'">'+( tdAmt>0?fmtAmt(tdAmt):'—')+'</td>';
+      if(showConAmt)  row += '<td style="'+ro+'text-align:right;font-weight:700">'+( cAmt>0?fmtAmt(cAmt):'—')+'</td>';
+      if(showRate)    row += '<td style="'+ro+'text-align:right">'+fmtRate(cRate)+'</td>';
+      if(showExAmt)   row += '<td style="'+(isExceeding?roR:ro)+'text-align:right;font-weight:'+(isExceeding?'700':'400')+'">'+( exAmt>0?fmtAmt(exAmt):'—')+'</td>';
+      if(showExPct)   row += '<td style="'+(isExceeding?roR:ro)+'text-align:right;font-weight:'+(isExceeding?'700':'400')+'">'+( exPct>0?exPct.toFixed(2)+'%':'—')+'</td>';
+      row += '</tr>';
+      return row;
     }).join('');
+
+    // Footer
+    let foot = '<tr style="background:var(--bg);font-size:10px;font-weight:800;color:var(--ink2)">';
+    foot += '<td colspan="2" style="padding:6px 8px;text-align:right;font-size:11px">Block Total</td>';
+    if(showUnit)    foot += '<td></td>';
+    if(showPrevQty) foot += '<td></td>';
+    foot += '<td style="padding:6px 8px;text-align:right;background:#f0fdf4;color:#166534" id="progBlkTodayTotal-'+bi+'">'+fmtAmt(blkTodayTotal)+'</td>';
+    if(showTdQty)   foot += '<td></td>';
+    if(showConQty)  foot += '<td></td>';
+    if(showExQty)   foot += '<td style="padding:6px 8px;text-align:right;color:#991b1b">'+( blkExQtyTotal>0?fmtQty(blkExQtyTotal):'—')+'</td>';
+    foot += '<td style="padding:6px 8px;text-align:right;background:#f0fdf4;color:#166534">'+fmtAmt(blkTodayTotal)+'</td>';
+    if(showPrevAmt) foot += '<td style="padding:6px 8px;text-align:right;color:var(--muted)">'+fmtAmt(blkPrevTotal)+'</td>';
+    if(showTdAmt)   foot += '<td style="padding:6px 8px;text-align:right;color:#1e40af">'+fmtAmt(blkPrevTotal+blkTodayTotal)+'</td>';
+    if(showConAmt)  foot += '<td style="padding:6px 8px;text-align:right">'+fmtAmt(blkContractTotal)+'</td>';
+    if(showRate)    foot += '<td></td>';
+    if(showExAmt)   foot += '<td style="padding:6px 8px;text-align:right;color:#991b1b">'+( blkExAmtTotal>0?fmtAmt(blkExAmtTotal):'—')+'</td>';
+    if(showExPct)   foot += '<td></td>';
+    foot += '</tr>';
+
     return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px">'
       +'<div style="font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:10px">'+blk.name+'</div>'
       +'<div style="overflow-x:auto">'
-        +'<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:900px">'
-          +'<thead>'
-            +'<tr style="background:var(--bg);font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">'
-              +'<th style="padding:5px 6px;text-align:left;border-bottom:1.5px solid var(--border);width:50px">Item No.</th>'
-              +'<th style="padding:5px 6px;text-align:left;border-bottom:1.5px solid var(--border)">Description</th>'
-              +'<th style="padding:5px 6px;text-align:center;border-bottom:1.5px solid var(--border);width:45px">Unit</th>'
-              +'<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);width:90px;color:#166534;background:#f0fdf4">This Day Qty ✏</th>'
-              +'<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);width:100px;color:#166534;background:#f0fdf4">This Day Amt</th>'
-              +'<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);width:75px;color:#1e40af">To Date Qty</th>'
-              +'<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);width:95px;color:#1e40af">To Date Amt</th>'
-              +'<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);width:75px">Contract Qty</th>'
-              +'<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);width:80px">Unit Rate</th>'
-              +'<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);width:100px">Contract Amt</th>'
-            +'</tr>'
-          +'</thead>'
+        +'<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:700px">'
+          +'<thead>'+hdr+'</thead>'
           +'<tbody>'+rowsHtml+'</tbody>'
-          +'<tfoot>'
-            +'<tr style="background:var(--bg);font-size:10px;font-weight:700;color:var(--ink2)">'
-              +'<td colspan="5" style="padding:6px 8px;text-align:right">Block Total</td>'
-              +'<td style="padding:6px 8px;text-align:right">'+blkContractTotal.toLocaleString('en-ET',{minimumFractionDigits:2})+'</td>'
-              +'<td></td>'
-              +'<td style="padding:6px 8px;text-align:right;color:#1e40af">'+blkToDateTotal.toLocaleString('en-ET',{minimumFractionDigits:2})+'</td>'
-              +'<td></td>'
-              +'<td style="padding:6px 8px;text-align:right;color:#166534" id="progBlkTodayTotal-'+bi+'">'+blkTodayTotal.toLocaleString('en-ET',{minimumFractionDigits:2})+'</td>'
-            +'</tr>'
-          +'</tfoot>'
+          +'<tfoot>'+foot+'</tfoot>'
         +'</table>'
       +'</div>'
     +'</div>';
@@ -6990,13 +7083,24 @@ function renderProgBoqBlocks(){
 function onProgQtyTodayChange(bi, ii, val){
   const it = progManualBoqBlocks[bi]?.items[ii]; if(!it) return;
   it.qty_today = parseFloat(val)||0;
-  it.amount_today = Math.round(it.qty_today*(parseFloat(it.unit_rate)||0)*100)/100;
-  const amtCell = document.getElementById('progAmtToday-'+bi+'-'+ii);
-  if(amtCell) amtCell.textContent = it.amount_today>0 ? fmtAmt(it.amount_today) : '—';
-  // Update block today total
-  const blkTodayTotal = (progManualBoqBlocks[bi].items||[]).reduce(function(s,x){return s+(parseFloat(x.amount_today)||0);},0);
+  const cRate = parseFloat(it.unit_rate)||0;
+  const prevQty = parseFloat(it.qty_todate)||0;
+  const todQty  = it.qty_today;
+  const tdQty   = prevQty + todQty;
+  const cQty    = parseFloat(it.contract_qty)||0;
+  const exQty   = Math.max(0, tdQty - cQty);
+  it.amount_today = Math.round(todQty*cRate*100)/100;
+  // Update live cells
+  const amtCell  = document.getElementById('progAmtToday-'+bi+'-'+ii);
+  const tdQtyCell= document.getElementById('progTdQty-'+bi+'-'+ii);
+  const tdAmtCell= document.getElementById('progTdAmt-'+bi+'-'+ii);
+  if(amtCell)   amtCell.textContent   = it.amount_today>0 ? fmtAmt(it.amount_today) : '—';
+  if(tdQtyCell) tdQtyCell.textContent = fmtQty(tdQty);
+  if(tdAmtCell) tdAmtCell.textContent = tdQty>0 ? fmtAmt(Math.round(tdQty*cRate*100)/100) : '—';
+  // Update block today total in footer
+  const blkTodayAmt = (progManualBoqBlocks[bi].items||[]).reduce(function(s,x){return s+Math.round((parseFloat(x.qty_today)||0)*(parseFloat(x.unit_rate)||0)*100)/100;},0);
   const blkCell = document.getElementById('progBlkTodayTotal-'+bi);
-  if(blkCell) blkCell.textContent = blkTodayTotal>0 ? fmtAmt(blkTodayTotal)+' ETB' : '0';
+  if(blkCell) blkCell.textContent = fmtAmt(blkTodayAmt);
   recalcProgBoqOverall();
 }
 
