@@ -1220,7 +1220,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       </div>
       <!-- Manual BOQ mode -->
       <div id="progManualBoqWrap" style="display:none">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Enter BOQ items for this progress report. Use blocks to group by section/floor/work type.</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:12px 16px;background:linear-gradient(135deg,var(--teal-light),#d1fae5);border-radius:11px;border:1px solid #6ee7b7">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Overall Progress (EVM)</div>
+            <div style="font-size:11px;color:var(--muted)" id="progOverallLabel">To Date + Today ÷ Contract Total × 100</div>
+          </div>
+          <div style="margin-left:auto;text-align:right">
+            <div style="font-size:32px;font-weight:800;color:var(--teal-dark);line-height:1" id="progOverallPct">0%</div>
+          </div>
+        </div>
         <div id="progBoqColToggles" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;padding:10px 12px;background:var(--bg);border-radius:9px;font-size:11px;align-items:center">
           <span style="font-weight:700;color:var(--ink2);margin-right:4px;font-size:12px">Show columns:</span>
           <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:0 4px">Qty:</span>
@@ -1241,11 +1249,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
         <div id="progBoqAddHint" style="font-size:11px;color:var(--muted);margin-top:6px;display:none">Blocks are auto-loaded from the contract BOQ. Add blocks in Contract Management.</div>
       </div>
 
-      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px">
-        <span style="font-size:12px;font-weight:700;color:var(--ink2)">Overall Progress:</span>
-        <span id="progOverallPct" style="font-size:18px;font-weight:800;color:var(--teal-dark)">0%</span>
-        <span id="progOverallLabel" style="font-size:11px;color:var(--muted)">(EVM: To Date + Today ÷ Contract Total × 100)</span>
-      </div>
+
     </div>
 
     <div class="fr" style="margin-bottom:12px">
@@ -6448,7 +6452,10 @@ function populateContrProjectDropdown(){
   engProjects.forEach(function(p){
     const o = document.createElement('option');
     o.value = p.id;
-    o.textContent = p.project_name+' ('+p.division_code+')';
+    const co = companies.find(function(c){ return c.id===p.company_id||c.code===p.company_id; });
+    const div = co&&(co.divisions||[]).find(function(d){ return d.code===p.division_code; });
+    const sub = div&&(div.subdivisions||[]).find(function(s){ return s.code===p.subdivision_code; });
+    o.textContent = (sub?(sub.project||sub.name):p.project_name)+' ('+p.division_code+')';
     sel.appendChild(o);
   });
 }
@@ -6557,12 +6564,18 @@ function populateProgressProjectFilter(){
   const sel = document.getElementById('eprfProject'); if(!sel) return;
   const cur = sel.value;
   sel.innerHTML = '<option value="">All Projects</option>';
+  // Use engProjects (already filtered to real tracked projects)
   engProjects.forEach(function(p){
     const o = document.createElement('option');
-    o.value = p.id; o.textContent = p.project_name+' ('+p.division_code+')';
+    o.value = p.id;
+    // Find subdivision name for display
+    const co = companies.find(function(c){ return c.id===p.company_id||c.code===p.company_id; });
+    const div = co&&(co.divisions||[]).find(function(d){ return d.code===p.division_code; });
+    const sub = div&&(div.subdivisions||[]).find(function(s){ return s.code===p.subdivision_code; });
+    o.textContent = (sub?(sub.project||sub.name):p.project_name)+' ('+p.division_code+')';
     sel.appendChild(o);
   });
-  sel.value = cur;
+  sel.value = (engProjects.find(function(p){return p.id===cur;})) ? cur : '';
 }
 
 function renderEngProgress(){
@@ -6599,26 +6612,78 @@ function renderEngProgress(){
   }).join('');
 }
 
+
+// Build project options from real company subdivisions (WE1, WE2, ME1)
+// Uses companies[] global — same source as Companies & Divisions admin
+function getEngSubdivisionOptions(includeBlank, blankLabel){
+  const opts = [];
+  if(includeBlank) opts.push({value:'', label: blankLabel||'— Select project —', divCode:'', coName:''});
+  const targetDivs = ['WE1','WE2','ME1'];
+  companies.forEach(function(co){
+    const coName = co.name||co.id;
+    (co.divisions||[]).forEach(function(div){
+      if(!targetDivs.includes(div.code)) return;
+      (div.subdivisions||[]).forEach(function(sub){
+        // Also check if there's an eng_project record for this subdivision
+        const engProj = engProjects.find(function(p){
+          return p.subdivision_code===sub.code && p.division_code===div.code;
+        });
+        opts.push({
+          value: engProj ? engProj.id : ('sub:'+div.code+':'+sub.code),
+          label: (sub.project||sub.name)+(sub.client?' — '+sub.client:'')+' ('+div.code+')',
+          divCode: div.code,
+          coName: coName,
+          subdivision_code: sub.code,
+          engProjId: engProj ? engProj.id : null
+        });
+      });
+    });
+  });
+  return opts;
+}
+
 function populateProgressProjectDropdown(){
   const sel = document.getElementById('progProjectId'); if(!sel) return;
-  sel.innerHTML = '<option value="">— Select project —</option>';
-  engProjects.forEach(function(p){
+  const opts = getEngSubdivisionOptions(true, '— Select project —');
+  sel.innerHTML = '';
+  opts.forEach(function(opt){
     const o = document.createElement('option');
-    o.value = p.id; o.textContent = p.project_name+' ('+p.division_code+')';
+    o.value = opt.value;
+    o.textContent = opt.label;
     sel.appendChild(o);
   });
 }
 function onProgProjectChange(){
   const sel = document.getElementById('progProjectId');
-  const p = engProjects.find(function(x){return x.id===sel.value;});
+  const val = sel.value;
   const banner = document.getElementById('progProjectInfoBanner');
+  // Try to find eng_project by ID
+  const p = engProjects.find(function(x){return x.id===val;});
+  // If sub: prefix — find subdivision directly from companies
+  let subInfo = null;
+  if(!p && val && val.startsWith('sub:')){
+    const parts = val.split(':'); // sub:divCode:subCode
+    const divCode = parts[1], subCode = parts[2];
+    companies.forEach(function(co){
+      (co.divisions||[]).forEach(function(div){
+        if(div.code===divCode){
+          (div.subdivisions||[]).forEach(function(sub){
+            if(sub.code===subCode) subInfo={sub,div,co};
+          });
+        }
+      });
+    });
+  }
   if(p){
-    const coName = p.company_id==='WE' ? 'Wanofi Engineering Plc' : 'Matisan Engineering Plc';
-    banner.style.display = 'block';
-    banner.innerHTML = '<strong>'+(p.client||'—')+'</strong> · '+(p.location||'—')+' · '+p.division_code+' · '+coName+'<div style="font-size:10px;color:var(--muted);margin-top:2px">Auto-filled from project — no need to re-enter</div>';
+    const coName = p.company_id==='WE'?'Wanofi Engineering Plc':'Matisan Engineering Plc';
+    banner.style.display='block';
+    banner.innerHTML='<strong>'+(p.client||'—')+'</strong> · '+(p.location||'—')+' · '+p.division_code+' · '+coName+'<div style="font-size:10px;color:var(--muted);margin-top:2px">Project auto-filled</div>';
+  } else if(subInfo){
+    banner.style.display='block';
+    banner.innerHTML='<strong>'+(subInfo.sub.client||'—')+'</strong> · '+(subInfo.sub.location||'—')+' · '+subInfo.div.code+' · '+(subInfo.co.name||subInfo.co.id)+'<div style="font-size:10px;color:#92400e;margin-top:2px;background:#fef9c3;padding:3px 6px;border-radius:4px;display:inline-block">⚠ No project record yet — create one in Project Tracking first</div>';
   } else {
-    banner.style.display = 'none';
-    banner.innerHTML = '';
+    banner.style.display='none';
+    banner.innerHTML='';
   }
   // Always load contract BOQ for EVM calculation
   loadContractBoqForProgress();
@@ -6671,11 +6736,17 @@ async function loadContractBoqForProgress(){
   const boqWrap = document.getElementById('progManualBoqWrap');
   const wrap = document.getElementById('progBoqBlocks');
   if(wrap) wrap.innerHTML = '<div style="padding:14px;text-align:center;color:var(--muted);font-size:12px">Loading contract BOQ...</div>';
-  const projId = document.getElementById('progProjectId')?.value;
-  if(!projId){
+  const selVal = document.getElementById('progProjectId')?.value;
+  if(!selVal){
     if(wrap) wrap.innerHTML = '<div style="padding:14px;text-align:center;color:var(--muted);font-size:12px">Please select a project first.</div>';
     return;
   }
+  // Handle sub: prefix (no eng_project yet)
+  if(selVal.startsWith('sub:')){
+    if(wrap) wrap.innerHTML = '<div style="padding:14px;color:#92400e;background:#fef9c3;border-radius:8px;font-size:12px">No project record for this subdivision yet. Please go to Project Tracking and create a project for this subdivision first.</div>';
+    return;
+  }
+  const projId = selVal;
   const contracts = engContracts.filter(function(c){ return c.project_id===projId; });
   const contractIds = contracts.map(function(c){ return c.id; });
   if(!contractIds.length){
