@@ -1006,8 +1006,22 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       <button class="modal-close" onclick="closeContractModal()">&times;</button>
     </div>
     <input type="hidden" id="contrEditId">
+    <div class="fr" style="margin-bottom:8px">
+      <div class="ff"><label>Company</label>
+        <select id="contrCompany" onchange="onContrCompanyChange()">
+          <option value="">— All companies —</option>
+          <option value="WE">Wanofi Engineering Plc</option>
+          <option value="ME">Matisan Engineering Plc</option>
+        </select>
+      </div>
+      <div class="ff"><label>Division</label>
+        <select id="contrDivision" onchange="onContrDivisionChange()">
+          <option value="">— All divisions —</option>
+        </select>
+      </div>
+    </div>
     <div class="ff" style="margin-bottom:8px">
-      <label>Linked Project *</label>
+      <label>Linked Project * <span style="font-size:10px;color:var(--muted)">(only projects registered in Project Tracking)</span></label>
       <select id="contrProjectId" onchange="onContrProjectChange()"></select>
     </div>
     <div id="contrProjectInfoBanner" style="display:none;background:var(--bg);border-radius:9px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--ink2)"></div>
@@ -1074,8 +1088,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       📄 Upload the <strong>signed BOQ agreement</strong> (PDF or Excel) for each block. The system will extract contract items automatically. Contract quantities and unit rates are fixed — only executed quantities are entered during progress reporting.
     </div>
 
-    <!-- New block form -->
-    <div style="background:var(--bg);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+    <!-- Existing blocks list FIRST (fix 4) -->
+    <div id="boqBlocksList" style="margin-bottom:14px"></div>
+    <!-- New block form below -->
+    <div style="background:var(--bg);border-radius:10px;padding:12px 14px;margin-bottom:14px;border:1px solid var(--border)">
       <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:10px">+ New BOQ Block</div>
       <div class="fr" style="margin-bottom:8px">
         <div class="ff"><label>Block Name *</label>
@@ -1107,7 +1123,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       <button class="btn-primary" onclick="addBoqBlock()" style="font-size:12px;padding:7px 14px">+ Add Block</button>
     </div>
 
-    <div id="boqBlocksList"></div>
     <div class="btn-row" style="margin-top:14px">
       <button class="btn-secondary" onclick="closeBoqBlocksView()">Close</button>
     </div>
@@ -6171,6 +6186,10 @@ function renderEngProjects(){
     return;
   }
   wrap.innerHTML = list.map(p=>{
+    // EVM: compute from contract BOQ execution totals
+    const projContracts = engContracts.filter(function(c){return c.project_id===p.id;});
+    const projBlockIds = engBoqBlocks.filter(function(b){return projContracts.some(function(c){return c.id===b.contract_id;});}).map(function(b){return b.id;});
+    // Use stored percent_complete as fallback (updated on each progress report save)
     const pct = parseFloat(p.percent_complete||0);
     const coName = p.company_id==='WE' ? 'Wanofi Engineering' : 'Matisan Engineering';
     return '<div class="pr-card" style="cursor:pointer" onclick="openProjectDetail(' + "'" + p.id + "'" + ')">'
@@ -6190,8 +6209,17 @@ function renderEngProjects(){
       +'<div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap">'
         +(p.budget_etb>0?'<div style="font-size:11px;color:var(--muted)">Budget: <strong style="color:var(--ink)">'+fmtETB2(p.budget_etb)+'</strong></div>':'')
         +(p.start_date?'<div style="font-size:11px;color:var(--muted)">Start: <strong style="color:var(--ink)">'+p.start_date+'</strong></div>':'')
-        +(p.end_date?'<div style="font-size:11px;color:var(--muted)">Target End: <strong style="color:var(--ink)">'+p.end_date+'</strong></div>':'')
+        +(p.end_date?'<div style="font-size:11px;color:var(--muted)">End: <strong style="color:var(--ink)">'+p.end_date+'</strong></div>':'')
         +(p.project_manager?'<div style="font-size:11px;color:var(--muted)">PM: <strong style="color:var(--ink)">'+p.project_manager+'</strong></div>':'')
+        +(function(){
+          if(!p.start_date||!p.end_date) return '';
+          const start=new Date(p.start_date), end=new Date(p.end_date), today=new Date();
+          const totalDays=Math.max(1,Math.round((end-start)/86400000));
+          const elapsed=Math.max(0,Math.round((today-start)/86400000));
+          const elapsedPct=Math.min(100,Math.round(elapsed/totalDays*100));
+          const color=elapsedPct>80?'#dc2626':elapsedPct>60?'#d97706':'#166534';
+          return '<div style="font-size:11px;color:var(--muted);margin-top:4px">Time: <strong style="color:'+color+'">'+elapsed+' / '+totalDays+' days elapsed ('+elapsedPct+'%)</strong></div>';
+        })()
       +'</div>'
     +'</div>';
   }).join('');
@@ -6465,15 +6493,44 @@ function renderEngContracts(){
   }).join('');
 }
 
-function populateContrProjectDropdown(){
+function onContrCompanyChange(){
+  const co = document.getElementById('contrCompany')?.value||'';
+  const divSel = document.getElementById('contrDivision');
+  const projSel = document.getElementById('contrProjectId');
+  if(!divSel||!projSel) return;
+  divSel.innerHTML = '<option value="">— All divisions —</option>';
+  projSel.innerHTML = '<option value="">— Select project —</option>';
+  if(co){
+    const coObj = companies.find(function(c){return c.id===co||c.code===co;});
+    const targetDivs=['WE1','WE2','ME1'];
+    ((coObj&&coObj.divisions)||[]).filter(function(d){return targetDivs.includes(d.code);}).forEach(function(d){
+      const o=document.createElement('option'); o.value=d.code; o.textContent=d.code+' · '+d.name;
+      divSel.appendChild(o);
+    });
+  }
+  onContrDivisionChange();
+}
+
+function onContrDivisionChange(){
+  const co = document.getElementById('contrCompany')?.value||'';
+  const divCode = document.getElementById('contrDivision')?.value||'';
+  populateContrProjectDropdown(co, divCode);
+}
+
+function populateContrProjectDropdown(filterCo, filterDiv){
   const sel = document.getElementById('contrProjectId'); if(!sel) return;
   sel.innerHTML = '<option value="">— Select project —</option>';
-  engProjects.forEach(function(p){
+  // Only show projects registered in Project Tracking
+  engProjects.filter(function(p){
+    if(filterCo && p.company_id!==filterCo) return false;
+    if(filterDiv && p.division_code!==filterDiv) return false;
+    return true;
+  }).forEach(function(p){
     const o = document.createElement('option');
     o.value = p.id;
-    const co = companies.find(function(c){ return c.id===p.company_id||c.code===p.company_id; });
-    const div = co&&(co.divisions||[]).find(function(d){ return d.code===p.division_code; });
-    const sub = div&&(div.subdivisions||[]).find(function(s){ return s.code===p.subdivision_code; });
+    const co = companies.find(function(c){return c.id===p.company_id||c.code===p.company_id;});
+    const div = co&&(co.divisions||[]).find(function(d){return d.code===p.division_code;});
+    const sub = div&&(div.subdivisions||[]).find(function(s){return s.code===p.subdivision_code;});
     o.textContent = (sub?(sub.project||sub.name):p.project_name)+' ('+p.division_code+')';
     sel.appendChild(o);
   });
@@ -6495,12 +6552,22 @@ function onContrProjectChange(){
 }
 
 function openContractModal(editId){
-  populateContrProjectDropdown();
+  // Reset cascade selectors
+  const cco = document.getElementById('contrCompany'); if(cco) cco.value='';
+  const cdiv = document.getElementById('contrDivision'); if(cdiv) cdiv.innerHTML='<option value="">— All divisions —</option>';
+  populateContrProjectDropdown('','');
   document.getElementById('contrModalTitle').textContent = editId ? 'Edit Contract' : 'New Contract';
   document.getElementById('contrEditId').value = editId||'';
   if(editId){
     const c = engContracts.find(function(x){return x.id===editId;});
     if(c){
+      const editProj = engProjects.find(function(p){return p.id===c.project_id;});
+      if(editProj){
+        const cco2=document.getElementById('contrCompany'); if(cco2) cco2.value=editProj.company_id||'';
+        onContrCompanyChange();
+        const cdiv2=document.getElementById('contrDivision'); if(cdiv2) cdiv2.value=editProj.division_code||'';
+        onContrDivisionChange();
+      }
       document.getElementById('contrProjectId').value = c.project_id||'';
       document.getElementById('contrNo').value = c.contract_no||'';
       document.getElementById('contrTitle').value = c.contract_title||'';
@@ -6630,7 +6697,7 @@ function renderEngProgress(){
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
         +'<div>'
           +'<div style="font-size:14px;font-weight:700;color:var(--ink2);margin-bottom:3px">'+(proj?proj.project_name:'—')+'</div>'
-          +'<div style="font-size:12px;color:var(--muted)">'+r.report_date+(r.report_period?' · '+r.report_period:'')+' · '+(r.tracking_mode==='wbs'?'BOQ/WBS tracking':'Category tracking')+'</div>'
+          +'<div style="font-size:12px;color:var(--muted)">'+r.report_date+(r.report_period?' · '+r.report_period:'')+' · BOQ/EVM tracking'+'</div>'
         +'</div>'
         +'<div style="display:flex;align-items:center;gap:8px">'
         +'<span style="font-size:16px;font-weight:800;color:var(--teal-dark)">'+pct+'%</span>'
