@@ -1194,9 +1194,25 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       <div class="modal-title">New Progress Report</div>
       <button class="modal-close" onclick="closeProgressModal()">&times;</button>
     </div>
+    <div class="fr" style="margin-bottom:8px">
+      <div class="ff"><label>Company *</label>
+        <select id="progCompany" onchange="onProgCompanyChange()">
+          <option value="">— Select company —</option>
+          <option value="WE">Wanofi Engineering Plc</option>
+          <option value="ME">Matisan Engineering Plc</option>
+        </select>
+      </div>
+      <div class="ff"><label>Division *</label>
+        <select id="progDivision" onchange="onProgDivisionChange()">
+          <option value="">— Select division —</option>
+        </select>
+      </div>
+    </div>
     <div class="ff" style="margin-bottom:8px">
-      <label>Project *</label>
-      <select id="progProjectId" onchange="onProgProjectChange()"></select>
+      <label>Subdivision / Project *</label>
+      <select id="progProjectId" onchange="onProgProjectChange()">
+        <option value="">— Select subdivision —</option>
+      </select>
     </div>
     <div id="progProjectInfoBanner" style="display:none;background:var(--bg);border-radius:9px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--ink2)"></div>
     <div class="fr" style="margin-bottom:12px">
@@ -6163,7 +6179,9 @@ function renderEngProjects(){
           +'<div style="font-size:14px;font-weight:700;color:var(--ink2);margin-bottom:4px">'+(p.project_name||'Unnamed Project')+'</div>'
           +'<div style="font-size:12px;color:var(--muted)">'+(p.client||'—')+' · '+(p.location||'—')+' · '+p.division_code+' · '+coName+'</div>'
         +'</div>'
-        +'<div style="display:flex;gap:6px;align-items:center">'+engStatusBadge(p.status)+engPhaseBadge(p.phase)+'</div>'
+        +'<div style="display:flex;gap:6px;align-items:center">'+engStatusBadge(p.status)+engPhaseBadge(p.phase)
+        +'<button data-id="'+p.id+'" onclick="event.stopPropagation();deleteEngProject(this.dataset.id)" style="background:none;border:1px solid #fca5a5;border-radius:7px;cursor:pointer;color:#dc2626;font-size:11px;padding:2px 8px">✕ Delete</button>'
+        +'</div>'
       +'</div>'
       +'<div style="margin-top:10px">'
         +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px"><span>Progress</span><span style="font-weight:700;color:var(--teal-dark)">'+pct+'%</span></div>'
@@ -6441,6 +6459,7 @@ function renderEngContracts(){
       +'<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border2)">'
         +'<button data-cid="'+c.id+'" onclick="event.stopPropagation();openBoqBlocksViewBtn(this)" class="btn-secondary" style="font-size:11px;padding:6px 12px">'
         +'📐 BOQ Blocks ('+blockCount+')</button>'
+        +'<button data-id="'+c.id+'" onclick="event.stopPropagation();deleteEngContract(this.dataset.id)" style="background:none;border:1px solid #fca5a5;border-radius:7px;cursor:pointer;color:#dc2626;font-size:11px;padding:2px 8px;margin-left:6px">✕ Delete</button>'
       +'</div>'
     +'</div>';
   }).join('');
@@ -6564,18 +6583,27 @@ function populateProgressProjectFilter(){
   const sel = document.getElementById('eprfProject'); if(!sel) return;
   const cur = sel.value;
   sel.innerHTML = '<option value="">All Projects</option>';
-  // Use engProjects (already filtered to real tracked projects)
-  engProjects.forEach(function(p){
-    const o = document.createElement('option');
-    o.value = p.id;
-    // Find subdivision name for display
-    const co = companies.find(function(c){ return c.id===p.company_id||c.code===p.company_id; });
-    const div = co&&(co.divisions||[]).find(function(d){ return d.code===p.division_code; });
-    const sub = div&&(div.subdivisions||[]).find(function(s){ return s.code===p.subdivision_code; });
-    o.textContent = (sub?(sub.project||sub.name):p.project_name)+' ('+p.division_code+')';
-    sel.appendChild(o);
+  // Build from real subdivision data — no duplicates, deleted subs auto-removed
+  const seenProj = new Set();
+  const targetDivs2 = ['WE1','WE2','ME1'];
+  companies.forEach(function(co){
+    (co.divisions||[]).forEach(function(div){
+      if(!targetDivs2.includes(div.code)) return;
+      (div.subdivisions||[]).forEach(function(sub){
+        const engProj = engProjects.find(function(p){
+          return p.subdivision_code===sub.code && p.division_code===div.code;
+        });
+        if(!engProj) return; // only show if project exists
+        if(seenProj.has(engProj.id)) return;
+        seenProj.add(engProj.id);
+        const o = document.createElement('option');
+        o.value = engProj.id;
+        o.textContent = (sub.project||sub.name)+' ('+div.code+')';
+        sel.appendChild(o);
+      });
+    });
   });
-  sel.value = (engProjects.find(function(p){return p.id===cur;})) ? cur : '';
+  sel.value = seenProj.has(cur) ? cur : '';
 }
 
 function renderEngProgress(){
@@ -6604,7 +6632,10 @@ function renderEngProgress(){
           +'<div style="font-size:14px;font-weight:700;color:var(--ink2);margin-bottom:3px">'+(proj?proj.project_name:'—')+'</div>'
           +'<div style="font-size:12px;color:var(--muted)">'+r.report_date+(r.report_period?' · '+r.report_period:'')+' · '+(r.tracking_mode==='wbs'?'BOQ/WBS tracking':'Category tracking')+'</div>'
         +'</div>'
-        +'<div style="font-size:16px;font-weight:800;color:var(--teal-dark)">'+pct+'%</div>'
+        +'<div style="display:flex;align-items:center;gap:8px">'
+        +'<span style="font-size:16px;font-weight:800;color:var(--teal-dark)">'+pct+'%</span>'
+        +'<button data-id="'+r.id+'" onclick="event.stopPropagation();deleteEngProgress(this.dataset.id)" style="background:none;border:1px solid #fca5a5;border-radius:7px;cursor:pointer;color:#dc2626;font-size:11px;padding:2px 8px">✕ Delete</button>'
+        +'</div>'
       +'</div>'
       +'<div style="height:6px;background:var(--bg);border-radius:4px;overflow:hidden;margin-top:8px"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--teal),var(--teal-dark))"></div></div>'
       +(r.issues_delays?'<div style="margin-top:8px;font-size:11px;color:#92400e;background:#fef9c3;padding:5px 9px;border-radius:6px">⚠ '+r.issues_delays+'</div>':'')
@@ -6714,7 +6745,17 @@ function openProgressModal(){
   const boqWrap2 = document.getElementById('progManualBoqWrap');
   if(catWrap2) catWrap2.style.display='none';
   if(boqWrap2) boqWrap2.style.display='block';
-  onProgProjectChange();
+  // Reset cascade selectors
+  const coSel2 = document.getElementById('progCompany');
+  if(coSel2) coSel2.value='';
+  const divSel2 = document.getElementById('progDivision');
+  if(divSel2) divSel2.innerHTML='<option value="">— Select division —</option>';
+  const projSel2 = document.getElementById('progProjectId');
+  if(projSel2) projSel2.innerHTML='<option value="">— Select subdivision —</option>';
+  const banner2 = document.getElementById('progProjectInfoBanner');
+  if(banner2){ banner2.style.display='none'; banner2.innerHTML=''; }
+  const boqBlocks2 = document.getElementById('progBoqBlocks');
+  if(boqBlocks2) boqBlocks2.innerHTML='';
   document.getElementById('progressModal').style.display='flex';
 }
 function closeProgressModal(){ document.getElementById('progressModal').style.display='none'; }
@@ -6851,7 +6892,9 @@ function recalcProgOverall(){
 }
 
 async function saveProgress(){
-  const projId = document.getElementById('progProjectId').value;
+  const progSelVal = document.getElementById('progProjectId').value;
+  if(!progSelVal || progSelVal.startsWith('sub:')){ alert('Please select a subdivision that has an existing project record.'); return; }
+  const projId = progSelVal;
   if(!projId){ alert('Please select a project.'); return; }
   const proj = engProjects.find(function(p){return p.id===projId;});
   const mode = document.querySelector('input[name="progMode"]:checked').value;
@@ -7794,6 +7837,97 @@ async function saveEditedPayment(prId){
 }
 
   
+
+// ── DELETE FUNCTIONS ──────────────────
+async function deleteEngProject(id){
+  if(!confirm('Delete this project? This will also delete all linked contracts, BOQ blocks, and progress reports. This cannot be undone.')) return;
+  await Promise.all([
+    engFetch('/eng_progress_reports?project_id=eq.'+id,'DELETE'),
+    engFetch('/eng_boq_blocks?project_id=eq.'+id,'DELETE'),
+    engFetch('/eng_contracts?project_id=eq.'+id,'DELETE')
+  ]);
+  await engFetch('/eng_projects?id=eq.'+id,'DELETE');
+  engProjects = engProjects.filter(function(p){return p.id!==id;});
+  renderEngProjects();
+  showFlash('✓ Project deleted.','engProjFlash','engProjFlashMsg');
+}
+
+async function deleteEngContract(id){
+  if(!confirm('Delete this contract and all its BOQ blocks? This cannot be undone.')) return;
+  await engFetch('/eng_boq_blocks?contract_id=eq.'+id,'DELETE');
+  await engFetch('/eng_contracts?id=eq.'+id,'DELETE');
+  engContracts = engContracts.filter(function(c){return c.id!==id;});
+  engBoqBlocks = engBoqBlocks.filter(function(b){return b.contract_id!==id;});
+  renderEngContracts();
+  showFlash('✓ Contract deleted.','engContrFlash','engContrFlashMsg');
+}
+
+async function deleteEngProgress(id){
+  if(!confirm('Delete this progress report? The executed quantities recorded in this report will NOT be reversed from the BOQ totals automatically. This cannot be undone.')) return;
+  await engFetch('/eng_progress_reports?id=eq.'+id,'DELETE');
+  engProgressReports = engProgressReports.filter(function(r){return r.id!==id;});
+  renderEngProgress();
+  showFlash('✓ Progress report deleted.','engProgFlash','engProgFlashMsg');
+}
+
+// ── PROGRESS REPORT COMPANY / DIVISION / SUBDIVISION CASCADE ─────
+function onProgCompanyChange(){
+  const co = document.getElementById('progCompany')?.value||'';
+  const divSel = document.getElementById('progDivision');
+  const projSel = document.getElementById('progProjectId');
+  if(!divSel||!projSel) return;
+  divSel.innerHTML = '<option value="">— Select division —</option>';
+  projSel.innerHTML = '<option value="">— Select subdivision —</option>';
+  document.getElementById('progProjectInfoBanner').style.display='none';
+  if(!co) return;
+  const coObj = companies.find(function(c){return c.id===co||c.code===co;});
+  const targetDivs = ['WE1','WE2','ME1'];
+  ((coObj&&coObj.divisions)||[]).filter(function(d){return targetDivs.includes(d.code);}).forEach(function(d){
+    const o = document.createElement('option');
+    o.value = d.code; o.textContent = d.code+' · '+d.name;
+    divSel.appendChild(o);
+  });
+}
+
+function onProgDivisionChange(){
+  const co = document.getElementById('progCompany')?.value||'';
+  const divCode = document.getElementById('progDivision')?.value||'';
+  const projSel = document.getElementById('progProjectId');
+  if(!projSel) return;
+  projSel.innerHTML = '<option value="">— Select subdivision —</option>';
+  document.getElementById('progProjectInfoBanner').style.display='none';
+  if(!co||!divCode) return;
+  const coObj = companies.find(function(c){return c.id===co||c.code===co;});
+  const div = coObj&&(coObj.divisions||[]).find(function(d){return d.code===divCode;});
+  const subs = (div&&div.subdivisions)||[];
+  if(!subs.length){
+    const o=document.createElement('option');
+    o.disabled=true; o.textContent='No subdivisions — add in Companies & Divisions';
+    projSel.appendChild(o);
+    return;
+  }
+  subs.forEach(function(sub){
+    const engProj = engProjects.find(function(p){
+      return p.subdivision_code===sub.code && p.division_code===divCode;
+    });
+    const o = document.createElement('option');
+    o.value = engProj ? engProj.id : ('sub:'+divCode+':'+sub.code);
+    o.textContent = (sub.project||sub.name)+(sub.client?' — '+sub.client:'')+(engProj?'':' (no project yet)');
+    projSel.appendChild(o);
+  });
+}
+
+// Override populateProgressProjectDropdown — now driven by cascade above
+function populateProgressProjectDropdown(){
+  // Reset cascade
+  const coSel = document.getElementById('progCompany');
+  const divSel = document.getElementById('progDivision');
+  const projSel = document.getElementById('progProjectId');
+  if(coSel) coSel.value='';
+  if(divSel) divSel.innerHTML='<option value="">— Select division —</option>';
+  if(projSel) projSel.innerHTML='<option value="">— Select subdivision —</option>';
+}
+
 
 </script>
 </body>
