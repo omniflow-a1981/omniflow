@@ -1669,7 +1669,7 @@ async function apiCall(method, path, body=null, skipQueue=false){
   // Direct Supabase REST
   const hdrs={'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'return=representation'};
   const pathMap={
-    'GET /transactions': SUPA_URL+'/transactions?select=*&order=date.desc,created_at.desc',
+    'GET /transactions': SUPA_URL+'/transactions?select=id,date,ref,note,div_code,type,etb_in,etb_out,usd_in,usd_out,bank_account,created_at&order=date.desc,created_at.desc',
     'GET /balances': SUPA_URL+'/balances?select=*&order=div_code',
     'GET /outstanding': SUPA_URL+'/outstanding?select=*&order=amt.desc',
     'GET /companies': SUPA_URL+'/companies?select=*,divisions(*)',
@@ -5006,7 +5006,7 @@ async function clearAllPRHistory(){
 
 async function loadPayRequests(){
   try{
-    const res=await fetch(PR_SB+'/payment_requests?select=*&order=created_at.desc',
+    const res=await fetch(PR_SB+'/payment_requests?select=id,company_id,division,project,client,request_type,category,status,net_payable,partial_amount,created_at,prepared_by,prepared_at,checked_by,checked_at,approved_by,approved_at,verified_by,verified_at,paid_by,paid_at,pay_method,transfer_id,paid_comment,rejected,reject_comment,wht_applied,notes&order=created_at.desc',
       {headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON}});
     if(!res.ok) return;
     payRequests=await res.json();
@@ -5212,8 +5212,9 @@ function renderPRList(){
   }
 }
 
-function viewPR(id){
-  const pr=payRequests.find(x=>x.id===id); if(!pr) return;
+async function viewPR(id){
+  // Lazy-load full PR (with attachments/items) only when viewing detail
+  const pr = await loadFullPR(id); if(!pr) return;
   const items=JSON.parse(pr.items||'[]');
   const st=prStatusInfo(pr), next=prNextStep(pr);
   const prType=prGetType(pr);
@@ -5660,6 +5661,24 @@ function editPR(id){
   // Clear rejected flag when editing
   const _crEdit=document.getElementById('prCategoryRow'); if(_crEdit) _crEdit.style.display='block';
   document.getElementById('prModal').classList.add('open');
+}
+
+
+// Load full PR data (with attachments) only when viewing detail
+async function loadFullPR(prId){
+  try{
+    const res = await fetch(PR_SB+'/payment_requests?id=eq.'+prId+'&select=*',{
+      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON}
+    });
+    const data = await res.json();
+    if(Array.isArray(data)&&data.length){
+      // Merge full data into payRequests array
+      const idx = payRequests.findIndex(function(p){return p.id===prId;});
+      if(idx>=0) payRequests[idx] = {...payRequests[idx], ...data[0]};
+      return data[0];
+    }
+  }catch(e){ console.error('loadFullPR error',e); }
+  return payRequests.find(function(p){return p.id===prId;});
 }
 
 async function actOnPR(id){
@@ -6162,9 +6181,11 @@ function engContractStatusBadge(status){
 }
 
 // ── PROJECT TRACKING ──────────────────
-async function loadEngProjects(){
-  const data = await engFetch('/eng_projects?order=created_at.desc&select=*');
+async function loadEngProjects(force){
+  if(!force && !_shouldFetch('engProj', engProjects)){ renderEngProjects(); return; }
+  const data = await engFetch('/eng_projects?order=created_at.desc&select=id,company_id,division_code,subdivision_code,project_name,client,location,start_date,end_date,status,phase,budget_etb,budget_usd,percent_complete,project_manager,description,created_by,created_at,updated_at');
   engProjects = Array.isArray(data) ? data : [];
+  _markFetched('engProj');
   renderEngProjects();
 }
 
@@ -6226,6 +6247,44 @@ function renderEngProjects(){
 }
 
 function fmtETB2(n){ return 'ETB '+(parseFloat(n||0)).toLocaleString('en-ET',{maximumFractionDigits:0}); }
+
+
+// ── UNIFIED SUBDIVISION/PROJECT SOURCE ────────────────────────────
+// All three modules (Project Tracking, Contract Management, Site Progress)
+// use this single function — shows only subdivisions registered in Project Tracking
+// filterCo: 'WE'|'ME'|'' (empty = all)
+// filterDiv: 'WE1'|'WE2'|'ME1'|'' (empty = all)
+// Returns [{projId, subCode, divCode, coId, label}]
+function getTrackedSubdivisions(filterCo, filterDiv){
+  const results = [];
+  const seen = new Set();
+  const targetDivs = ['WE1','WE2','ME1'];
+  companies.forEach(function(co){
+    if(filterCo && co.id!==filterCo && co.code!==filterCo) return;
+    (co.divisions||[]).forEach(function(div){
+      if(!targetDivs.includes(div.code)) return;
+      if(filterDiv && div.code!==filterDiv) return;
+      (div.subdivisions||[]).forEach(function(sub){
+        const engProj = engProjects.find(function(p){
+          return p.subdivision_code===sub.code && p.division_code===div.code &&
+                 (p.company_id===co.id||p.company_id===co.code);
+        });
+        if(!engProj) return; // only show subdivisions with a registered project
+        if(seen.has(engProj.id)) return;
+        seen.add(engProj.id);
+        results.push({
+          projId: engProj.id,
+          subCode: sub.code,
+          divCode: div.code,
+          coId: co.code||co.id,
+          label: (sub.project||sub.name)+(sub.client?' — '+sub.client:'')+' ('+div.code+')',
+          engProj: engProj
+        });
+      });
+    });
+  });
+  return results;
+}
 
 function getDivSubdivisionsForCompany(coId, divCode){
   // Pull real subdivisions from Companies & Divisions data (source of truth)
@@ -6400,7 +6459,8 @@ async function saveProject(){
   }
   if(id) await engFetch('/eng_projects?id=eq.'+id,'PATCH',payload);
   else await engFetch('/eng_projects','POST',payload);
-  await loadEngProjects();
+  _invalidate('engProj');
+  await loadEngProjects(true);
   closeProjectModal();
   showFlash('✓ Project saved.','engProjFlash','engProjFlashMsg');
 }
@@ -6417,10 +6477,25 @@ function openProjectDetail(id){
     +'<div style="display:flex;gap:8px;margin-bottom:14px">'+engStatusBadge(p.status)+engPhaseBadge(p.phase)+'</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:16px">'+(p.client||'—')+' · '+(p.location||'—')+' · '+p.division_code+' · '+coName+'</div>'
     +'<div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:5px"><span>Overall Progress</span><span style="font-weight:700;color:var(--teal-dark)">'+pct+'%</span></div><div style="height:8px;background:var(--bg);border-radius:5px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--teal),var(--teal-dark))"></div></div></div>'
-    +'<div class="fr" style="margin-bottom:16px">'
+    +'<div class="fr" style="margin-bottom:10px">'
       +'<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Start Date</div><div style="font-size:13px;font-weight:600">'+(p.start_date||'—')+'</div></div>'
       +'<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Target End</div><div style="font-size:13px;font-weight:600">'+(p.end_date||'—')+'</div></div>'
     +'</div>'
+    +(function(){
+      if(!p.start_date||!p.end_date) return '';
+      const start=new Date(p.start_date),end=new Date(p.end_date),today=new Date();
+      const totalDays=Math.max(1,Math.round((end-start)/86400000));
+      const elapsed=Math.max(0,Math.round((today-start)/86400000));
+      const elPct=Math.min(100,Math.round(elapsed/totalDays*100));
+      const remain=Math.max(0,totalDays-elapsed);
+      const color=elPct>80?'#dc2626':elPct>60?'#d97706':'#166534';
+      return '<div style="margin-bottom:16px">'
+        +'<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">'
+        +'<span style="color:var(--muted)">Time Elapsed</span>'
+        +'<span style="font-weight:700;color:'+color+'">'+elapsed+' / '+totalDays+' days ('+elPct+'%) · '+remain+' days remaining</span></div>'
+        +'<div style="height:7px;background:var(--bg);border-radius:4px;overflow:hidden">'
+        +'<div style="height:100%;width:'+elPct+'%;background:'+color+';border-radius:4px"></div></div></div>';
+    })()
     +(p.budget_etb>0?'<div style="margin-bottom:16px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Budget</div><div style="font-size:15px;font-weight:700;color:var(--teal-dark)">'+fmtETB2(p.budget_etb)+(p.budget_usd>0?' / $'+p.budget_usd.toLocaleString():'')+'</div></div>':'')
     +(p.description?'<div style="margin-bottom:16px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Description</div><div style="font-size:13px;color:var(--ink)">'+p.description+'</div></div>':'')
     +'<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:8px">Contracts ('+relatedContracts.length+')</div>'
@@ -6438,15 +6513,17 @@ function openProjectDetail(id){
 function closeProjectDetail(){ document.getElementById('projectDetailModal').style.display='none'; }
 
 // ── CONTRACT MANAGEMENT ───────────────
-async function loadEngContracts(){
+async function loadEngContracts(force){
+  if(!force && !_shouldFetch('engContr', engContracts)){ renderEngContracts(); return; }
   const [proj, contr, blocks] = await Promise.all([
-    engProjects.length ? Promise.resolve(engProjects) : engFetch('/eng_projects?order=created_at.desc&select=*'),
-    engFetch('/eng_contracts?order=created_at.desc&select=*'),
-    engFetch('/eng_boq_blocks?order=display_order&select=*')
+    engProjects.length ? Promise.resolve(engProjects) : engFetch('/eng_projects?order=created_at.desc&select=id,company_id,division_code,subdivision_code,project_name,client,location,start_date,end_date,status,phase,budget_etb,budget_usd,percent_complete,project_manager,description,created_by,created_at,updated_at'),
+    engFetch('/eng_contracts?order=created_at.desc&select=id,project_id,company_id,division_code,contract_no,contract_title,client,contract_type,contract_value_etb,contract_value_usd,signed_date,commencement_date,completion_date,retention_pct,advance_payment_pct,performance_bond_pct,defects_liability_months,payment_terms,status,notes,created_by,created_at'),
+    engFetch('/eng_boq_blocks?order=display_order&select=id,contract_id,project_id,block_name,block_description,specification,display_order,created_at')
   ]);
   if(!engProjects.length) engProjects = Array.isArray(proj)?proj:[];
   engContracts = Array.isArray(contr) ? contr : [];
   engBoqBlocks = Array.isArray(blocks) ? blocks : [];
+  _markFetched('engContr');
   renderEngContracts();
 }
 
@@ -6468,6 +6545,9 @@ function renderEngContracts(){
   wrap.innerHTML = list.map(function(c){
     const proj = engProjects.find(function(p){return p.id===c.project_id;});
     const blockCount = engBoqBlocks.filter(function(b){return b.contract_id===c.id;}).length;
+    // EVM: contract execution % from project percent_complete
+    const linkedProj = engProjects.find(function(p){return p.id===c.project_id;});
+    const contractEVM = linkedProj ? parseFloat(linkedProj.percent_complete||0) : 0;
     return '<div class="pr-card">'
       +'<div style="cursor:pointer" onclick="openContractModal(' + "'" + c.id + "'" + ')">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
@@ -6477,7 +6557,8 @@ function renderEngContracts(){
         +'</div>'
         +engContractStatusBadge(c.status)
       +'</div>'
-      +'<div style="display:flex;gap:18px;margin-top:10px;flex-wrap:wrap">'
+      +'<div style="margin-top:10px;margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px"><span>EVM Progress</span><span style="font-weight:700;color:var(--teal-dark)">'+contractEVM+'%</span></div><div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+Math.min(100,contractEVM)+'%;background:linear-gradient(90deg,var(--teal),var(--teal-dark))"></div></div></div>'
+      +'<div style="display:flex;gap:18px;margin-top:6px;flex-wrap:wrap">'
         +'<div style="font-size:11px;color:var(--muted)">Value: <strong style="color:var(--teal-dark)">'+fmtETB2(c.contract_value_etb)+'</strong></div>'
         +(c.signed_date?'<div style="font-size:11px;color:var(--muted)">Signed: <strong style="color:var(--ink)">'+c.signed_date+'</strong></div>':'')
         +(c.completion_date?'<div style="font-size:11px;color:var(--muted)">Completion: <strong style="color:var(--ink)">'+c.completion_date+'</strong></div>':'')
@@ -6520,18 +6601,17 @@ function onContrDivisionChange(){
 function populateContrProjectDropdown(filterCo, filterDiv){
   const sel = document.getElementById('contrProjectId'); if(!sel) return;
   sel.innerHTML = '<option value="">— Select project —</option>';
-  // Only show projects registered in Project Tracking
-  engProjects.filter(function(p){
-    if(filterCo && p.company_id!==filterCo) return false;
-    if(filterDiv && p.division_code!==filterDiv) return false;
-    return true;
-  }).forEach(function(p){
+  const tracked = getTrackedSubdivisions(filterCo||'', filterDiv||'');
+  if(!tracked.length && (filterCo||filterDiv)){
+    const o=document.createElement('option'); o.disabled=true;
+    o.textContent='No tracked projects — create in Project Tracking first';
+    sel.appendChild(o);
+    return;
+  }
+  tracked.forEach(function(item){
     const o = document.createElement('option');
-    o.value = p.id;
-    const co = companies.find(function(c){return c.id===p.company_id||c.code===p.company_id;});
-    const div = co&&(co.divisions||[]).find(function(d){return d.code===p.division_code;});
-    const sub = div&&(div.subdivisions||[]).find(function(s){return s.code===p.subdivision_code;});
-    o.textContent = (sub?(sub.project||sub.name):p.project_name)+' ('+p.division_code+')';
+    o.value = item.projId;
+    o.textContent = item.label;
     sel.appendChild(o);
   });
 }
@@ -6627,7 +6707,8 @@ async function saveContract(){
   if(!payload.contract_title){ alert('Contract title is required.'); return; }
   if(id) await engFetch('/eng_contracts?id=eq.'+id,'PATCH',payload);
   else await engFetch('/eng_contracts','POST',payload);
-  await loadEngContracts();
+  _invalidate('engContr');
+  await loadEngContracts(true);
   closeContractModal();
   showFlash('✓ Contract saved.','engContrFlash','engContrFlashMsg');
 }
@@ -6635,13 +6716,15 @@ async function saveContract(){
 // ── SITE PROGRESS REPORTS ─────────────
 let progBreakdownRows = [];
 
-async function loadEngProgress(){
+async function loadEngProgress(force){
+  if(!force && !_shouldFetch('engProg', engProgressReports)){ renderEngProgress(); return; }
   const [proj, prog] = await Promise.all([
-    engProjects.length ? Promise.resolve(engProjects) : engFetch('/eng_projects?order=created_at.desc&select=*'),
-    engFetch('/eng_progress_reports?order=report_date.desc&select=*')
+    engProjects.length ? Promise.resolve(engProjects) : engFetch('/eng_projects?order=created_at.desc&select=id,company_id,division_code,subdivision_code,project_name,client,location,start_date,end_date,status,phase,budget_etb,budget_usd,percent_complete,project_manager,description,created_by,created_at,updated_at'),
+    engFetch('/eng_progress_reports?order=report_date.desc&select=id,project_id,company_id,division_code,report_date,report_period,tracking_mode,overall_percent,manpower_count,safety_incidents,weather_remarks,issues_delays,notes,prepared_by,approved_by,approved_at,created_at')
   ]);
   if(!engProjects.length) engProjects = Array.isArray(proj)?proj:[];
   engProgressReports = Array.isArray(prog) ? prog : [];
+  _markFetched('engProg');
   populateProgressProjectFilter();
   renderEngProgress();
 }
@@ -6650,27 +6733,15 @@ function populateProgressProjectFilter(){
   const sel = document.getElementById('eprfProject'); if(!sel) return;
   const cur = sel.value;
   sel.innerHTML = '<option value="">All Projects</option>';
-  // Build from real subdivision data — no duplicates, deleted subs auto-removed
-  const seenProj = new Set();
-  const targetDivs2 = ['WE1','WE2','ME1'];
-  companies.forEach(function(co){
-    (co.divisions||[]).forEach(function(div){
-      if(!targetDivs2.includes(div.code)) return;
-      (div.subdivisions||[]).forEach(function(sub){
-        const engProj = engProjects.find(function(p){
-          return p.subdivision_code===sub.code && p.division_code===div.code;
-        });
-        if(!engProj) return; // only show if project exists
-        if(seenProj.has(engProj.id)) return;
-        seenProj.add(engProj.id);
-        const o = document.createElement('option');
-        o.value = engProj.id;
-        o.textContent = (sub.project||sub.name)+' ('+div.code+')';
-        sel.appendChild(o);
-      });
-    });
+  // Use unified source — same labels as all three modals
+  const trackedAll = getTrackedSubdivisions('','');
+  trackedAll.forEach(function(item){
+    const o = document.createElement('option');
+    o.value = item.projId;
+    o.textContent = item.label;
+    sel.appendChild(o);
   });
-  sel.value = seenProj.has(cur) ? cur : '';
+  sel.value = trackedAll.some(function(x){return x.projId===cur;}) ? cur : '';
 }
 
 function renderEngProgress(){
@@ -6696,11 +6767,12 @@ function renderEngProgress(){
     return '<div class="pr-card" style="cursor:pointer" onclick="openProgressDetail(' + "'" + r.id + "'" + ')">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
         +'<div>'
-          +'<div style="font-size:14px;font-weight:700;color:var(--ink2);margin-bottom:3px">'+(proj?proj.project_name:'—')+'</div>'
-          +'<div style="font-size:12px;color:var(--muted)">'+r.report_date+(r.report_period?' · '+r.report_period:'')+' · BOQ/EVM tracking'+'</div>'
+          +'<div style="font-size:14px;font-weight:700;color:var(--ink2);margin-bottom:3px">'
+          +'<span style="display:inline-block;background:var(--teal-dark);color:#fff;font-size:12px;font-weight:800;padding:2px 8px;border-radius:6px;margin-right:8px;min-width:42px;text-align:center">'+pct+'%</span>'
+          +(proj?proj.project_name:'—')+'</div>'
+          +'<div style="font-size:12px;color:var(--muted)">'+r.report_date+(r.report_period?' · '+r.report_period:'')+' · BOQ/EVM</div>'
         +'</div>'
         +'<div style="display:flex;align-items:center;gap:8px">'
-        +'<span style="font-size:16px;font-weight:800;color:var(--teal-dark)">'+pct+'%</span>'
         +'<button data-id="'+r.id+'" onclick="event.stopPropagation();deleteEngProgress(this.dataset.id)" style="background:none;border:1px solid #fca5a5;border-radius:7px;cursor:pointer;color:#dc2626;font-size:11px;padding:2px 8px">✕ Delete</button>'
         +'</div>'
       +'</div>'
@@ -6808,6 +6880,7 @@ function openProgressModal(){
   progManualBoqBlocks = [];
   progBreakdownRows = [];
   progContractBoqLoaded = false;
+  progBoqBlockCollapsed = [];
   const catWrap2 = document.getElementById('progBreakdownWrap');
   const boqWrap2 = document.getElementById('progManualBoqWrap');
   if(catWrap2) catWrap2.style.display='none';
@@ -6839,21 +6912,27 @@ function onProgModeChange(){
 // loadContractBoqForProgress: loads contract BOQ blocks+items for the selected project
 // Sets progManualBoqBlocks in the new format: [{name, contract_id, items:[{...contract fields, qty_today, qty_todate}]}]
 let progContractBoqLoaded = false;
+const _boqCache = {}; // cache BOQ blocks per project to avoid repeat fetches
 
 async function loadContractBoqForProgress(){
   const boqWrap = document.getElementById('progManualBoqWrap');
   const wrap = document.getElementById('progBoqBlocks');
-  if(wrap) wrap.innerHTML = '<div style="padding:14px;text-align:center;color:var(--muted);font-size:12px">Loading contract BOQ...</div>';
   const selVal = document.getElementById('progProjectId')?.value;
-  if(!selVal){
+  if(!selVal || selVal.startsWith('sub:')){
     if(wrap) wrap.innerHTML = '<div style="padding:14px;text-align:center;color:var(--muted);font-size:12px">Please select a project first.</div>';
     return;
   }
-  // Handle sub: prefix (no eng_project yet)
-  if(selVal.startsWith('sub:')){
-    if(wrap) wrap.innerHTML = '<div style="padding:14px;color:#92400e;background:#fef9c3;border-radius:8px;font-size:12px">No project record for this subdivision yet. Please go to Project Tracking and create a project for this subdivision first.</div>';
+  // Check cache first — avoid repeat Supabase fetch for same project in same session
+  if(_boqCache[selVal] && _boqCache[selVal].length){
+    progManualBoqBlocks = _boqCache[selVal].map(function(blk){
+      return Object.assign({}, blk, {items: (blk.items||[]).map(function(it){ return Object.assign({},it,{qty_today:0, amount_today:0}); })});
+    });
+    progBoqBlockCollapsed = [];
+    renderProgBoqBlocks();
+    recalcProgBoqOverall();
     return;
   }
+  if(wrap) wrap.innerHTML = '<div style="padding:14px;text-align:center;color:var(--muted);font-size:12px">Loading contract BOQ...</div>';
   const projId = selVal;
   const contracts = engContracts.filter(function(c){ return c.project_id===projId; });
   const contractIds = contracts.map(function(c){ return c.id; });
@@ -6861,14 +6940,14 @@ async function loadContractBoqForProgress(){
     if(wrap) wrap.innerHTML = '<div style="padding:14px;color:#92400e;background:#fef9c3;border-radius:8px;font-size:12px">No contracts found for this project. Add a contract with BOQ blocks in Contract Management first.</div>';
     return;
   }
-  const blocks = await engFetch('/eng_boq_blocks?contract_id=in.('+contractIds.join(',')+')&order=display_order&select=*');
+  const blocks = await engFetch('/eng_boq_blocks?contract_id=in.('+contractIds.join(',')+')&order=display_order&select=id,contract_id,project_id,block_name,block_description,specification,display_order');
   const blockArr = Array.isArray(blocks) ? blocks : [];
   if(!blockArr.length){
     if(wrap) wrap.innerHTML = '<div style="padding:14px;color:#92400e;background:#fef9c3;border-radius:8px;font-size:12px">No BOQ blocks found. Upload the signed BOQ under Contract Management → BOQ Blocks first.</div>';
     return;
   }
   const blockIds = blockArr.map(function(b){ return b.id; });
-  const items = await engFetch('/eng_boq_block_items?block_id=in.('+blockIds.join(',')+')&order=display_order&select=*');
+  const items = await engFetch('/eng_boq_block_items?block_id=in.('+blockIds.join(',')+')&order=display_order&select=id,block_id,item_no,description,unit,quantity,unit_rate,total_amount,quantity_executed,display_order');
   const itemArr = Array.isArray(items) ? items : [];
   // Also load all previous progress reports for this project to calculate to-date executed qty
   const prevReports = await engFetch('/eng_progress_reports?project_id=eq.'+projId+'&order=report_date.asc&select=id,breakdown,tracking_mode,report_date');
@@ -6917,6 +6996,11 @@ async function loadContractBoqForProgress(){
     };
   });
   progContractBoqLoaded = true;
+  // Cache BOQ for instant re-use in same session
+  _boqCache[projId] = progManualBoqBlocks.map(function(blk){
+    return {name:blk.name, block_id:blk.block_id, contract_id:blk.contract_id,
+      items:(blk.items||[]).map(function(it){ return Object.assign({},it); })};
+  });
   const colBar = document.getElementById('progBoqColToggles');
   if(colBar) colBar.style.display = 'flex';
   renderProgBoqBlocks();
@@ -6966,15 +7050,16 @@ async function saveProgress(){
   const proj = engProjects.find(function(p){return p.id===projId;});
   const mode = document.querySelector('input[name="progMode"]:checked').value;
   // Always EVM: (To Date + Today executed value) ÷ Contract Total × 100
+  // EVM: % = To Date Amount (including today) ÷ Contract Total × 100
   let overall = 0, breakdownData = progManualBoqBlocks;
-  let contractTotal=0, newToDateAmt=0;
+  let contractTotal=0, executedAmt=0;
   progManualBoqBlocks.forEach(function(blk){
     (blk.items||[]).forEach(function(it){
       contractTotal += parseFloat(it.contract_amount)||0;
-      newToDateAmt += (parseFloat(it.amount_todate)||0) + (parseFloat(it.amount_today)||0);
+      executedAmt += (parseFloat(it.amount_todate)||0) + (parseFloat(it.amount_today)||0);
     });
   });
-  overall = contractTotal>0 ? Math.round((newToDateAmt/contractTotal)*1000)/10 : 0;
+  overall = contractTotal>0 ? Math.round((executedAmt/contractTotal)*1000)/10 : 0;
   const payload = {
     project_id: projId,
     company_id: proj?proj.company_id:'',
@@ -7035,33 +7120,77 @@ async function saveProgress(){
   }
   // Update project's percent_complete to latest report
   if(projId) await engFetch('/eng_projects?id=eq.'+projId,'PATCH',{percent_complete: overall});
-  await Promise.all([loadEngProgress(), loadEngProjects()]);
+  _invalidate('engProg'); _invalidate('engProj');
+  // Invalidate BOQ cache for this project so next report picks up updated to-date quantities
+  if(projId) { delete _boqCache[projId]; }
+  await Promise.all([loadEngProgress(true), loadEngProjects(true)]);
   closeProgressModal();
   showFlash('✓ Progress report saved.','engProgFlash','engProgFlashMsg');
 }
 
-function openProgressDetail(id){
+async function openProgressDetail(id){
   const r = engProgressReports.find(function(x){return x.id===id;}); if(!r) return;
   const proj = engProjects.find(function(p){return p.id===r.project_id;});
+  // Lazy-load breakdown if not already in memory (excluded from list query)
   let breakdown = [];
+  if(!r.breakdown){
+    const full = await engFetch('/eng_progress_reports?id=eq.'+id+'&select=id,breakdown,tracking_mode');
+    const fullR = Array.isArray(full) && full.length ? full[0] : null;
+    if(fullR){ r.breakdown = fullR.breakdown; r.tracking_mode = fullR.tracking_mode; }
+  }
   try{ breakdown = typeof r.breakdown==='string' ? JSON.parse(r.breakdown) : (r.breakdown||[]); }catch(e){}
   const content = document.getElementById('progressDetailContent');
+  // Show project + subdivision name
+  const co = proj && companies.find(function(c){return c.id===proj.company_id||c.code===proj.company_id;});
+  const div = co && (co.divisions||[]).find(function(d){return d.code===proj.division_code;});
+  const sub = div && (div.subdivisions||[]).find(function(s){return s.code===proj.subdivision_code;});
+  const projDisplayName = sub ? (sub.project||sub.name) : (proj?proj.project_name:'Progress Report');
+  const clientDisplay = sub ? (sub.client||'') : (proj?proj.client||'':'');
   content.innerHTML =
-    '<div class="modal-header"><div class="modal-title">'+(proj?proj.project_name:'Progress Report')+'</div><button class="modal-close" onclick="closeProgressDetail()">&times;</button></div>'
-    +'<div style="font-size:13px;color:var(--muted);margin-bottom:14px">'+r.report_date+(r.report_period?' · '+r.report_period:'')+'</div>'
-    +'<div style="font-size:24px;font-weight:800;color:var(--teal-dark);margin-bottom:14px">'+(r.overall_percent||0)+'% Complete</div>'
+    '<div class="modal-header"><div class="modal-title">'+projDisplayName+'</div><button class="modal-close" onclick="closeProgressDetail()">&times;</button></div>'
+    +(clientDisplay?'<div style="font-size:12px;color:var(--muted);margin-bottom:4px">'+clientDisplay+' · '+(proj?proj.division_code:'')+'</div>':'')
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:12px">'+r.report_date+(r.report_period?' · '+r.report_period:'')+'</div>'
+    +'<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:linear-gradient(135deg,var(--teal-light),#d1fae5);border-radius:11px;margin-bottom:14px"><div><div style="font-size:10px;font-weight:700;color:var(--teal-dark);text-transform:uppercase">EVM Progress</div><div style="font-size:11px;color:var(--muted)">To Date ÷ Contract Total × 100</div></div><div style="margin-left:auto;font-size:28px;font-weight:800;color:var(--teal-dark)">'+(r.overall_percent||0)+'%</div></div>'
     +(r.tracking_mode==='category'
       ? '<div style="margin-bottom:14px">'+breakdown.map(function(b){
           return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border2)"><span>'+(b.label||'—')+' (wt '+(b.weight||0)+'%)</span><span style="font-weight:700">'+(b.complete||0)+'%</span></div>';
         }).join('')+'</div>'
       : '<div style="margin-bottom:14px">'+breakdown.map(function(blk){
           const blockTotal=(blk.items||[]).reduce(function(s,it){return s+(parseFloat(it.amount)||0);},0);
+          // Support both old field names and new field names
           const rowsHtml=(blk.items||[]).map(function(it){
-            return '<tr><td style="padding:4px 6px;font-size:11px">'+(it.item_no||'')+'</td><td style="padding:4px 6px;font-size:11px">'+(it.description||'')+'</td><td style="padding:4px 6px;font-size:11px">'+(it.unit||'')+'</td><td style="padding:4px 6px;font-size:11px;text-align:right">'+(it.quantity||0)+'</td><td style="padding:4px 6px;font-size:11px;text-align:right">'+(it.unit_rate||0).toLocaleString()+'</td><td style="padding:4px 6px;font-size:11px;text-align:right;font-weight:700">'+(it.amount||0).toLocaleString()+'</td><td style="padding:4px 6px;font-size:11px;text-align:right">'+(it.quantity_executed||0)+'</td></tr>';
+            const cQty=parseFloat(it.contract_qty||it.quantity||0);
+            const cRate=parseFloat(it.unit_rate||0);
+            const cAmt=parseFloat(it.contract_amount||it.amount||it.total_amount||cQty*cRate||0);
+            const prevQty=parseFloat(it.qty_todate||it.quantity_executed||0);
+            const todQty=parseFloat(it.qty_today||0);
+            const tdQty=prevQty+todQty;
+            const exQty=Math.max(0,tdQty-cQty);
+            return '<tr style="border-bottom:1px solid var(--border2)'+(exQty>0?';background:#fff5f5':'')+'">'
+              +'<td style="padding:4px 6px;font-size:11px;color:var(--muted)">'+( it.item_no||'')+'</td>'
+              +'<td style="padding:4px 6px;font-size:11px">'+( it.description||'')+'</td>'
+              +'<td style="padding:4px 6px;font-size:11px;text-align:center">'+( it.unit||'')+'</td>'
+              +'<td style="padding:4px 6px;font-size:11px;text-align:right;color:var(--muted)">'+fmtQty(prevQty)+'</td>'
+              +'<td style="padding:4px 6px;font-size:11px;text-align:right;color:#166534;font-weight:700;background:#f0fdf4">'+fmtQty(todQty)+'</td>'
+              +'<td style="padding:4px 6px;font-size:11px;text-align:right;color:#1e40af">'+fmtQty(tdQty)+'</td>'
+              +'<td style="padding:4px 6px;font-size:11px;text-align:right">'+fmtQty(cQty)+'</td>'
+              +(exQty>0?'<td style="padding:4px 6px;font-size:11px;text-align:right;color:#dc2626;font-weight:700">'+fmtQty(exQty)+'</td>':'')
+              +'<td style="padding:4px 6px;font-size:11px;text-align:right">'+fmtRate(cRate)+'</td>'
+              +'<td style="padding:4px 6px;font-size:11px;text-align:right;font-weight:700">'+( cAmt>0?fmtAmt(cAmt):'—')+'</td>'
+            +'</tr>';
           }).join('');
-          return '<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--ink2);margin-bottom:6px">'+blk.name+'</div>'
-            +'<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--bg);font-size:9px;font-weight:700;color:var(--muted)"><th style="padding:4px 6px;text-align:left">Item No.</th><th style="padding:4px 6px;text-align:left">Description</th><th style="padding:4px 6px;text-align:left">Unit</th><th style="padding:4px 6px;text-align:right">Qty</th><th style="padding:4px 6px;text-align:right">Unit Rate</th><th style="padding:4px 6px;text-align:right">Amount</th><th style="padding:4px 6px;text-align:right">Qty Exec.</th></tr></thead><tbody>'+rowsHtml+'</tbody></table>'
-            +'<div style="text-align:right;font-size:11px;color:var(--teal-dark);font-weight:700;margin-top:4px">Block Total: ETB '+blockTotal.toLocaleString('en-ET',{minimumFractionDigits:2})+'</div></div>';
+          const hasExceeding=(blk.items||[]).some(function(it){const c=parseFloat(it.contract_qty||it.quantity||0),td=parseFloat((it.qty_todate||0))+(parseFloat(it.qty_today||0));return td>c;});
+          return '<div style="margin-bottom:12px">'
+            +'<div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:6px">'+blk.name+'</div>'
+            +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:600px">'
+            +'<thead><tr style="background:var(--bg);font-size:9px;font-weight:700;color:var(--muted)">'
+            +'<th style="padding:4px 6px;text-align:left">Item No.</th><th style="padding:4px 6px;text-align:left">Description</th><th style="padding:4px 6px;text-align:center">Unit</th>'
+            +'<th style="padding:4px 6px;text-align:right;color:var(--muted)">Prev Qty</th><th style="padding:4px 6px;text-align:right;color:#166534;background:#f0fdf4">This Day Qty</th><th style="padding:4px 6px;text-align:right;color:#1e40af">To Date Qty</th><th style="padding:4px 6px;text-align:right">Contract Qty</th>'
+            +(hasExceeding?'<th style="padding:4px 6px;text-align:right;color:#dc2626">Exceeding</th>':'')
+            +'<th style="padding:4px 6px;text-align:right">Unit Rate</th><th style="padding:4px 6px;text-align:right">Contract Amt</th>'
+            +'</tr></thead><tbody>'+rowsHtml+'</tbody>'
+            +'</table></div>'
+            +'<div style="text-align:right;font-size:11px;color:var(--teal-dark);font-weight:700;margin-top:4px">Block Contract Total: ETB '+blockTotal.toLocaleString('en-ET',{minimumFractionDigits:2})+'</div></div>';
         }).join('')+'</div>'
     )
     +'<div class="fr" style="margin-bottom:14px">'
@@ -7112,6 +7241,13 @@ function renderProgIssueRows(){
 
 // Column visibility helper
 function boqColVisible(id){ const el=document.getElementById(id); return el ? el.checked : true; }
+
+let progBoqBlockCollapsed = [];
+
+function toggleProgBoqBlock(bi){
+  progBoqBlockCollapsed[bi] = progBoqBlockCollapsed[bi]===false ? true : false;
+  renderProgBoqBlocks();
+}
 
 function renderProgBoqBlocks(){
   const wrap = document.getElementById('progBoqBlocks'); if(!wrap) return;
@@ -7247,15 +7383,27 @@ function renderProgBoqBlocks(){
     if(showExPct)   foot += '<td></td>';
     foot += '</tr>';
 
-    return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px">'
-      +'<div style="font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:10px">'+blk.name+'</div>'
-      +'<div style="overflow-x:auto">'
-        +'<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:700px">'
-          +'<thead>'+hdr+'</thead>'
-          +'<tbody>'+rowsHtml+'</tbody>'
-          +'<tfoot>'+foot+'</tfoot>'
-        +'</table>'
+    const isCollapsed = (progBoqBlockCollapsed[bi]===undefined) ? true : progBoqBlockCollapsed[bi];
+    const blkTodayPct = blkContractTotal>0 ? Math.round(((blkPrevTotal+blkTodayTotal)/blkContractTotal)*1000)/10 : 0;
+    const blkColor = blkTodayPct>=100?'#dc2626':blkTodayPct>60?'#d97706':'#166534';
+    return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden">'
+      +'<div onclick="toggleProgBoqBlock('+bi+')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;cursor:pointer;background:var(--bg);user-select:none">'
+        +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+          +'<span style="font-size:13px;font-weight:700;color:var(--ink2)">'+blk.name+'</span>'
+          +'<span style="font-size:11px;background:'+blkColor+';color:#fff;padding:2px 8px;border-radius:5px;font-weight:700">'+blkTodayPct+'%</span>'
+          +'<span style="font-size:11px;color:var(--muted)">Contract: '+fmtAmt(blkContractTotal)+' ETB</span>'
+          +(blkTodayTotal>0?'<span style="font-size:11px;color:#166534;font-weight:600">Today: +'+fmtAmt(blkTodayTotal)+' ETB</span>':'')
+        +'</div>'
+        +'<span style="font-size:14px;color:var(--muted);padding-left:8px">'+(isCollapsed?'&#9654;':'&#9660;')+'</span>'
       +'</div>'
+      +(isCollapsed?''
+        :'<div style="padding:10px;overflow-x:auto">'
+          +'<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:700px">'
+            +'<thead>'+hdr+'</thead>'
+            +'<tbody>'+rowsHtml+'</tbody>'
+            +'<tfoot>'+foot+'</tfoot>'
+          +'</table>'
+        +'</div>')
     +'</div>';
   }).join('');
   recalcProgBoqOverall();
@@ -7286,6 +7434,7 @@ function onProgQtyTodayChange(bi, ii, val){
 }
 
 function recalcProgBoqOverall(){
+  // EVM: % = (To Date executed value + Today) ÷ Contract Total × 100
   let contractTotal=0, todayTotal=0, toDateTotal=0;
   progManualBoqBlocks.forEach(function(blk){
     (blk.items||[]).forEach(function(it){
@@ -7294,21 +7443,29 @@ function recalcProgBoqOverall(){
       toDateTotal += parseFloat(it.amount_todate)||0;
     });
   });
-  const newToDate = toDateTotal + todayTotal;
-  const pct = contractTotal>0 ? Math.round((newToDate/contractTotal)*1000)/10 : 0;
+  const executed = toDateTotal + todayTotal; // cumulative including today
+  const pct = contractTotal>0 ? Math.round((executed/contractTotal)*1000)/10 : 0;
   const el = document.getElementById('progOverallPct');
   if(el) el.textContent = pct+'%';
   const lbl = document.getElementById('progOverallLabel');
-  if(lbl) lbl.textContent = '(EVM: '+fmtAmt(newToDate)+' ÷ '+fmtAmt(contractTotal)+' × 100 = '+pct+'%)';
+  if(lbl) lbl.textContent = 'To Date: '+fmtAmt(executed)+' ÷ Contract: '+fmtAmt(contractTotal)+' × 100 = '+pct+'%';
 }
 
 function closeProgressDetail(){ document.getElementById('progressDetailModal').style.display='none'; }
+// ── SIMPLE BANDWIDTH CACHE ──────────────────────────────────────
+// Prevents redundant Supabase fetches when navigating between sections
+const _lastFetch = {};
+function _shouldFetch(key, data){ return !_lastFetch[key] || (Date.now()-_lastFetch[key]>300000) || !data.length; }
+function _markFetched(key){ _lastFetch[key]=Date.now(); }
+function _invalidate(key){ delete _lastFetch[key]; }
+
+
 // ── BOQ BLOCKS (contract BOQ with fixed items, executed qty per progress report) ──
 let engBoqBlocks = [], currentBoqBlockContractId = null, currentBoqBlockItems = [], currentBoqBlockId = null;
 let pendingNewBlockItems = []; // items extracted from uploaded file before block is created
 
 async function loadEngBoqBlocks(){
-  const data = await engFetch('/eng_boq_blocks?order=display_order&select=*');
+  const data = await engFetch('/eng_boq_blocks?order=display_order&select=id,contract_id,project_id,block_name,block_description,specification,display_order,created_at');
   engBoqBlocks = Array.isArray(data) ? data : [];
 }
 
@@ -7522,7 +7679,7 @@ async function openBoqBlockItems(blockId, blockName){
   const specBox = document.getElementById('boqBlockSpecBox');
   if(block&&block.specification){ specBox.style.display='block'; specBox.innerHTML='<strong>Specification:</strong> '+block.specification; }
   else specBox.style.display='none';
-  const items = await engFetch('/eng_boq_block_items?block_id=eq.'+blockId+'&order=display_order&select=*');
+  const items = await engFetch('/eng_boq_block_items?block_id=eq.'+blockId+'&order=display_order&select=id,block_id,item_no,description,unit,quantity,unit_rate,total_amount,quantity_executed,display_order');
   currentBoqBlockItems = Array.isArray(items) ? items.map(function(it){return {...it};}) : [];
   if(!currentBoqBlockItems.length) currentBoqBlockItems = [{item_no:'',description:'',unit:'',quantity:0,unit_rate:0,total_amount:0,quantity_executed:0}];
   renderBoqBlockItemsTable();
@@ -7615,10 +7772,11 @@ function recalcBoqBlockTotal(){
   const execToDate = currentBoqBlockItems.reduce(function(s,it){
     return s+Math.round((parseFloat(it.quantity_executed)||0)*(parseFloat(it.unit_rate)||0)*100)/100;
   },0);
+  // EVM: To Date Amount / Contract Total × 100
   const pct = contractTotal>0 ? Math.round((execToDate/contractTotal)*1000)/10 : 0;
   const tEl=document.getElementById('boqBlockGrandTotal'); if(tEl) tEl.textContent=fmtAmt(contractTotal)+' ETB';
   const eEl=document.getElementById('boqBlockExecTotal'); if(eEl) eEl.textContent=fmtAmt(execToDate)+' ETB';
-  const pEl=document.getElementById('boqBlockExecPct'); if(pEl) pEl.textContent=pct+'%';
+  const pEl=document.getElementById('boqBlockExecPct'); if(pEl) pEl.textContent=pct+'% (To Date / Contract)';
 }
 
 function addBoqBlockItemRow(){
@@ -7964,22 +8122,17 @@ function onProgDivisionChange(){
   projSel.innerHTML = '<option value="">— Select subdivision —</option>';
   document.getElementById('progProjectInfoBanner').style.display='none';
   if(!co||!divCode) return;
-  const coObj = companies.find(function(c){return c.id===co||c.code===co;});
-  const div = coObj&&(coObj.divisions||[]).find(function(d){return d.code===divCode;});
-  const subs = (div&&div.subdivisions)||[];
-  if(!subs.length){
+  const tracked = getTrackedSubdivisions(co, divCode);
+  if(!tracked.length){
     const o=document.createElement('option');
-    o.disabled=true; o.textContent='No subdivisions — add in Companies & Divisions';
+    o.disabled=true; o.textContent='No tracked projects in this division — create one in Project Tracking';
     projSel.appendChild(o);
     return;
   }
-  subs.forEach(function(sub){
-    const engProj = engProjects.find(function(p){
-      return p.subdivision_code===sub.code && p.division_code===divCode;
-    });
+  tracked.forEach(function(item){
     const o = document.createElement('option');
-    o.value = engProj ? engProj.id : ('sub:'+divCode+':'+sub.code);
-    o.textContent = (sub.project||sub.name)+(sub.client?' — '+sub.client:'')+(engProj?'':' (no project yet)');
+    o.value = item.projId;
+    o.textContent = item.label;
     projSel.appendChild(o);
   });
 }
