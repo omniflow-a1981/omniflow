@@ -601,6 +601,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 
 <!-- ════ DASHBOARD ════ -->
 <div id="pgDashboard" class="page active">
+  <div id="efyBanner" style="background:linear-gradient(135deg,var(--teal-light),#d1fae5);border-radius:10px;padding:10px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.4px">Ethiopian Fiscal Year</div>
+      <div id="efyBannerLabel" style="font-size:15px;font-weight:800;color:var(--teal-dark)"></div>
+      <div id="efyDateRange" style="font-size:11px;color:var(--muted)"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <select id="dashEfyFilter" onchange="onDashEfyChange()" style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px;font-weight:600"></select>
+      <span style="font-size:11px;color:var(--muted)">Filter dashboard by EFY</span>
+    </div>
+  </div>
   <div class="page-header">
     <div><div class="page-title">Cash <em>Overview</em></div><div class="page-subtitle" id="dashSub"></div></div>
     <div class="btn-row"><button class="btn-secondary" onclick="copyCSV()">Export CSV</button></div>
@@ -678,8 +689,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 <div id="pgLedger" class="page">
   <div class="page-header">
     <div><div class="page-title">Transaction <em>Ledger</em></div><div class="page-subtitle" id="ledgerCount">All entries</div></div>
-    <div class="btn-row">
-      <button class="btn-secondary" onclick="copyCSV()">Export CSV</button>
+    <div class="btn-row" style="align-items:center;gap:8px;flex-wrap:wrap">
+      <select id="efyFilter" onchange="onEfyFilterChange()" style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px;font-weight:600">
+        <option value="">All Years</option>
+      </select>
+      <button class="btn-secondary" onclick="copyCSVEfy()">📥 Export CSV</button>
       <button class="btn-danger" onclick="if(confirm('Clear ALL transactions?'))clearAll()">Clear all</button>
     </div>
   </div>
@@ -1839,6 +1853,115 @@ const DEFAULT_OUT = [
 // ══════════════════════════════════════
 // STATE
 // ══════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════
+// ETHIOPIAN FISCAL YEAR (EFY) UTILITIES
+// EFY starts Hamle 1 (≈ July 8 Gregorian) and ends Sene 30 (≈ July 7 next year)
+// EFY 2017: July 8 2025 – July 7 2026
+// EFY 2018: July 8 2026 – July 7 2027
+// ══════════════════════════════════════════════════════════════
+
+function efyStartDate(efyYear){
+  // Hamle 1 of EFY year = July 8 of (EFY year + 7) in Gregorian
+  // EFY 2017 → Gregorian 2025, EFY 2018 → Gregorian 2026
+  const gregYear = efyYear + 7; // approximate conversion
+  // Exact: Hamle 1 = July 8 in non-leap Gregorian years
+  return gregYear + '-07-08';
+}
+
+function efyEndDate(efyYear){
+  // Sene 30 = July 7 of (EFY year + 8) in Gregorian
+  const gregYear = efyYear + 8;
+  return gregYear + '-07-07';
+}
+
+function currentEFY(){
+  const today = new Date();
+  const m = today.getMonth() + 1; // 1-12
+  const d = today.getDate();
+  const y = today.getFullYear();
+  // If after July 7, we are in new EFY (year = greg_year - 7)
+  // If on or before July 7, we are still in old EFY (year = greg_year - 8)
+  if(m > 7 || (m === 7 && d >= 8)) return y - 7;
+  return y - 8;
+}
+
+function efyLabel(efyYear){ return 'EFY ' + efyYear + ' (' + (efyYear+7) + '/' + (efyYear+8) + ')'; }
+
+function getEfyYears(){
+  const cur = currentEFY();
+  const years = [];
+  for(let y = cur - 3; y <= cur + 1; y++) years.push(y);
+  return years;
+}
+
+// Filter a list of {date} objects by EFY year
+function filterByEFY(list, efyYear){
+  if(!efyYear) return list;
+  const start = efyStartDate(efyYear);
+  const end   = efyEndDate(efyYear);
+  return list.filter(function(t){ return t.date >= start && t.date <= end; });
+}
+
+// ══════════════════════════════════════════════════════════════
+// WEEKLY BACKUP REMINDER — Every Saturday at 10:00 AM
+// ══════════════════════════════════════════════════════════════
+function checkBackupReminder(){
+  const now = new Date();
+  const day = now.getDay();    // 6 = Saturday
+  const hour = now.getHours();
+  const min  = now.getMinutes();
+  // Show reminder: Saturday between 10:00 and 10:59
+  if(day !== 6 || hour !== 10) return;
+  const lastReminder = localStorage.getItem('omni-backup-reminded');
+  const thisWeek = now.toISOString().slice(0,10); // YYYY-MM-DD
+  if(lastReminder === thisWeek) return; // already shown today
+  localStorage.setItem('omni-backup-reminded', thisWeek);
+  showBackupReminder();
+}
+
+function showBackupReminder(){
+  const overlay = document.createElement('div');
+  overlay.id = 'backupReminderModal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border-radius:16px;padding:28px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <div style="font-size:32px">📦</div>
+        <div>
+          <div style="font-size:18px;font-weight:800;color:var(--ink)">Weekly Backup Reminder</div>
+          <div style="font-size:12px;color:var(--muted)">Saturday 10:00 AM — OmniFlow Data Safety</div>
+        </div>
+      </div>
+      <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;color:#92400e">
+        <strong>⚠ Please back up your OmniFlow data now.</strong><br><br>
+        Export these tables from Supabase:<br>
+        <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:12px">
+          <span>✓ payment_requests</span><span>✓ transactions</span>
+          <span>✓ balances</span><span>✓ companies</span>
+          <span>✓ eng_projects</span><span>✓ eng_contracts</span>
+          <span>✓ eng_boq_blocks</span><span>✓ eng_boq_block_items</span>
+          <span>✓ eng_progress_reports</span><span>✓ outstanding</span>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px">
+        Go to: <strong>supabase.com</strong> → Your project → Table Editor → Each table → Export CSV<br>
+        Save folder as: <strong>OmniFlow_Backup_${new Date().toISOString().slice(0,10)}</strong>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="document.getElementById('backupReminderModal').remove()" class="btn-primary" style="flex:1">✓ I will back up now</button>
+        <button onclick="document.getElementById('backupReminderModal').remove()" class="btn-secondary">Remind next week</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+// Check every minute for Saturday 10 AM
+setInterval(checkBackupReminder, 60000);
+// Also check on app load
+setTimeout(checkBackupReminder, 3000);
+
+
 let transactions=[],balances={},outstandings=[],companies=[],currentUser=null;
 let txType='in',netChart=null,revChart=null;
 let dashPeriod='all',ledgerPeriod='all';
@@ -2723,7 +2846,7 @@ async function saveEdit(){
 // ══════════════════════════════════════
 // RENDER ALL
 // ══════════════════════════════════════
-function renderAll(){if(window._omniLoading)return;renderDashboard();renderLedger();renderBalances();renderOutstanding();renderPayables();}
+function renderAll(){if(window._omniLoading)return;populateEfySelectors();renderDashboard();renderLedger();renderBalances();renderOutstanding();renderPayables();}
 
 // ══════════════════════════════════════
 // DASHBOARD
@@ -2731,6 +2854,9 @@ function renderAll(){if(window._omniLoading)return;renderDashboard();renderLedge
 function renderDashboard(){
   if(window._omniLoading) return;
   const allTx=getMergedTransactions();
+  // Apply EFY filter on dashboard
+  const dashEfyVal = document.getElementById('dashEfyFilter')?.value;
+  if(dashEfyVal) allTx = filterByEFY(allTx, parseInt(dashEfyVal));
   const filtered=filterByPeriod(allTx,dashPeriod,'dfbFrom','dfbTo');
   // ETB totals — only pure ETB transactions (for USD divs: ETB-only txs)
   const totIn=filtered.filter(t=>t.type==='in'&&!t.amtUsd).reduce((s,t)=>s+(t.amt||0),0);
@@ -2881,6 +3007,9 @@ function renderDashboard(){
 // ══════════════════════════════════════
 function renderLedger(){
   let filtered=filterByPeriod([...getMergedTransactions()],ledgerPeriod,'ldfbFrom','ldfbTo');
+  // Apply EFY filter
+  const efyVal = document.getElementById('efyFilter')?.value;
+  if(efyVal) filtered = filterByEFY(filtered, parseInt(efyVal));
   const co=document.getElementById('fltCo').value;
   const div=document.getElementById('fltDiv').value;
   const type=document.getElementById('fltType').value;
@@ -2890,7 +3019,8 @@ function renderLedger(){
     if(type&&t.type!==type)return false;
     return true;
   });
-  document.getElementById('ledgerCount').textContent=filtered.length+' of '+transactions.length+' transactions';
+  const efyLabel2 = efyVal ? ' · '+efyLabel(parseInt(efyVal)) : '';
+  document.getElementById('ledgerCount').textContent=filtered.length+' transactions'+efyLabel2;
   const body=document.getElementById('ledgerBody');
   if(!filtered.length){body.innerHTML='<div class="empty-state">'+(transactions.length===0?'No transactions yet. Start adding!':'No transactions match these filters.')+'</div>';return}
   body.innerHTML=filtered.map(tx=>`<div class="l-row">
@@ -2908,6 +3038,69 @@ function renderLedger(){
     </div>
   </div>`).join('');
 }
+
+// ── EFY FILTER HANDLERS ──────────────────────────────────────
+function populateEfySelectors(){
+  const years = getEfyYears();
+  const cur = currentEFY();
+  ['efyFilter','dashEfyFilter'].forEach(function(id){
+    const sel = document.getElementById(id); if(!sel) return;
+    const cur_val = sel.value;
+    sel.innerHTML = id==='efyFilter' ? '<option value="">All Years</option>' : '';
+    years.forEach(function(y){
+      const o = document.createElement('option');
+      o.value = y;
+      o.textContent = efyLabel(y) + (y===cur?' (Current)':'');
+      sel.appendChild(o);
+    });
+    if(!cur_val) sel.value = cur; // default to current EFY
+    else sel.value = cur_val;
+  });
+  updateEfyBanner();
+}
+
+function onEfyFilterChange(){
+  renderLedger();
+}
+
+function onDashEfyChange(){
+  updateEfyBanner();
+  renderDashboard();
+}
+
+function updateEfyBanner(){
+  const sel = document.getElementById('dashEfyFilter');
+  const efyYear = sel ? parseInt(sel.value)||currentEFY() : currentEFY();
+  const lbl = document.getElementById('efyBannerLabel');
+  const range = document.getElementById('efyDateRange');
+  if(lbl) lbl.textContent = efyLabel(efyYear);
+  if(range) range.textContent = efyStartDate(efyYear) + ' → ' + efyEndDate(efyYear);
+}
+
+// Filtered CSV export for current EFY selection
+function copyCSVEfy(){
+  const efyVal = document.getElementById('efyFilter')?.value;
+  let txs = [...getMergedTransactions()];
+  if(efyVal) txs = filterByEFY(txs, parseInt(efyVal));
+  txs = txs.reverse();
+  const header = 'Date,Reference,Bank Account,Division,Inflow ETB,Inflow USD,Outflow ETB,Outflow USD,Note';
+  const rows = txs.map(function(t){
+    return [t.date, '"'+(t.ref||'').replace(/"/g,"'")+'"', '"'+(t.bank_account||'')+'"',
+      t.divCode, t.type==='in'?t.amt:'', t.type==='in'&&t.amtUsd?t.amtUsd:'',
+      t.type==='out'?t.amt:'', t.type==='out'&&t.amtUsd?t.amtUsd:'',
+      '"'+(t.note||'').replace(/"/g,"'")+'"'].join(',');
+  });
+  const csv = [header,...rows].join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const efySuffix = efyVal ? '_EFY'+efyVal : '_All';
+  a.href=url; a.download='OmniFlow_Ledger'+efySuffix+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function goToContracts(){ const el=document.getElementById("engContractsNav"); if(el) el.click(); }
+
 function clearFilters(){document.getElementById('fltCo').value='';document.getElementById('fltDiv').value='';document.getElementById('fltType').value='';renderLedger()}
 
 // ══════════════════════════════════════
@@ -6718,12 +6911,20 @@ let progBreakdownRows = [];
 
 async function loadEngProgress(force){
   if(!force && !_shouldFetch('engProg', engProgressReports)){ renderEngProgress(); return; }
-  const [proj, prog] = await Promise.all([
+  // Also ensure contracts + boq blocks are loaded (needed for BOQ auto-link in new progress modal)
+  const needContracts = !engContracts.length;
+  const needBlocks = !engBoqBlocks.length;
+  const fetches = [
     engProjects.length ? Promise.resolve(engProjects) : engFetch('/eng_projects?order=created_at.desc&select=id,company_id,division_code,subdivision_code,project_name,client,location,start_date,end_date,status,phase,budget_etb,budget_usd,percent_complete,project_manager,description,created_by,created_at,updated_at'),
-    engFetch('/eng_progress_reports?order=report_date.desc&select=id,project_id,company_id,division_code,report_date,report_period,tracking_mode,overall_percent,manpower_count,safety_incidents,weather_remarks,issues_delays,notes,prepared_by,approved_by,approved_at,created_at')
-  ]);
+    engFetch('/eng_progress_reports?order=report_date.desc&select=id,project_id,company_id,division_code,report_date,report_period,tracking_mode,overall_percent,manpower_count,safety_incidents,weather_remarks,issues_delays,notes,prepared_by,approved_by,approved_at,created_at'),
+    needContracts ? engFetch('/eng_contracts?order=created_at.desc&select=id,project_id,company_id,division_code,contract_no,contract_title,client,contract_type,contract_value_etb,contract_value_usd,signed_date,commencement_date,completion_date,retention_pct,advance_payment_pct,performance_bond_pct,defects_liability_months,payment_terms,status,notes,created_by,created_at') : Promise.resolve(engContracts),
+    needBlocks ? engFetch('/eng_boq_blocks?order=display_order&select=id,contract_id,project_id,block_name,block_description,specification,display_order,created_at') : Promise.resolve(engBoqBlocks)
+  ];
+  const [proj, prog, contr, blocks] = await Promise.all(fetches);
   if(!engProjects.length) engProjects = Array.isArray(proj)?proj:[];
   engProgressReports = Array.isArray(prog) ? prog : [];
+  if(needContracts) engContracts = Array.isArray(contr)?contr:[];
+  if(needBlocks) engBoqBlocks = Array.isArray(blocks)?blocks:[];
   _markFetched('engProg');
   populateProgressProjectFilter();
   renderEngProgress();
@@ -6937,7 +7138,20 @@ async function loadContractBoqForProgress(){
   const contracts = engContracts.filter(function(c){ return c.project_id===projId; });
   const contractIds = contracts.map(function(c){ return c.id; });
   if(!contractIds.length){
-    if(wrap) wrap.innerHTML = '<div style="padding:14px;color:#92400e;background:#fef9c3;border-radius:8px;font-size:12px">No contracts found for this project. Add a contract with BOQ blocks in Contract Management first.</div>';
+    // Show helpful message with a link to Contract Management
+    const projName = engProjects.find(function(p){return p.id===projId;})?.project_name||'this project';
+    if(wrap) wrap.innerHTML =
+      '<div style="padding:14px;color:#92400e;background:#fef9c3;border-radius:8px;font-size:13px">'
+      +'<strong>⚠ No contracts linked to "'+projName+'"</strong><br><br>'
+      +'To use BOQ-based progress tracking:<ol style="margin:8px 0 0 16px;font-size:12px">'
+      +'<li>Go to <strong>Contract Management</strong></li>'
+      +'<li>Create a contract linked to this project</li>'
+      +'<li>Open the contract → click <strong>📐 BOQ Blocks</strong></li>'
+      +'<li>Upload the signed BOQ PDF or Excel</li>'
+      +'<li>Come back here — BOQ will auto-load</li>'
+      +'</ol>'
+      +'<button onclick="goToContracts()" class="btn-secondary" style="margin-top:10px;font-size:12px">Go to Contract Management →</button>'
+      +'</div>';
     return;
   }
   const blocks = await engFetch('/eng_boq_blocks?contract_id=in.('+contractIds.join(',')+')&order=display_order&select=id,contract_id,project_id,block_name,block_description,specification,display_order');
