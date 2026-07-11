@@ -1683,7 +1683,7 @@ async function apiCall(method, path, body=null, skipQueue=false){
   // Direct Supabase REST
   const hdrs={'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'return=representation'};
   const pathMap={
-    'GET /transactions': SUPA_URL+'/transactions?select=id,date,ref,note,div_code,type,etb_in,etb_out,usd_in,usd_out,bank_account,created_at&order=date.desc,created_at.desc',
+    'GET /transactions': SUPA_URL+'/transactions?select=id,date,company_id,div_code,div_name,type,amt,amt_usd,ref,note,created_at&order=date.desc,created_at.desc',
     'GET /balances': SUPA_URL+'/balances?select=*&order=div_code',
     'GET /outstanding': SUPA_URL+'/outstanding?select=*&order=amt.desc',
     'GET /companies': SUPA_URL+'/companies?select=*,divisions(*)',
