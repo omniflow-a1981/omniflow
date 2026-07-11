@@ -1683,7 +1683,7 @@ async function apiCall(method, path, body=null, skipQueue=false){
   // Direct Supabase REST
   const hdrs={'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'return=representation'};
   const pathMap={
-    'GET /transactions': SUPA_URL+'/transactions?select=id,date,company_id,div_code,div_name,type,amt,amt_usd,ref,note,created_at&order=date.desc,created_at.desc',
+    'GET /transactions': SUPA_URL+'/transactions?select=id,date,ref,note,div_code,type,etb_in,etb_out,usd_in,usd_out,bank_account,created_at&order=date.desc,created_at.desc',
     'GET /balances': SUPA_URL+'/balances?select=*&order=div_code',
     'GET /outstanding': SUPA_URL+'/outstanding?select=*&order=amt.desc',
     'GET /companies': SUPA_URL+'/companies?select=*,divisions(*)',
@@ -1731,19 +1731,13 @@ function startRealtime(){
     if(Date.now() - lastPRPaymentTime < 30000) return; // Pause after PR payment
     try {
       const res = await fetch(
-        "https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?select=*&order=date.desc,created_at.desc",
+        "https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?select=id,date,ref,note,div_code,type,etb_in,etb_out,usd_in,usd_out,bank_account,created_at&order=date.desc,created_at.desc",
         {headers:{"apikey":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE"}}
       );
       if(!res.ok) return;
       const fresh = await res.json();
       if(!Array.isArray(fresh)) return;
-      const mapped = fresh.map(t=>({
-        id:t.id, date:t.date, co:t.company_id,
-        divCode:t.div_code, divName:t.div_name,
-        type:t.type, amt:parseFloat(t.amt)||0,
-        amtUsd:t.amt_usd?parseFloat(t.amt_usd):null,
-        ref:t.ref, note:t.note||''
-      }));
+      const mapped = fresh.map(mapTxRow);
       // Check if anything changed (count or IDs or amounts)
       const sig = t => String(t.id)+':'+t.amt;
       if(mapped.length !== transactions.length ||
@@ -1754,7 +1748,7 @@ function startRealtime(){
         showSync('ok','Synced ✓');
       }
     } catch(e){ console.warn('Poll:', e.message); }
-  }, 5000);
+  }, 30000); // poll every 30s (was 5s — reduced to save bandwidth)
 }
 
 // ── USER DEFINITIONS ──
@@ -1876,17 +1870,27 @@ function efyEndDate(efyYear){
 }
 
 function currentEFY(){
+  // Ethiopian New Year (Meskerem 1) = September 11 (Sept 12 in Gregorian leap years)
+  // EFY year = Gregorian year - 8 (Jan 1 to Sept 10) or - 7 (Sept 11 to Dec 31)
+  // But the FISCAL year runs Hamle 1 (Jul 8) to Sene 30 (Jul 7 next year)
+  // EFY 2017: Jul 8 2024 – Jul 7 2025
+  // EFY 2018: Jul 8 2025 – Jul 7 2026  ← note: NOT 2019!
+  // EFY 2019: Jul 8 2026 – Jul 7 2027  ← wait, this IS correct per Eth calendar
+  // Ethiopian 2018 Hamle = July 2025 Gregorian → 2025 - 8 + 1 = 2018? No.
+  // Let's use the reliable anchor: Hamle 1 EFY N = July 8 of (N+7) Gregorian
+  // So current EFY: find N such that today >= Jul 8 (N+7) and today < Jul 8 (N+8)
+  // i.e. N = (Gregorian year of Jul 8 that most recently passed) - 7
   const today = new Date();
-  const m = today.getMonth() + 1; // 1-12
-  const d = today.getDate();
   const y = today.getFullYear();
-  // If after July 7, we are in new EFY (year = greg_year - 7)
-  // If on or before July 7, we are still in old EFY (year = greg_year - 8)
-  if(m > 7 || (m === 7 && d >= 8)) return y - 7;
-  return y - 8;
+  const m = today.getMonth() + 1;
+  const d = today.getDate();
+  // Has Jul 8 of this year passed?
+  const hamle1ThisYear = new Date(y, 6, 8); // July 8 (month 6 = July)
+  if(today >= hamle1ThisYear) return y - 7; // e.g. after Jul 8 2026 → 2026-7 = 2019
+  return y - 8; // before Jul 8 → e.g. Jan-Jul7 2026 → 2026-8 = 2018
 }
 
-function efyLabel(efyYear){ return 'EFY ' + efyYear + ' (' + (efyYear+7) + '/' + (efyYear+8) + ')'; }
+function efyLabel(efyYear){ return 'EFY ' + efyYear + ' (' + String(efyYear+7).slice(-4) + '/' + String(efyYear+8).slice(-4) + ')'; }
 
 function getEfyYears(){
   const cur = currentEFY();
@@ -2159,6 +2163,48 @@ async function showApp(){
     renderAll();            // re-render with fresh data (silent update)
     showSync('ok','Synced ✓');
     setTimeout(function(){showSync('','');},2500);
+    // Phase 3: Silently preload Engineering data so Resident Engineers get BOQ immediately
+    setTimeout(async function(){
+      try{
+        const _ep = await engFetch('/eng_projects?order=created_at.desc&select=id,company_id,division_code,subdivision_code,project_name,client,location,start_date,end_date,status,phase,budget_etb,budget_usd,percent_complete,project_manager,description,created_by,created_at,updated_at');
+        const _ec = await engFetch('/eng_contracts?order=created_at.desc&select=id,project_id,company_id,division_code,contract_no,contract_title,client,contract_type,contract_value_etb,contract_value_usd,signed_date,commencement_date,completion_date,retention_pct,advance_payment_pct,performance_bond_pct,defects_liability_months,payment_terms,status,notes,created_by,created_at');
+        const _eb = await engFetch('/eng_boq_blocks?order=display_order&select=id,contract_id,project_id,block_name,block_description,specification,display_order,created_at');
+        if(Array.isArray(_ep)&&_ep.length){engProjects=_ep; _markFetched('engProj');}
+        if(Array.isArray(_ec)&&_ec.length){engContracts=_ec; _markFetched('engContr');}
+        if(Array.isArray(_eb)&&_eb.length){ engBoqBlocks=_eb;
+          // Pre-cache BOQ items for all blocks so progress report loads instantly
+          const allBlockIds = _eb.map(function(b){return b.id;});
+          if(allBlockIds.length){
+            const _ei = await engFetch('/eng_boq_block_items?block_id=in.('+allBlockIds.join(',')+')'
+              +'&order=display_order&select=id,block_id,item_no,description,unit,quantity,unit_rate,total_amount,quantity_executed,display_order');
+            if(Array.isArray(_ei)&&_ei.length){
+              // Pre-build _boqCache per project
+              _ep.forEach(function(proj){
+                const projContrIds = _ec.filter(function(c){return c.project_id===proj.id;}).map(function(c){return c.id;});
+                const projBlks = _eb.filter(function(b){return projContrIds.includes(b.contract_id);});
+                if(!projBlks.length) return;
+                _boqCache[proj.id] = projBlks.map(function(blk){
+                  return {
+                    name: blk.block_name, block_id: blk.id, contract_id: blk.contract_id,
+                    items: _ei.filter(function(it){return it.block_id===blk.id;}).map(function(it){
+                      return {
+                        boq_item_id: it.id, item_no: it.item_no||'', description: it.description||'',
+                        unit: it.unit||'', contract_qty: parseFloat(it.quantity)||0,
+                        unit_rate: parseFloat(it.unit_rate)||0, contract_amount: parseFloat(it.total_amount)||0,
+                        qty_todate: parseFloat(it.quantity_executed)||0,
+                        amount_todate: Math.round((parseFloat(it.quantity_executed)||0)*(parseFloat(it.unit_rate)||0)*100)/100,
+                        qty_today: 0, amount_today: 0
+                      };
+                    })
+                  };
+                });
+              });
+              console.log('[OmniFlow] BOQ pre-cached for',Object.keys(_boqCache).length,'projects');
+            }
+          }
+        }
+      }catch(e){console.warn('[OmniFlow] Eng preload failed:',e.message);}
+    },2000);
   } catch(e) {
     showSync('error','Offline — showing cached data');
   }
@@ -2289,13 +2335,7 @@ async function initApp(){
     ]);
     
     // Map cloud data to app state
-    transactions = Array.isArray(txData) ? txData.map(t=>({
-      id: t.id, date: t.date, co: t.company_id,
-      divCode: t.div_code, divName: t.div_name,
-      type: t.type, amt: parseFloat(t.amt)||0,
-      amtUsd: t.amt_usd ? parseFloat(t.amt_usd) : null,
-      ref: t.ref, note: t.note||''
-    })) : ls('omni-tx')||[];
+    transactions = Array.isArray(txData) ? txData.map(mapTxRow) : ls('omni-tx')||[];
 
     balances = {};
     if(Array.isArray(balData)){
@@ -2552,6 +2592,28 @@ function getPRTransactions(){
   });
 
   return [...grouped, ...individual];
+}
+
+
+// Map raw Supabase transaction row → app transaction object
+function mapTxRow(t){
+  // Support both column styles: type+amt (old) or etb_in+etb_out (new)
+  let type = t.type;
+  let amt, amtUsd;
+  if(t.etb_in || t.etb_out){
+    type = (parseFloat(t.etb_in)||0) > 0 ? 'in' : 'out';
+    amt = parseFloat(t.etb_in)||parseFloat(t.etb_out)||0;
+    amtUsd = parseFloat(t.usd_in)||parseFloat(t.usd_out)||null;
+  } else {
+    amt = parseFloat(t.amt)||0;
+    amtUsd = t.amt_usd ? parseFloat(t.amt_usd) : null;
+  }
+  // divCode from div_code; co from company_id or derived from divCode
+  const divCode = t.div_code || t.divCode || '';
+  const co = t.company_id || t.co || (divCode.startsWith('WE')?'WE':divCode.startsWith('ME')?'ME':'');
+  const divName = t.div_name || t.divName || divCode;
+  return {id:t.id, date:t.date||'', co, divCode, divName, type:type||'in', amt, amtUsd,
+          ref:t.ref||'', note:t.note||'', bank_account:t.bank_account||''};
 }
 
 function getMergedTransactions(){
@@ -2854,9 +2916,9 @@ function renderAll(){if(window._omniLoading)return;populateEfySelectors();render
 function renderDashboard(){
   if(window._omniLoading) return;
   const allTx=getMergedTransactions();
-  // Apply EFY filter on dashboard
+  // Apply EFY filter on dashboard (only if explicitly selected — default is All Years)
   const dashEfyVal = document.getElementById('dashEfyFilter')?.value;
-  if(dashEfyVal) allTx = filterByEFY(allTx, parseInt(dashEfyVal));
+  if(dashEfyVal && dashEfyVal!=='') allTx = filterByEFY(allTx, parseInt(dashEfyVal));
   const filtered=filterByPeriod(allTx,dashPeriod,'dfbFrom','dfbTo');
   // ETB totals — only pure ETB transactions (for USD divs: ETB-only txs)
   const totIn=filtered.filter(t=>t.type==='in'&&!t.amtUsd).reduce((s,t)=>s+(t.amt||0),0);
@@ -3053,8 +3115,12 @@ function populateEfySelectors(){
       o.textContent = efyLabel(y) + (y===cur?' (Current)':'');
       sel.appendChild(o);
     });
-    if(!cur_val) sel.value = cur; // default to current EFY
-    else sel.value = cur_val;
+    // Dashboard defaults to All Years (so all data shows); Ledger defaults to current EFY
+    if(id==='efyFilter'){
+      sel.value = cur_val || cur; // Ledger: default to current EFY
+    } else {
+      sel.value = cur_val || ''; // Dashboard: default to All Years
+    }
   });
   updateEfyBanner();
 }
@@ -3070,11 +3136,17 @@ function onDashEfyChange(){
 
 function updateEfyBanner(){
   const sel = document.getElementById('dashEfyFilter');
-  const efyYear = sel ? parseInt(sel.value)||currentEFY() : currentEFY();
+  const val = sel ? sel.value : '';
   const lbl = document.getElementById('efyBannerLabel');
   const range = document.getElementById('efyDateRange');
-  if(lbl) lbl.textContent = efyLabel(efyYear);
-  if(range) range.textContent = efyStartDate(efyYear) + ' → ' + efyEndDate(efyYear);
+  if(!val){
+    if(lbl) lbl.textContent = 'All Years (showing all data)';
+    if(range) range.textContent = 'Select an EFY year to filter';
+  } else {
+    const efyYear = parseInt(val);
+    if(lbl) lbl.textContent = efyLabel(efyYear);
+    if(range) range.textContent = efyStartDate(efyYear) + ' → ' + efyEndDate(efyYear);
+  }
 }
 
 // Filtered CSV export for current EFY selection
@@ -7081,7 +7153,7 @@ function openProgressModal(){
   progManualBoqBlocks = [];
   progBreakdownRows = [];
   progContractBoqLoaded = false;
-  progBoqBlockCollapsed = [];
+  progBoqBlockCollapsed = []; progBoqGroupCollapsed = {};
   const catWrap2 = document.getElementById('progBreakdownWrap');
   const boqWrap2 = document.getElementById('progManualBoqWrap');
   if(catWrap2) catWrap2.style.display='none';
@@ -7128,7 +7200,7 @@ async function loadContractBoqForProgress(){
     progManualBoqBlocks = _boqCache[selVal].map(function(blk){
       return Object.assign({}, blk, {items: (blk.items||[]).map(function(it){ return Object.assign({},it,{qty_today:0, amount_today:0}); })});
     });
-    progBoqBlockCollapsed = [];
+    progBoqBlockCollapsed = []; progBoqGroupCollapsed = {};
     renderProgBoqBlocks();
     recalcProgBoqOverall();
     return;
@@ -7457,171 +7529,235 @@ function renderProgIssueRows(){
 function boqColVisible(id){ const el=document.getElementById(id); return el ? el.checked : true; }
 
 let progBoqBlockCollapsed = [];
+let progBoqGroupCollapsed = {};
 
 function toggleProgBoqBlock(bi){
   progBoqBlockCollapsed[bi] = progBoqBlockCollapsed[bi]===false ? true : false;
   renderProgBoqBlocks();
 }
 
+function toggleProgBoqGroupBtn(btn){
+  const k = String(btn.dataset.bi)+'-'+String(btn.dataset.gk);
+  progBoqGroupCollapsed[k] = (progBoqGroupCollapsed[k]===false) ? true : false;
+  renderProgBoqBlocks();
+}
+
+function getItemGroup(itemNo){
+  const s = (itemNo||'').trim();
+  if(!s) return '0';
+  const m = s.match(/^([A-Za-z]?[0-9]+)/);
+  return m ? m[1] : (s[0]||'0');
+}
+
 function renderProgBoqBlocks(){
   const wrap = document.getElementById('progBoqBlocks'); if(!wrap) return;
   if(!progManualBoqBlocks.length){
-    wrap.innerHTML='<div style="text-align:center;padding:14px;color:var(--muted);font-size:12px">No BOQ blocks loaded.</div>';
+    wrap.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:12px">Select a project to load its BOQ.</div>';
     return;
   }
-  // Show column toggles
   const colBar = document.getElementById('progBoqColToggles');
   if(colBar) colBar.style.display='flex';
 
-  // Column visibility flags
-  const showUnit     = boqColVisible('boqColUnit');
-  const showPrevQty  = boqColVisible('boqColPrevQty');
-  const showTdQty    = boqColVisible('boqColToDateQty');
-  const showConQty   = boqColVisible('boqColContractQty');
-  const showExQty    = boqColVisible('boqColExceedQty');
-  const showPrevAmt  = boqColVisible('boqColPrevAmt');
-  const showTdAmt    = boqColVisible('boqColToDateAmt');
-  const showConAmt   = boqColVisible('boqColContractAmt');
-  const showRate     = boqColVisible('boqColRate');
-  const showExAmt    = boqColVisible('boqColExceedAmt');
-  const showExPct    = boqColVisible('boqColExceedPct');
+  // Column visibility
+  const showUnit    = boqColVisible('boqColUnit');
+  const showPrevQty = boqColVisible('boqColPrevQty');
+  const showTdQty   = boqColVisible('boqColToDateQty');
+  const showConQty  = boqColVisible('boqColContractQty');
+  const showExQty   = boqColVisible('boqColExceedQty');
+  const showPrevAmt = boqColVisible('boqColPrevAmt');
+  const showTdAmt   = boqColVisible('boqColToDateAmt');
+  const showConAmt  = boqColVisible('boqColContractAmt');
+  const showRate    = boqColVisible('boqColRate');
+  const showExAmt   = boqColVisible('boqColExceedAmt');
+  const showExPct   = boqColVisible('boqColExceedPct');
 
-  const ro    = 'padding:5px 6px;font-size:11px;color:var(--ink2);vertical-align:middle;';
-  const roB   = 'padding:5px 6px;font-size:11px;color:#1e40af;vertical-align:middle;';    // to-date blue
-  const roR   = 'padding:5px 6px;font-size:11px;color:#991b1b;vertical-align:middle;';    // exceeding red
-  const roM   = 'padding:5px 6px;font-size:11px;color:var(--muted);vertical-align:middle;'; // prev muted
+  const ro  = 'padding:5px 6px;font-size:11px;color:var(--ink2);vertical-align:middle;';
+  const roB = 'padding:5px 6px;font-size:11px;color:#1e40af;vertical-align:middle;';
+  const roR = 'padding:5px 6px;font-size:11px;color:#991b1b;vertical-align:middle;';
+  const roM = 'padding:5px 6px;font-size:11px;color:var(--muted);vertical-align:middle;';
 
-  function th(label, extraStyle, color){
-    const colorStyle = color?'color:'+color+';':'';
-    const bgStyle = color==='#166534'?'background:#f0fdf4;':color==='#991b1b'?'background:#fee2e2;':color==='#1e40af'?'background:#eff6ff;':'';
-    return '<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);'+colorStyle+bgStyle+(extraStyle||'')+'">' + label + '</th>';
+  function th(label, w, color){
+    const cs=color?'color:'+color+';':''; const bg=color==='#166534'?'background:#f0fdf4;':color==='#991b1b'?'background:#fee2e2;':color==='#1e40af'?'background:#eff6ff;':'';
+    return '<th style="padding:5px 6px;text-align:right;border-bottom:1.5px solid var(--border);white-space:nowrap;'+cs+bg+(w?'width:'+w+';':'')+'">' + label + '</th>';
   }
 
-  // Build header row — grouped by QTY then AMOUNT
-  // Fixed: Item No, Description, Unit (optional), This Day Qty ✏ (always)
-  // Qty group: Prev Qty, To Date Qty, Contract Qty, Exceeding Qty
-  // Amount group: This Day Amt, Prev Amt, To Date Amt, Contract Amt, Rate, Exceeding Amt, % Exceeding
+  // Build sticky header
   let hdr = '<tr style="background:var(--bg);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.3px">';
-  hdr += '<th style="padding:5px 6px;text-align:left;border-bottom:1.5px solid var(--border);width:50px">Item No.</th>';
-  hdr += '<th style="padding:5px 6px;text-align:left;border-bottom:1.5px solid var(--border)">Description</th>';
+  hdr += '<th style="padding:5px 6px;text-align:left;border-bottom:1.5px solid var(--border);width:55px;position:sticky;left:0;background:var(--bg);z-index:2">Item</th>';
+  hdr += '<th style="padding:5px 6px;text-align:left;border-bottom:1.5px solid var(--border);min-width:180px">Description</th>';
   if(showUnit) hdr += '<th style="padding:5px 6px;text-align:center;border-bottom:1.5px solid var(--border);width:45px;color:var(--muted)">Unit</th>';
-  // === QTY GROUP ===
-  if(showPrevQty) hdr += th('Prev Qty','width:75px;','var(--muted)');
-  hdr += th('This Qty ✏','width:90px;','#166534');  // always visible
-  if(showTdQty)  hdr += th('To Date Qty','width:80px;','#1e40af');
-  if(showConQty) hdr += th('Contract Qty','width:80px;','');
-  if(showExQty)  hdr += th('Exceeding Qty','width:80px;','#991b1b');
-  // === AMOUNT GROUP ===
-  hdr += th('This Day Amt','width:95px;','#166534');  // always visible
-  if(showPrevAmt) hdr += th('Prev Amt','width:95px;','var(--muted)');
-  if(showTdAmt)   hdr += th('To Date Amt','width:100px;','#1e40af');
-  if(showConAmt)  hdr += th('Contract Amt','width:100px;','');
-  if(showRate)    hdr += th('Unit Rate','width:80px;','');
-  if(showExAmt)   hdr += th('Exceeding Amt','width:100px;','#991b1b');
-  if(showExPct)   hdr += th('% Exceeding','width:75px;','#991b1b');
+  if(showPrevQty) hdr += th('Prev Qty','75px','var(--muted)');
+  hdr += th('This Qty ✏','90px','#166534');
+  hdr += th('This Amt','95px','#166534');
+  if(showTdQty)   hdr += th('To Date Qty','80px','#1e40af');
+  if(showTdAmt)   hdr += th('To Date Amt','100px','#1e40af');
+  if(showConQty)  hdr += th('Contract Qty','80px','');
+  if(showConAmt)  hdr += th('Contract Amt','100px','');
+  if(showRate)    hdr += th('Unit Rate','80px','');
+  if(showPrevAmt) hdr += th('Prev Amt','95px','var(--muted)');
+  if(showExQty)   hdr += th('Exceeding Qty','80px','#991b1b');
+  if(showExAmt)   hdr += th('Exceeding Amt','100px','#991b1b');
+  if(showExPct)   hdr += th('% Exceed','70px','#991b1b');
   hdr += '</tr>';
 
-  wrap.innerHTML = progManualBoqBlocks.map(function(blk,bi){
-    // Block totals
-    let blkContractTotal=0, blkTodayTotal=0, blkToDateQtyTotal=0, blkPrevTotal=0, blkExQtyTotal=0, blkExAmtTotal=0;
+  var html = progManualBoqBlocks.map(function(blk,bi){
+    // ── Block level totals ──
+    var blkConTot=0, blkPrevAmt=0, blkTodAmt=0, blkExAmt=0;
     (blk.items||[]).forEach(function(it){
-      const cQty   = parseFloat(it.contract_qty)||0;
-      const cRate  = parseFloat(it.unit_rate)||0;
-      const cAmt   = parseFloat(it.contract_amount)||0;
-      const prevQty= parseFloat(it.qty_todate)||0;
-      const todQty = parseFloat(it.qty_today)||0;
-      const tdQty  = prevQty + todQty;
-      const exQty  = Math.max(0, tdQty - cQty);
-      blkContractTotal += cAmt;
-      blkPrevTotal     += prevQty*cRate;
-      blkTodayTotal    += todQty*cRate;
-      blkToDateQtyTotal+= tdQty;
-      blkExQtyTotal    += exQty;
-      blkExAmtTotal    += exQty*cRate;
+      blkConTot += parseFloat(it.contract_amount)||0;
+      blkPrevAmt += (parseFloat(it.qty_todate)||0)*(parseFloat(it.unit_rate)||0);
+      blkTodAmt  += (parseFloat(it.qty_today)||0)*(parseFloat(it.unit_rate)||0);
+      var tdQ=(parseFloat(it.qty_todate)||0)+(parseFloat(it.qty_today)||0), cQ=parseFloat(it.contract_qty)||0;
+      blkExAmt += Math.max(0,tdQ-cQ)*(parseFloat(it.unit_rate)||0);
+    });
+    var blkPct = blkConTot>0 ? Math.round(((blkPrevAmt+blkTodAmt)/blkConTot)*1000)/10 : 0;
+    var blkClr = blkPct>=100?'#dc2626':blkPct>60?'#d97706':'#166534';
+    var blkCollapsed = (progBoqBlockCollapsed[bi]===undefined) ? true : progBoqBlockCollapsed[bi];
+
+    // ── Group items by leading integer of item_no ──
+    var groups={}, groupOrder=[];
+    (blk.items||[]).forEach(function(it,ii){
+      var s=(it.item_no||'').trim();
+      var m=s.match(/^(\d+)/);
+      var gk = m ? m[1] : (s?'~'+s[0]:'preamble');
+      if(!groups[gk]){ groups[gk]={key:gk,label:'',items:[]}; groupOrder.push(gk); }
+      groups[gk].items.push({it:it,ii:ii});
+    });
+    // Give groups nice labels from first item with that prefix
+    groupOrder.forEach(function(gk){
+      var g=groups[gk];
+      if(gk==='preamble') g.label='Preamble / General';
+      else {
+        // Try to find a section header item (qty=0, rate=0) for the label
+        var hdrItem = g.items.find(function(obj){ return (parseFloat(obj.it.contract_qty)||0)===0 && (parseFloat(obj.it.unit_rate)||0)===0; });
+        if(hdrItem && hdrItem.it.description) g.label = gk+'. '+hdrItem.it.description.replace(/\.\.\.*$/,'').slice(0,60);
+        else g.label = 'Section '+gk;
+      }
     });
 
-    const rowsHtml = (blk.items||[]).map(function(it,ii){
-      const cQty   = parseFloat(it.contract_qty)||0;
-      const cRate  = parseFloat(it.unit_rate)||0;
-      const cAmt   = parseFloat(it.contract_amount)||0;
-      const prevQty= parseFloat(it.qty_todate)||0;       // qty executed before today
-      const todQty = parseFloat(it.qty_today)||0;         // today's entry
-      const tdQty  = prevQty + todQty;                    // to-date = prev + today
-      const exQty  = Math.max(0, tdQty - cQty);           // exceeding qty (0 if within contract)
-      const prevAmt= Math.round(prevQty*cRate*100)/100;
-      const todAmt = Math.round(todQty*cRate*100)/100;
-      const tdAmt  = Math.round(tdQty*cRate*100)/100;
-      const exAmt  = Math.round(exQty*cRate*100)/100;
-      const exPct  = cQty>0 ? Math.round((exQty/cQty)*10000)/100 : 0;
-      const isExceeding = exQty>0;
+    // ── Build table rows with group sub-headers ──
+    var rowsHtml='';
+    groupOrder.forEach(function(gk){
+      var g=groups[gk];
+      var gKey=bi+'-'+gk;
+      // Groups default OPEN (false=open in our toggle map)
+      var grpCollapsed = (progBoqGroupCollapsed[gKey]===true) ? true : false;
+      var isOpen = !grpCollapsed;
 
-      let row = '<tr style="border-bottom:1px solid var(--border2)'+(isExceeding?';background:#fff5f5;':'')+'">';
-      row += '<td style="'+ro+'font-weight:600">'+( it.item_no||'')+'</td>';
-      row += '<td style="'+ro+'max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+(it.description||'').replace(/"/g,"&quot;")+'">'+( it.description||'')+'</td>';
-      if(showUnit)    row += '<td style="'+ro+'text-align:center">'+( it.unit||'')+'</td>';
-      // QTY columns
-      if(showPrevQty) row += '<td style="'+roM+'text-align:right">'+fmtQty(prevQty)+'</td>';
-      // THIS QTY — always, editable, live
-      row += '<td style="padding:4px 5px;background:#f0fdf4;vertical-align:middle"><input type="number" value="'+todQty+'" min="0" step="any" oninput="onProgQtyTodayChange('+bi+','+ii+',this.value)" style="width:82px;padding:4px 6px;border:1.5px solid #86efac;border-radius:5px;font-size:11px;text-align:right;background:#f0fdf4;color:#166534;font-weight:700;outline:none"></td>';
-      if(showTdQty)   row += '<td style="'+roB+'text-align:right;font-weight:700" id="progTdQty-'+bi+'-'+ii+'">'+fmtQty(tdQty)+'</td>';
-      if(showConQty)  row += '<td style="'+ro+'text-align:right">'+fmtQty(cQty)+'</td>';
-      if(showExQty)   row += '<td style="'+(isExceeding?roR:ro)+'text-align:right;font-weight:'+(isExceeding?'700':'400')+'">'+( exQty>0?fmtQty(exQty):'—')+'</td>';
-      // AMOUNT columns
-      // THIS AMT — always
-      row += '<td style="'+ro+'text-align:right;color:#166534;font-weight:700;background:#f0fdf4" id="progAmtToday-'+bi+'-'+ii+'">'+( todAmt>0?fmtAmt(todAmt):'—')+'</td>';
-      if(showPrevAmt) row += '<td style="'+roM+'text-align:right">'+( prevAmt>0?fmtAmt(prevAmt):'—')+'</td>';
-      if(showTdAmt)   row += '<td style="'+roB+'text-align:right" id="progTdAmt-'+bi+'-'+ii+'">'+( tdAmt>0?fmtAmt(tdAmt):'—')+'</td>';
-      if(showConAmt)  row += '<td style="'+ro+'text-align:right;font-weight:700">'+( cAmt>0?fmtAmt(cAmt):'—')+'</td>';
-      if(showRate)    row += '<td style="'+ro+'text-align:right">'+fmtRate(cRate)+'</td>';
-      if(showExAmt)   row += '<td style="'+(isExceeding?roR:ro)+'text-align:right;font-weight:'+(isExceeding?'700':'400')+'">'+( exAmt>0?fmtAmt(exAmt):'—')+'</td>';
-      if(showExPct)   row += '<td style="'+(isExceeding?roR:ro)+'text-align:right;font-weight:'+(isExceeding?'700':'400')+'">'+( exPct>0?exPct.toFixed(2)+'%':'—')+'</td>';
-      row += '</tr>';
-      return row;
-    }).join('');
+      // Group totals
+      var gConTot=0, gPrevAmt=0, gTodAmt=0, gTdAmt=0;
+      g.items.forEach(function(obj){
+        var it=obj.it, cR=parseFloat(it.unit_rate)||0;
+        gConTot  += parseFloat(it.contract_amount)||0;
+        gPrevAmt += (parseFloat(it.qty_todate)||0)*cR;
+        gTodAmt  += (parseFloat(it.qty_today)||0)*cR;
+        gTdAmt   += ((parseFloat(it.qty_todate)||0)+(parseFloat(it.qty_today)||0))*cR;
+      });
+      var gPct = gConTot>0 ? Math.round(((gPrevAmt+gTodAmt)/gConTot)*1000)/10 : 0;
+      var gClr = gPct>=100?'#dc2626':gPct>60?'#d97706':'#166534';
 
-    // Footer
-    let foot = '<tr style="background:var(--bg);font-size:10px;font-weight:800;color:var(--ink2)">';
-    foot += '<td colspan="2" style="padding:6px 8px;text-align:right;font-size:11px">Block Total</td>';
-    if(showUnit)    foot += '<td></td>';
-    if(showPrevQty) foot += '<td></td>';
-    foot += '<td style="padding:6px 8px;text-align:right;background:#f0fdf4;color:#166534" id="progBlkTodayTotal-'+bi+'">'+fmtAmt(blkTodayTotal)+'</td>';
-    if(showTdQty)   foot += '<td></td>';
-    if(showConQty)  foot += '<td></td>';
-    if(showExQty)   foot += '<td style="padding:6px 8px;text-align:right;color:#991b1b">'+( blkExQtyTotal>0?fmtQty(blkExQtyTotal):'—')+'</td>';
-    foot += '<td style="padding:6px 8px;text-align:right;background:#f0fdf4;color:#166534">'+fmtAmt(blkTodayTotal)+'</td>';
-    if(showPrevAmt) foot += '<td style="padding:6px 8px;text-align:right;color:var(--muted)">'+fmtAmt(blkPrevTotal)+'</td>';
-    if(showTdAmt)   foot += '<td style="padding:6px 8px;text-align:right;color:#1e40af">'+fmtAmt(blkPrevTotal+blkTodayTotal)+'</td>';
-    if(showConAmt)  foot += '<td style="padding:6px 8px;text-align:right">'+fmtAmt(blkContractTotal)+'</td>';
-    if(showRate)    foot += '<td></td>';
-    if(showExAmt)   foot += '<td style="padding:6px 8px;text-align:right;color:#991b1b">'+( blkExAmtTotal>0?fmtAmt(blkExAmtTotal):'—')+'</td>';
-    if(showExPct)   foot += '<td></td>';
-    foot += '</tr>';
+      // Count visible columns for colspan
+      var nCols = 3 + (showUnit?1:0) + (showPrevQty?1:0) + (showTdQty?1:0) + (showConQty?1:0)
+                    + (showExQty?1:0) + (showPrevAmt?1:0) + (showTdAmt?1:0) + (showConAmt?1:0)
+                    + (showRate?1:0) + (showExAmt?1:0) + (showExPct?1:0);
 
-    const isCollapsed = (progBoqBlockCollapsed[bi]===undefined) ? true : progBoqBlockCollapsed[bi];
-    const blkTodayPct = blkContractTotal>0 ? Math.round(((blkPrevTotal+blkTodayTotal)/blkContractTotal)*1000)/10 : 0;
-    const blkColor = blkTodayPct>=100?'#dc2626':blkTodayPct>60?'#d97706':'#166534';
-    return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden">'
-      +'<div onclick="toggleProgBoqBlock('+bi+')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;cursor:pointer;background:var(--bg);user-select:none">'
-        +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
-          +'<span style="font-size:13px;font-weight:700;color:var(--ink2)">'+blk.name+'</span>'
-          +'<span style="font-size:11px;background:'+blkColor+';color:#fff;padding:2px 8px;border-radius:5px;font-weight:700">'+blkTodayPct+'%</span>'
-          +'<span style="font-size:11px;color:var(--muted)">Contract: '+fmtAmt(blkContractTotal)+' ETB</span>'
-          +(blkTodayTotal>0?'<span style="font-size:11px;color:#166534;font-weight:600">Today: +'+fmtAmt(blkTodayTotal)+' ETB</span>':'')
-        +'</div>'
-        +'<span style="font-size:14px;color:var(--muted);padding-left:8px">'+(isCollapsed?'&#9654;':'&#9660;')+'</span>'
-      +'</div>'
-      +(isCollapsed?''
-        :'<div style="padding:10px;overflow-x:auto">'
-          +'<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:700px">'
-            +'<thead>'+hdr+'</thead>'
-            +'<tbody>'+rowsHtml+'</tbody>'
-            +'<tfoot>'+foot+'</tfoot>'
-          +'</table>'
-        +'</div>')
-    +'</div>';
+      // Group header row
+      rowsHtml += '<tr style="background:#eef2f7;cursor:pointer" onclick="(function(){var k=\''+gKey+'\';progBoqGroupCollapsed[k]=!progBoqGroupCollapsed[k];renderProgBoqBlocks();})()">'
+        + '<td colspan="2" style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--ink2)">'
+          + '<span style="margin-right:6px;color:var(--muted);font-size:12px">'+(isOpen?'▼':'▶')+'</span>'
+          + '<span style="background:'+gClr+';color:#fff;padding:1px 7px;border-radius:5px;font-size:10px;font-weight:800;margin-right:6px">'+gPct+'%</span>'
+          + g.label
+          + ' <span style="color:var(--muted);font-weight:400;font-size:10px">('+g.items.length+' items)</span>'
+        + '</td>'
+        + '<td style="padding:6px 8px;text-align:right;font-size:11px;font-weight:700;color:#166534;background:#f0fdf4" colspan="'+(nCols-2)+'">'
+          + (gTodAmt>0?'Today: '+fmtAmt(gTodAmt)+' ETB':'Contract: '+fmtAmt(gConTot)+' ETB')
+        + '</td>'
+        + '</tr>';
+
+      if(!isOpen) return; // collapsed — skip item rows
+
+      g.items.forEach(function(obj){
+        var it=obj.it, ii=obj.ii;
+        var cQ=parseFloat(it.contract_qty)||0, cR=parseFloat(it.unit_rate)||0, cA=parseFloat(it.contract_amount)||0;
+        var prevQ=parseFloat(it.qty_todate)||0, todQ=parseFloat(it.qty_today)||0;
+        var tdQ=prevQ+todQ, exQ=Math.max(0,tdQ-cQ);
+        var prevA=Math.round(prevQ*cR*100)/100, todA=Math.round(todQ*cR*100)/100;
+        var tdA=Math.round(tdQ*cR*100)/100, exA=Math.round(exQ*cR*100)/100;
+        var exPct=cQ>0?Math.round((exQ/cQ)*10000)/100:0;
+        var isHdr=(cQ===0&&cR===0&&(it.item_no||'').match(/^\d/));
+        var isExc=exQ>0;
+
+        rowsHtml += '<tr style="border-bottom:1px solid var(--border2)'+(isExc?';background:#fff5f5;':isHdr?';background:#f8fafc;font-weight:700;':'')+'">';
+        rowsHtml += '<td style="'+ro+'width:55px;font-size:10px;color:var(--muted);position:sticky;left:0;background:'+(isExc?'#fff5f5':isHdr?'#f8fafc':'var(--surface)')+'">'+( it.item_no||'')+'</td>';
+        rowsHtml += '<td style="'+ro+'max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(it.description||'').replace(/"/g,"&quot;")+'">'+( it.description||'')+'</td>';
+        if(showUnit)    rowsHtml += '<td style="'+ro+'text-align:center">'+( it.unit||'')+'</td>';
+        if(showPrevQty) rowsHtml += '<td style="'+roM+'text-align:right">'+( cQ>0?fmtQty(prevQ):'')+'</td>';
+        // THIS QTY — always editable
+        rowsHtml += '<td style="padding:4px 5px;background:#f0fdf4;vertical-align:middle">'
+          +(cQ>0?'<input type="number" value="'+todQ+'" min="0" step="any" oninput="onProgQtyTodayChange('+bi+','+ii+',this.value)" style="width:82px;padding:4px 6px;border:1.5px solid #86efac;border-radius:5px;font-size:11px;text-align:right;background:#f0fdf4;color:#166534;font-weight:700;outline:none">'
+               :'<span style="font-size:10px;color:var(--muted);padding:0 6px">—</span>')
+          +'</td>';
+        // THIS AMT — always
+        rowsHtml += '<td style="'+ro+'text-align:right;color:#166534;font-weight:700;background:#f0fdf4" id="progAmtToday-'+bi+'-'+ii+'">'+(todA>0?fmtAmt(todA):'—')+'</td>';
+        if(showTdQty)   rowsHtml += '<td style="'+roB+'text-align:right;font-weight:700" id="progTdQty-'+bi+'-'+ii+'">'+(cQ>0?fmtQty(tdQ):'')+'</td>';
+        if(showTdAmt)   rowsHtml += '<td style="'+roB+'text-align:right" id="progTdAmt-'+bi+'-'+ii+'">'+(tdA>0?fmtAmt(tdA):'—')+'</td>';
+        if(showConQty)  rowsHtml += '<td style="'+ro+'text-align:right">'+(cQ>0?fmtQty(cQ):'—')+'</td>';
+        if(showConAmt)  rowsHtml += '<td style="'+ro+'text-align:right;font-weight:700">'+(cA>0?fmtAmt(cA):'—')+'</td>';
+        if(showRate)    rowsHtml += '<td style="'+ro+'text-align:right">'+(cR>0?fmtRate(cR):'—')+'</td>';
+        if(showPrevAmt) rowsHtml += '<td style="'+roM+'text-align:right">'+(prevA>0?fmtAmt(prevA):'—')+'</td>';
+        if(showExQty)   rowsHtml += '<td style="'+(isExc?roR:ro)+'text-align:right;font-weight:'+(isExc?'700':'400')+'">'+(exQ>0?fmtQty(exQ):'—')+'</td>';
+        if(showExAmt)   rowsHtml += '<td style="'+(isExc?roR:ro)+'text-align:right;font-weight:'+(isExc?'700':'400')+'">'+(exA>0?fmtAmt(exA):'—')+'</td>';
+        if(showExPct)   rowsHtml += '<td style="'+(isExc?roR:ro)+'text-align:right;font-weight:'+(isExc?'700':'400')+'">'+(exPct>0?exPct.toFixed(2)+'%':'—')+'</td>';
+        rowsHtml += '</tr>';
+      });
+    }); // end groupOrder.forEach
+
+    // Block footer
+    var foot = '<tr style="background:var(--bg);font-weight:800;font-size:10px;color:var(--ink2)">'
+      + '<td colspan="2" style="padding:6px 8px;text-align:right">Block Total</td>'
+      + (showUnit?'<td></td>':'')
+      + (showPrevQty?'<td></td>':'')
+      + '<td style="padding:6px 8px;text-align:right;background:#f0fdf4;color:#166534" id="progBlkTodayTotal-'+bi+'">'+fmtAmt(blkTodAmt)+'</td>'
+      + '<td style="padding:6px 8px;text-align:right;background:#f0fdf4;color:#166534">'+fmtAmt(blkTodAmt)+'</td>'
+      + (showTdQty?'<td></td>':'')
+      + (showTdAmt?'<td style="padding:6px 8px;text-align:right;color:#1e40af">'+fmtAmt(blkPrevAmt+blkTodAmt)+'</td>':'')
+      + (showConQty?'<td></td>':'')
+      + (showConAmt?'<td style="padding:6px 8px;text-align:right">'+fmtAmt(blkConTot)+'</td>':'')
+      + (showRate?'<td></td>':'')
+      + (showPrevAmt?'<td style="padding:6px 8px;text-align:right;color:var(--muted)">'+fmtAmt(blkPrevAmt)+'</td>':'')
+      + (showExQty?'<td></td>':'')
+      + (showExAmt?'<td style="padding:6px 8px;text-align:right;color:#991b1b">'+(blkExAmt>0?fmtAmt(blkExAmt):'—')+'</td>':'')
+      + (showExPct?'<td></td>':'')
+      + '</tr>';
+
+    return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:11px;margin-bottom:10px;overflow:hidden">'
+      // Block header — always visible
+      + '<div onclick="toggleProgBoqBlock('+bi+')" style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer;background:var(--bg);user-select:none;border-bottom:'+(blkCollapsed?'none':'1px solid var(--border)')+'>">'
+        + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+          + '<span style="font-size:14px;font-weight:800;color:var(--ink2)">'+blk.name+'</span>'
+          + '<span style="background:'+blkClr+';color:#fff;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:800">'+blkPct+'%</span>'
+          + '<span style="font-size:11px;color:var(--muted)">Contract: '+fmtAmt(blkConTot)+' ETB</span>'
+          + (blkTodAmt>0?'<span style="font-size:11px;color:#166534;font-weight:700;background:#f0fdf4;padding:2px 8px;border-radius:5px">+'+fmtAmt(blkTodAmt)+' today</span>':'')
+          + (blkPrevAmt>0?'<span style="font-size:11px;color:#1e40af">To Date: '+fmtAmt(blkPrevAmt+blkTodAmt)+' ('+blkPct+'%)</span>':'')
+        + '</div>'
+        + '<span style="font-size:18px;color:var(--muted)">'+(blkCollapsed?'▶':'▼')+'</span>'
+      + '</div>'
+      // Block body — collapsible
+      + (blkCollapsed ? ''
+        : '<div style="overflow-x:auto">'
+            + '<table style="width:100%;border-collapse:collapse;font-size:11px">'
+              + '<thead>'+hdr+'</thead>'
+              + '<tbody>'+rowsHtml+'</tbody>'
+              + '<tfoot>'+foot+'</tfoot>'
+            + '</table>'
+          + '</div>')
+    + '</div>';
   }).join('');
+
+  wrap.innerHTML = html;
   recalcProgBoqOverall();
 }
+
 
 function onProgQtyTodayChange(bi, ii, val){
   const it = progManualBoqBlocks[bi]?.items[ii]; if(!it) return;
