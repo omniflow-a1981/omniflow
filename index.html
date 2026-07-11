@@ -2159,7 +2159,7 @@ async function showApp(){
   showSync('syncing','Syncing with cloud...');
   try {
     await initApp();        // fetch from Supabase, updates app state
-    await loadPayRequests();
+    await loadPayRequests(true); // force fresh load on init
     renderAll();            // re-render with fresh data (silent update)
     showSync('ok','Synced ✓');
     setTimeout(function(){showSync('','');},2500);
@@ -2370,6 +2370,8 @@ async function initApp(){
 
     payables = ls('omni-payables')||[];
     showSync('ok','Data loaded ✓');
+    // Load PRs in parallel (separate Supabase table)
+    loadPayRequests();
   } catch(e){
     console.warn('Cloud load failed, using local cache:', e);
     transactions = ls('omni-tx')||[];
@@ -2378,6 +2380,7 @@ async function initApp(){
     companies    = ls('omni-companies')||JSON.parse(JSON.stringify(DEFAULT_COMPANIES));
     payables     = ls('omni-payables')||[];
     showSync('error','Offline mode — using cached data');
+    loadPayRequests(); // attempt PR load even after main load fails
   }
 
   populateCoSelects();
@@ -2402,7 +2405,7 @@ function nav(id,el){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('pg'+id).classList.add('active');
   if(el)el.classList.add('active');
-  if(id==='Ledger')renderLedger();
+  if(id==='Ledger'){ const efEl=document.getElementById('efyFilter'); if(efEl&&efEl.value===undefined)efEl.value=''; renderLedger(); }
   if(id==='Balances')renderBalances();
   if(id==='Outstanding')renderOutstanding();
   if(id==='Dashboard')renderDashboard();
@@ -3069,9 +3072,9 @@ function renderDashboard(){
 // ══════════════════════════════════════
 function renderLedger(){
   let filtered=filterByPeriod([...getMergedTransactions()],ledgerPeriod,'ldfbFrom','ldfbTo');
-  // Apply EFY filter
-  const efyVal = document.getElementById('efyFilter')?.value;
-  if(efyVal) filtered = filterByEFY(filtered, parseInt(efyVal));
+  // Apply EFY filter — only if explicitly set (not empty/0)
+  const efyVal = document.getElementById('efyFilter')?.value||'';
+  if(efyVal && efyVal!=='0' && !isNaN(parseInt(efyVal))) filtered = filterByEFY(filtered, parseInt(efyVal));
   const co=document.getElementById('fltCo').value;
   const div=document.getElementById('fltDiv').value;
   const type=document.getElementById('fltType').value;
@@ -3081,8 +3084,9 @@ function renderLedger(){
     if(type&&t.type!==type)return false;
     return true;
   });
-  const efyLabel2 = efyVal ? ' · '+efyLabel(parseInt(efyVal)) : '';
-  document.getElementById('ledgerCount').textContent=filtered.length+' transactions'+efyLabel2;
+  const allTxCount = getMergedTransactions().length;
+  const efyLabel2 = (efyVal&&!isNaN(parseInt(efyVal))) ? ' · '+efyLabel(parseInt(efyVal)) : ' · all time';
+  document.getElementById('ledgerCount').textContent=filtered.length+(filtered.length!==allTxCount?' of '+allTxCount:'')+' transactions'+efyLabel2;
   const body=document.getElementById('ledgerBody');
   if(!filtered.length){body.innerHTML='<div class="empty-state">'+(transactions.length===0?'No transactions yet. Start adding!':'No transactions match these filters.')+'</div>';return}
   body.innerHTML=filtered.map(tx=>`<div class="l-row">
@@ -3116,11 +3120,8 @@ function populateEfySelectors(){
       sel.appendChild(o);
     });
     // Dashboard defaults to All Years (so all data shows); Ledger defaults to current EFY
-    if(id==='efyFilter'){
-      sel.value = cur_val || cur; // Ledger: default to current EFY
-    } else {
-      sel.value = cur_val || ''; // Dashboard: default to All Years
-    }
+    // Both ledger and dashboard default to All Years so all data is visible
+    sel.value = cur_val || '';
   });
   updateEfyBanner();
 }
@@ -5269,17 +5270,27 @@ async function clearAllPRHistory(){
   }
 }
 
-async function loadPayRequests(){
+async function loadPayRequests(forceRefresh){
   try{
-    const res=await fetch(PR_SB+'/payment_requests?select=id,company_id,division,project,client,request_type,category,status,net_payable,partial_amount,created_at,prepared_by,prepared_at,checked_by,checked_at,approved_by,approved_at,verified_by,verified_at,paid_by,paid_at,pay_method,transfer_id,paid_comment,rejected,reject_comment,wht_applied,notes&order=created_at.desc',
+    // Remove wht_applied (column may not exist) — use safe column list
+    const PR_COLS = 'id,company_id,division,project,client,request_type,category,status,net_payable,partial_amount,created_at,prepared_by,prepared_at,checked_by,checked_at,approved_by,approved_at,verified_by,verified_at,paid_by,paid_at,pay_method,transfer_id,paid_comment,rejected,reject_comment,notes';
+    const res=await fetch(PR_SB+'/payment_requests?select='+PR_COLS+'&order=created_at.desc',
       {headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON}});
-    if(!res.ok) return;
-    payRequests=await res.json();
+    if(!res.ok){
+      const errText = await res.text();
+      console.error('PR load failed:', res.status, errText);
+      // Try with minimal columns as fallback
+      const res2=await fetch(PR_SB+'/payment_requests?select=*&order=created_at.desc',
+        {headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON}});
+      if(!res2.ok){ console.error('PR fallback also failed'); return; }
+      payRequests=await res2.json();
+    } else {
+      payRequests=await res.json();
+    }
     if(!Array.isArray(payRequests)) payRequests=[];
     checkPRAlerts();
     initPRAdminToolbar();
-    if(document.getElementById('pgPayReq')?.classList.contains('active')) renderPRList();
-    // Re-render only when not in initial load sequence
+    renderPRList();
     if(!window._omniLoading) renderAll();
   }catch(e){console.warn('PR load:',e.message);}
 }
