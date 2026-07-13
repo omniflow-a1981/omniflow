@@ -694,6 +694,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
         <option value="">All Years</option>
       </select>
       <button class="btn-secondary" onclick="copyCSVEfy()">📥 Export CSV</button>
+      <button class="btn-primary" onclick="openExpenseSummary()" style="background:var(--blue-dark,#1e40af)">📊 Expense Summary</button>
       <button class="btn-danger" onclick="if(confirm('Clear ALL transactions?'))clearAll()">Clear all</button>
     </div>
   </div>
@@ -8560,6 +8561,473 @@ function populateProgressProjectDropdown(){
 }
 
 
+
+// ══════════════════════════════════════════════════════════════
+// EXPENSE SUMMARY — ERCA-compliant expense report
+// ══════════════════════════════════════════════════════════════
+
+function openExpenseSummary(){
+  // Populate company dropdown
+  const cSel = document.getElementById('esCo');
+  cSel.innerHTML = '<option value="">All Companies</option>';
+  companies.forEach(function(co){ const o=document.createElement('option'); o.value=co.id; o.textContent=co.name; cSel.appendChild(o); });
+  // Populate EFY dropdown
+  const efySel = document.getElementById('esEfy');
+  efySel.innerHTML = '<option value="">Custom range</option>';
+  getEfyYears().forEach(function(y){ const o=document.createElement('option'); o.value=y; o.textContent=efyLabel(y)+(y===currentEFY()?' (Current)':''); efySel.appendChild(o); });
+  efySel.value = currentEFY();
+  onEsEfyChange();
+  document.getElementById('expenseSummaryModal').style.display='flex';
+  renderExpenseSummary();
+}
+function closeExpenseSummary(){ document.getElementById('expenseSummaryModal').style.display='none'; }
+
+function onEsCoChange(){
+  const co = document.getElementById('esCo').value;
+  const divSel = document.getElementById('esDiv');
+  divSel.innerHTML = '<option value="">All Divisions</option>';
+  if(co){
+    const coObj = companies.find(function(c){ return c.id===co||c.code===co; });
+    ((coObj&&coObj.divisions)||[]).forEach(function(d){ const o=document.createElement('option'); o.value=d.code; o.textContent=d.code+' · '+d.name; divSel.appendChild(o); });
+  } else {
+    companies.forEach(function(co){ ((co.divisions)||[]).forEach(function(d){ const o=document.createElement('option'); o.value=d.code; o.textContent=d.code+' · '+d.name; divSel.appendChild(o); }); });
+  }
+  renderExpenseSummary();
+}
+
+function onEsEfyChange(){
+  const y = parseInt(document.getElementById('esEfy').value||'0');
+  if(y){
+    document.getElementById('esFrom').value = efyStartDate(y);
+    document.getElementById('esTo').value   = efyEndDate(y);
+  }
+  renderExpenseSummary();
+}
+
+function clearEsFilters(){
+  document.getElementById('esCo').value='';
+  document.getElementById('esDiv').innerHTML='<option value="">All Divisions</option>';
+  document.getElementById('esType').value='';
+  document.getElementById('esFrom').value='';
+  document.getElementById('esTo').value='';
+  document.getElementById('esEfy').value='';
+  renderExpenseSummary();
+}
+
+function getEsExpenses(){
+  const co    = document.getElementById('esCo').value;
+  const div   = document.getElementById('esDiv').value;
+  const type  = document.getElementById('esType').value;
+  const from  = document.getElementById('esFrom').value;
+  const to    = document.getElementById('esTo').value;
+
+  // Build unified expense list from paid PRs + manual outflow transactions
+  const rows = [];
+
+  // 1. Paid PRs
+  payRequests.filter(function(pr){ return pr.status==='paid'; }).forEach(function(pr){
+    const prDiv = (pr.division||'').split('.')[0].trim();
+    const prCo  = (pr.company_id||'');
+    if(co  && prCo!==co  && prCo!==co)  return;
+    if(div && prDiv!==div) return;
+    const prType = prGetType(pr);
+    const prCat  = prGetCategory(pr);
+    if(type && type!=='manual' && prType!==type && prCat!==type) return;
+    if(type==='manual') return; // manual only = skip PRs
+    const paidDate = pr.paid_at ? pr.paid_at.slice(0,10) : (pr.updated_at||'').slice(0,10);
+    if(from && paidDate < from) return;
+    if(to   && paidDate > to)   return;
+    const noWht = (pr.request_type||'').includes('|nowht');
+    const netAmt = noWht ? parseFloat(pr.grand_total||0) : parseFloat(pr.net_payable||0);
+    const whtAmt = noWht ? 0 : parseFloat(pr.withholding||0);
+    rows.push({
+      date     : paidDate,
+      co       : prCo,
+      div      : pr.division||'',
+      divCode  : prDiv,
+      project  : pr.project||'',
+      supplier : pr.client||pr.project||'',
+      desc     : pr.note||pr.project||'',
+      type     : prType,
+      category : prCat,
+      ref      : pr.transfer_id||'',
+      bank     : (pr.pay_method||'').split('||').slice(1).join('').trim(),
+      grossAmt : parseFloat(pr.grand_total||0),
+      vatAmt   : parseFloat(pr.vat||0),
+      whtAmt   : whtAmt,
+      netAmt   : netAmt,
+      isPR     : true,
+      prId     : pr.id
+    });
+  });
+
+  // 2. Manual ledger outflows
+  const manualOuts = getMergedTransactions().filter(function(t){
+    if(t.type!=='out') return false;
+    if(t.id&&String(t.id).startsWith('pr-')) return false; // skip PR-derived txs
+    if(co  && t.co!==co) return false;
+    if(div && t.divCode!==div) return false;
+    if(type && type!=='manual') return false;
+    if(from && t.date < from) return false;
+    if(to   && t.date > to)   return false;
+    return true;
+  });
+  manualOuts.forEach(function(t){
+    rows.push({
+      date     : t.date,
+      co       : t.co||'',
+      div      : t.divCode||'',
+      divCode  : t.divCode||'',
+      project  : '',
+      supplier : t.note||'',
+      desc     : t.note||'',
+      type     : 'Manual',
+      category : 'Manual',
+      ref      : t.ref||'',
+      bank     : t.bank_account||'',
+      grossAmt : t.amt||0,
+      vatAmt   : 0,
+      whtAmt   : 0,
+      netAmt   : t.amt||0,
+      isPR     : false
+    });
+  });
+
+  // Sort by date
+  rows.sort(function(a,b){ return a.date.localeCompare(b.date); });
+  return rows;
+}
+
+function renderExpenseSummary(){
+  const rows = getEsExpenses();
+  const wrap = document.getElementById('esReportWrap');
+  const banner = document.getElementById('esSummaryBanner');
+  if(!rows.length){
+    wrap.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted)">No expenses found for the selected filters.</div>';
+    banner.innerHTML='';
+    return;
+  }
+
+  // Summary totals
+  const totGross = rows.reduce(function(s,r){return s+r.grossAmt;},0);
+  const totVat   = rows.reduce(function(s,r){return s+r.vatAmt;},0);
+  const totWht   = rows.reduce(function(s,r){return s+r.whtAmt;},0);
+  const totNet   = rows.reduce(function(s,r){return s+r.netAmt;},0);
+
+  // Category breakdown for ERCA
+  const byType = {};
+  rows.forEach(function(r){
+    const k = r.type+(r.category&&r.category!==r.type?' / '+r.category:'');
+    if(!byType[k]) byType[k]={count:0,gross:0,vat:0,wht:0,net:0};
+    byType[k].count++;
+    byType[k].gross+=r.grossAmt;
+    byType[k].vat+=r.vatAmt;
+    byType[k].wht+=r.whtAmt;
+    byType[k].net+=r.netAmt;
+  });
+
+  // Banner cards
+  banner.innerHTML =
+    '<div style="flex:1;min-width:140px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px">'
+    +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Total Expenses</div>'
+    +'<div style="font-size:20px;font-weight:800;color:#dc2626">'+fmtETB2(totGross)+'</div>'
+    +'<div style="font-size:11px;color:var(--muted)">'+rows.length+' transactions</div>'
+    +'</div>'
+    +'<div style="flex:1;min-width:140px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px">'
+    +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">VAT (15%)</div>'
+    +'<div style="font-size:18px;font-weight:800;color:#d97706">'+fmtETB2(totVat)+'</div>'
+    +'</div>'
+    +'<div style="flex:1;min-width:140px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px">'
+    +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Withholding (3%)</div>'
+    +'<div style="font-size:18px;font-weight:800;color:#7c3aed">'+fmtETB2(totWht)+'</div>'
+    +'</div>'
+    +'<div style="flex:1;min-width:140px;background:linear-gradient(135deg,var(--teal-light),#d1fae5);border:1px solid #6ee7b7;border-radius:10px;padding:12px 14px">'
+    +'<div style="font-size:10px;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Net Paid</div>'
+    +'<div style="font-size:20px;font-weight:800;color:var(--teal-dark)">'+fmtETB2(totNet)+'</div>'
+    +'</div>';
+
+  // Category breakdown table
+  var catHtml = '<div style="margin-bottom:14px">'
+    +'<div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:6px">Summary by Category (ERCA Format)</div>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
+    +'<thead><tr style="background:var(--bg);font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">'
+    +'<th style="padding:7px 10px;text-align:left;border-bottom:2px solid var(--border)">Expense Category</th>'
+    +'<th style="padding:7px 10px;text-align:right;border-bottom:2px solid var(--border)"># Items</th>'
+    +'<th style="padding:7px 10px;text-align:right;border-bottom:2px solid var(--border)">Gross Amount (ETB)</th>'
+    +'<th style="padding:7px 10px;text-align:right;border-bottom:2px solid var(--border)">VAT (ETB)</th>'
+    +'<th style="padding:7px 10px;text-align:right;border-bottom:2px solid var(--border)">WHT Deducted (ETB)</th>'
+    +'<th style="padding:7px 10px;text-align:right;border-bottom:2px solid var(--border)">Net Paid (ETB)</th>'
+    +'</tr></thead><tbody>';
+  Object.keys(byType).forEach(function(k,idx){
+    var b=byType[k];
+    var bg=idx%2===0?'':'background:var(--bg)';
+    catHtml+='<tr style="'+bg+';border-bottom:1px solid var(--border2)">'
+      +'<td style="padding:7px 10px;font-weight:600">'+k+'</td>'
+      +'<td style="padding:7px 10px;text-align:right">'+b.count+'</td>'
+      +'<td style="padding:7px 10px;text-align:right">'+fmtETB2(b.gross)+'</td>'
+      +'<td style="padding:7px 10px;text-align:right;color:#d97706">'+fmtETB2(b.vat)+'</td>'
+      +'<td style="padding:7px 10px;text-align:right;color:#7c3aed">'+fmtETB2(b.wht)+'</td>'
+      +'<td style="padding:7px 10px;text-align:right;font-weight:700;color:var(--teal-dark)">'+fmtETB2(b.net)+'</td>'
+    +'</tr>';
+  });
+  catHtml+='<tr style="background:var(--bg);border-top:2px solid var(--border);font-weight:800">'
+    +'<td style="padding:8px 10px">TOTAL</td>'
+    +'<td style="padding:8px 10px;text-align:right">'+rows.length+'</td>'
+    +'<td style="padding:8px 10px;text-align:right">'+fmtETB2(totGross)+'</td>'
+    +'<td style="padding:8px 10px;text-align:right;color:#d97706">'+fmtETB2(totVat)+'</td>'
+    +'<td style="padding:8px 10px;text-align:right;color:#7c3aed">'+fmtETB2(totWht)+'</td>'
+    +'<td style="padding:8px 10px;text-align:right;color:var(--teal-dark)">'+fmtETB2(totNet)+'</td>'
+    +'</tr></tbody></table></div>';
+
+  // Detail transaction table
+  var detailHtml = '<div>'
+    +'<div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:6px">Detailed Expense Transactions</div>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:900px" id="esDetailTable">'
+    +'<thead><tr style="background:var(--bg);font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase">'
+    +'<th style="padding:6px 8px;text-align:left;border-bottom:1.5px solid var(--border)">#</th>'
+    +'<th style="padding:6px 8px;text-align:left;border-bottom:1.5px solid var(--border)">Date</th>'
+    +'<th style="padding:6px 8px;text-align:left;border-bottom:1.5px solid var(--border)">Division</th>'
+    +'<th style="padding:6px 8px;text-align:left;border-bottom:1.5px solid var(--border)">Project / Description</th>'
+    +'<th style="padding:6px 8px;text-align:left;border-bottom:1.5px solid var(--border)">Supplier / Payee</th>'
+    +'<th style="padding:6px 8px;text-align:left;border-bottom:1.5px solid var(--border)">Type</th>'
+    +'<th style="padding:6px 8px;text-align:left;border-bottom:1.5px solid var(--border)">Ref / TRF</th>'
+    +'<th style="padding:6px 8px;text-align:right;border-bottom:1.5px solid var(--border)">Gross (ETB)</th>'
+    +'<th style="padding:6px 8px;text-align:right;border-bottom:1.5px solid var(--border)">VAT</th>'
+    +'<th style="padding:6px 8px;text-align:right;border-bottom:1.5px solid var(--border)">WHT</th>'
+    +'<th style="padding:6px 8px;text-align:right;border-bottom:1.5px solid var(--border)">Net Paid</th>'
+    +'</tr></thead><tbody>';
+  rows.forEach(function(r,i){
+    var bg=i%2===0?'':'background:var(--bg)';
+    detailHtml+='<tr style="'+bg+';border-bottom:1px solid var(--border2)">'
+      +'<td style="padding:5px 8px;color:var(--muted)">'+(i+1)+'</td>'
+      +'<td style="padding:5px 8px">'+r.date+'</td>'
+      +'<td style="padding:5px 8px;color:var(--muted)">'+r.divCode+'</td>'
+      +'<td style="padding:5px 8px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+r.project+'">'+r.project+'</td>'
+      +'<td style="padding:5px 8px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+r.supplier+'">'+r.supplier+'</td>'
+      +'<td style="padding:5px 8px"><span style="font-size:10px;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:1px 7px">'+r.type+(r.category&&r.category!==r.type?' / '+r.category:'')+'</span></td>'
+      +'<td style="padding:5px 8px;font-family:monospace;font-size:10px;color:var(--muted)">'+r.ref+'</td>'
+      +'<td style="padding:5px 8px;text-align:right;font-weight:700">'+fmtETB2(r.grossAmt)+'</td>'
+      +'<td style="padding:5px 8px;text-align:right;color:#d97706">'+(r.vatAmt>0?fmtETB2(r.vatAmt):'—')+'</td>'
+      +'<td style="padding:5px 8px;text-align:right;color:#7c3aed">'+(r.whtAmt>0?fmtETB2(r.whtAmt):'—')+'</td>'
+      +'<td style="padding:5px 8px;text-align:right;font-weight:700;color:var(--teal-dark)">'+fmtETB2(r.netAmt)+'</td>'
+    +'</tr>';
+  });
+  detailHtml+='</tbody></table></div>';
+
+  wrap.innerHTML = catHtml + detailHtml;
+}
+
+// ── EXPORT EXCEL ──────────────────────────────────────────────
+async function exportEsExcel(){
+  const rows = getEsExpenses();
+  if(!rows.length){ alert('No data to export.'); return; }
+  const from = document.getElementById('esFrom').value;
+  const to   = document.getElementById('esTo').value;
+  const co   = document.getElementById('esCo').value;
+  const div  = document.getElementById('esDiv').value;
+  // Category summary
+  const byType={};
+  rows.forEach(function(r){
+    const k=r.type+(r.category&&r.category!==r.type?' / '+r.category:'');
+    if(!byType[k]) byType[k]={count:0,gross:0,vat:0,wht:0,net:0};
+    byType[k].count++;byType[k].gross+=r.grossAmt;byType[k].vat+=r.vatAmt;byType[k].wht+=r.whtAmt;byType[k].net+=r.netAmt;
+  });
+  // Build CSV-based Excel (tab-separated for proper Excel opening)
+  const lines = [];
+  const coName = co ? (companies.find(function(c){return c.id===co;})||{}).name||co : 'All Companies';
+  lines.push('EXPENSE SUMMARY REPORT');
+  lines.push('Organization:\t'+coName+(div?' | Division: '+div:''));
+  lines.push('Period:\t'+(from||'All')+' to '+(to||'Today'));
+  lines.push('Generated:\t'+new Date().toLocaleDateString('en-GB'));
+  lines.push('');
+  lines.push('CATEGORY SUMMARY');
+  lines.push('Expense Category\tCount\tGross Amount (ETB)\tVAT (ETB)\tWHT Deducted (ETB)\tNet Paid (ETB)');
+  Object.keys(byType).forEach(function(k){
+    var b=byType[k];
+    lines.push(k+'\t'+b.count+'\t'+b.gross.toFixed(2)+'\t'+b.vat.toFixed(2)+'\t'+b.wht.toFixed(2)+'\t'+b.net.toFixed(2));
+  });
+  const totGross=rows.reduce(function(s,r){return s+r.grossAmt;},0);
+  const totVat=rows.reduce(function(s,r){return s+r.vatAmt;},0);
+  const totWht=rows.reduce(function(s,r){return s+r.whtAmt;},0);
+  const totNet=rows.reduce(function(s,r){return s+r.netAmt;},0);
+  lines.push('TOTAL\t'+rows.length+'\t'+totGross.toFixed(2)+'\t'+totVat.toFixed(2)+'\t'+totWht.toFixed(2)+'\t'+totNet.toFixed(2));
+  lines.push('');
+  lines.push('DETAILED TRANSACTIONS');
+  lines.push('#\tDate\tDivision\tProject\tSupplier / Payee\tType\tRef/TRF\tBank Paid From\tGross (ETB)\tVAT (ETB)\tWHT (ETB)\tNet Paid (ETB)');
+  rows.forEach(function(r,i){
+    lines.push((i+1)+'\t'+r.date+'\t'+r.divCode+'\t'+r.project+'\t'+r.supplier+'\t'+r.type+(r.category&&r.category!==r.type?' / '+r.category:'')+'\t'+r.ref+'\t'+r.bank+'\t'+r.grossAmt.toFixed(2)+'\t'+r.vatAmt.toFixed(2)+'\t'+r.whtAmt.toFixed(2)+'\t'+r.netAmt.toFixed(2));
+  });
+  const tsv = lines.join('\n');
+  const blob = new Blob(['\uFEFF'+tsv], {type:'text/tab-separated-values;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download='ExpenseSummary_'+(from||'All')+'_to_'+(to||'Today')+'.xls';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ── PRINT / PDF ──────────────────────────────────────────────
+function exportEsPdf(){
+  const rows = getEsExpenses();
+  if(!rows.length){ alert('No data to export.'); return; }
+  const from = document.getElementById('esFrom').value;
+  const to   = document.getElementById('esTo').value;
+  const co   = document.getElementById('esCo').value;
+  const div  = document.getElementById('esDiv').value;
+  const coName = co ? (companies.find(function(c){return c.id===co;})||{}).name||co : 'All Companies';
+  const byType={};
+  rows.forEach(function(r){
+    const k=r.type+(r.category&&r.category!==r.type?' / '+r.category:'');
+    if(!byType[k]) byType[k]={count:0,gross:0,vat:0,wht:0,net:0};
+    byType[k].count++;byType[k].gross+=r.grossAmt;byType[k].vat+=r.vatAmt;byType[k].wht+=r.whtAmt;byType[k].net+=r.netAmt;
+  });
+  const totGross=rows.reduce(function(s,r){return s+r.grossAmt;},0);
+  const totVat=rows.reduce(function(s,r){return s+r.vatAmt;},0);
+  const totWht=rows.reduce(function(s,r){return s+r.whtAmt;},0);
+  const totNet=rows.reduce(function(s,r){return s+r.netAmt;},0);
+
+  var catRows='';
+  Object.keys(byType).forEach(function(k,i){
+    var b=byType[k];
+    catRows+='<tr style="background:'+(i%2===0?'#fff':'#f8fafc')+'">'
+      +'<td>'+k+'</td><td style="text-align:center">'+b.count+'</td>'
+      +'<td style="text-align:right">'+b.gross.toLocaleString('en-ET',{minimumFractionDigits:2})+'</td>'
+      +'<td style="text-align:right;color:#d97706">'+b.vat.toLocaleString('en-ET',{minimumFractionDigits:2})+'</td>'
+      +'<td style="text-align:right;color:#7c3aed">'+b.wht.toLocaleString('en-ET',{minimumFractionDigits:2})+'</td>'
+      +'<td style="text-align:right;font-weight:700">'+b.net.toLocaleString('en-ET',{minimumFractionDigits:2})+'</td>'
+    +'</tr>';
+  });
+  var detRows='';
+  rows.forEach(function(r,i){
+    detRows+='<tr style="background:'+(i%2===0?'#fff':'#f8fafc')+'">'
+      +'<td style="text-align:center">'+(i+1)+'</td>'
+      +'<td>'+r.date+'</td><td>'+r.divCode+'</td>'
+      +'<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis">'+r.project+'</td>'
+      +'<td>'+r.supplier+'</td>'
+      +'<td>'+r.type+(r.category&&r.category!==r.type?' / '+r.category:'')+'</td>'
+      +'<td style="font-family:monospace;font-size:9px">'+r.ref+'</td>'
+      +'<td style="text-align:right">'+r.grossAmt.toLocaleString('en-ET',{minimumFractionDigits:2})+'</td>'
+      +'<td style="text-align:right;color:#d97706">'+(r.vatAmt>0?r.vatAmt.toLocaleString('en-ET',{minimumFractionDigits:2}):'—')+'</td>'
+      +'<td style="text-align:right;color:#7c3aed">'+(r.whtAmt>0?r.whtAmt.toLocaleString('en-ET',{minimumFractionDigits:2}):'—')+'</td>'
+      +'<td style="text-align:right;font-weight:700">'+r.netAmt.toLocaleString('en-ET',{minimumFractionDigits:2})+'</td>'
+    +'</tr>';
+  });
+
+  var win=window.open('','_blank');
+  win.document.write('<!DOCTYPE html><html><head><meta charset="utf-8">'
+    +'<title>Expense Summary — '+coName+'</title>'
+    +'<style>'
+    +'body{font-family:Arial,sans-serif;font-size:11px;color:#111;margin:20px}'
+    +'h1{font-size:16px;margin:0;color:#1e40af}h2{font-size:13px;color:#374151;margin:16px 0 6px}'
+    +'.meta{font-size:11px;color:#6b7280;margin-bottom:4px}'
+    +'table{width:100%;border-collapse:collapse;margin-bottom:16px}'
+    +'th{background:#1e40af;color:#fff;padding:6px 8px;font-size:10px;text-align:left}'
+    +'td{padding:5px 8px;border-bottom:1px solid #e5e7eb;font-size:11px}'
+    +'.total-row{background:#dbeafe;font-weight:700}'
+    +'.grand{background:#ecfdf5;border-top:2px solid #059669}'
+    +'@media print{button{display:none}@page{margin:15mm}}'
+    +'</style></head><body>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #1e40af;padding-bottom:10px;margin-bottom:14px">'
+    +'<div><h1>EXPENSE SUMMARY REPORT</h1>'
+    +'<div class="meta">'+coName+(div?' | '+div:'')+'</div>'
+    +'<div class="meta">Period: '+(from||'All time')+' to '+(to||'Today')+'</div>'
+    +'<div class="meta">Generated: '+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'})+'</div></div>'
+    +'<div style="text-align:right"><div style="font-size:10px;color:#6b7280">Total Expenses</div>'
+    +'<div style="font-size:22px;font-weight:700;color:#dc2626">ETB '+totGross.toLocaleString('en-ET',{minimumFractionDigits:2})+'</div>'
+    +'<div style="font-size:11px;color:#059669">Net Paid: ETB '+totNet.toLocaleString('en-ET',{minimumFractionDigits:2})+'</div></div>'
+    +'</div>'
+    +'<h2>Category Summary</h2>'
+    +'<table><thead><tr><th>Expense Category</th><th style="text-align:center">#</th><th style="text-align:right">Gross (ETB)</th><th style="text-align:right">VAT (ETB)</th><th style="text-align:right">WHT (ETB)</th><th style="text-align:right">Net Paid (ETB)</th></tr></thead><tbody>'
+    +catRows
+    +'<tr class="grand"><td>GRAND TOTAL</td><td style="text-align:center">'+rows.length+'</td>'
+    +'<td style="text-align:right">'+totGross.toLocaleString('en-ET',{minimumFractionDigits:2})+'</td>'
+    +'<td style="text-align:right">'+totVat.toLocaleString('en-ET',{minimumFractionDigits:2})+'</td>'
+    +'<td style="text-align:right">'+totWht.toLocaleString('en-ET',{minimumFractionDigits:2})+'</td>'
+    +'<td style="text-align:right">'+totNet.toLocaleString('en-ET',{minimumFractionDigits:2})+'</td>'
+    +'</tr></tbody></table>'
+    +'<h2>Detailed Transactions</h2>'
+    +'<table><thead><tr><th>#</th><th>Date</th><th>Division</th><th>Project</th><th>Supplier/Payee</th><th>Type</th><th>Ref/TRF</th><th style="text-align:right">Gross (ETB)</th><th style="text-align:right">VAT</th><th style="text-align:right">WHT</th><th style="text-align:right">Net Paid</th></tr></thead><tbody>'
+    +detRows
+    +'</tbody></table>'
+    +'<button onclick="window.print()" style="padding:10px 24px;background:#1e40af;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px">🖨 Print / Save as PDF</button>'
+    +'</body></html>');
+  win.document.close();
+  setTimeout(function(){ win.focus(); }, 300);
+}
+
+
 </script>
+
+<!-- ════ EXPENSE SUMMARY MODAL ════ -->
+<div class="modal-overlay" id="expenseSummaryModal" style="display:none;z-index:1200">
+  <div class="modal-box" style="max-width:980px;max-height:90vh;overflow-y:auto">
+    <div class="modal-header">
+      <div class="modal-title">📊 Expense Summary Report</div>
+      <button class="modal-close" onclick="closeExpenseSummary()">&times;</button>
+    </div>
+
+    <!-- Filters -->
+    <div style="background:var(--bg);border-radius:11px;padding:14px 16px;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">Report Filters</div>
+      <div class="fr" style="gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        <div class="ff">
+          <label>Company</label>
+          <select id="esCo" onchange="onEsCoChange()">
+            <option value="">All Companies</option>
+          </select>
+        </div>
+        <div class="ff">
+          <label>Division</label>
+          <select id="esDiv" onchange="renderExpenseSummary()">
+            <option value="">All Divisions</option>
+          </select>
+        </div>
+        <div class="ff">
+          <label>Expense Type</label>
+          <select id="esType" onchange="renderExpenseSummary()">
+            <option value="">All Types</option>
+            <option value="Material">Material / Purchase</option>
+            <option value="Service">Service</option>
+            <option value="Manpower">Manpower</option>
+            <option value="Machinery">Machinery / Equipment</option>
+            <option value="manual">Manual Ledger Entry</option>
+          </select>
+        </div>
+      </div>
+      <div class="fr" style="gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div class="ff">
+          <label>From Date</label>
+          <input type="date" id="esFrom" onchange="renderExpenseSummary()">
+        </div>
+        <div class="ff">
+          <label>To Date</label>
+          <input type="date" id="esTo" onchange="renderExpenseSummary()">
+        </div>
+        <div class="ff">
+          <label>EFY Year</label>
+          <select id="esEfy" onchange="onEsEfyChange()">
+            <option value="">Custom range</option>
+          </select>
+        </div>
+        <div>
+          <button class="btn-secondary" onclick="clearEsFilters()" style="font-size:12px">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary banner -->
+    <div id="esSummaryBanner" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px"></div>
+
+    <!-- Report table -->
+    <div id="esReportWrap" style="overflow-x:auto;margin-bottom:16px"></div>
+
+    <!-- Export buttons -->
+    <div class="btn-row" style="justify-content:flex-end;gap:8px">
+      <button class="btn-secondary" onclick="exportEsExcel()">📥 Export Excel</button>
+      <button class="btn-primary" onclick="exportEsPdf()">🖨 Print / PDF</button>
+      <button class="btn-secondary" onclick="closeExpenseSummary()">Close</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
