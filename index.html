@@ -3436,6 +3436,27 @@ function renderBalances(){
 // ══════════════════════════════════
 function fmtBirr(v){return (v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
+
+// Auto-compute PR payment debits per bank from paid PRs
+function getPRDebitForBank(divCode, bankName, bankAccount){
+  const paidPRs = payRequests.filter(function(pr){
+    if(pr.status !== 'paid') return false;
+    const prDiv = (pr.division||'').split('.')[0].trim();
+    if(prDiv !== divCode) return false;
+    const pm = (pr.pay_method||'').toLowerCase();
+    const bankAcc = (bankAccount||'').toLowerCase();
+    const bankNm  = (bankName||'').toLowerCase();
+    if(bankAcc && bankAcc.length > 4 && pm.includes(bankAcc.slice(0,10))) return true;
+    const nameWords = bankNm.split(/[\s\-]+/).filter(function(w){return w.length>3;});
+    return nameWords.some(function(w){ return pm.includes(w); });
+  });
+  return paidPRs.reduce(function(sum, pr){
+    const noWht = (pr.request_type||'').includes('|nowht');
+    const net = noWht ? parseFloat(pr.grand_total||0) : parseFloat(pr.net_payable||0);
+    return sum + net;
+  }, 0);
+}
+
 function renderAllDivBanks(){
   var container=document.getElementById('divBankRegisters');
   if(!container) return;
@@ -3452,6 +3473,11 @@ function renderMe1Register(){ renderAllDivBanks(); }
 
 function buildDivBankRegister(div){
   var banks=getDivBanks(div);
+  // Auto-calculate PR payment debits per bank
+  banks = banks.map(function(b){
+    const prDebit = getPRDebitForBank(div, b.name, b.account);
+    return Object.assign({}, b, {prDebit: prDebit, debitTotal: (parseFloat(b.debit)||0) + prDebit});
+  });
   var col=DIV_BANK_COLORS[div]||'#1e3a8a';
   var light=DIV_BANK_LIGHT[div]||'#dbeafe';
   var border=DIV_BANK_BORDER[div]||'#93c5fd';
@@ -3471,8 +3497,11 @@ function buildDivBankRegister(div){
   var totBeg=0,totDeb=0,totCred=0;
   var lastSection='';
   var rows=banks.map(function(b,i){
-    var ending=(b.beg||0)-(b.debit||0)+(b.credit||0);
-    totBeg+=(b.beg||0); totDeb+=(b.debit||0); totCred+=(b.credit||0);
+    var manualDebit=parseFloat(b.debit)||0;
+    var prDebitAmt=parseFloat(b.prDebit)||0;
+    var totalDebit=parseFloat(b.debitTotal)||manualDebit;
+    var ending=(b.beg||0)-totalDebit+(b.credit||0);
+    totBeg+=(b.beg||0); totDeb+=totalDebit; totCred+=(b.credit||0);
     var bg=i%2===0?'#fff':light+'44';
     var bd='border:1px solid '+light;
     var inp='padding:5px 8px;font-family:inherit;outline:none;border-radius:6px;text-align:right;font-size:13px;font-weight:700;';
@@ -3504,9 +3533,12 @@ function buildDivBankRegister(div){
           +'data-div="'+div+'" data-i="'+i+'" data-f="beg" onchange="divBankChange(this)" '
           +'style="'+inp+'width:120px;border:1.5px solid '+border+';color:'+col+';background:'+light+'44;"></td>'
       +'<td style="padding:5px 8px;border:1px solid '+light+'">'
-        +'<input type="number" value="'+String(b.debit||0)+'" min="0" step="0.01" '
+        +'<input type="number" value="'+String(manualDebit)+'" min="0" step="0.01" '
           +'data-div="'+div+'" data-i="'+i+'" data-f="debit" onchange="divBankChange(this)" '
-          +'style="'+inp+'width:110px;border:1.5px solid #fca5a5;color:#dc2626;background:#fff5f5;"></td>'
+          +'style="'+inp+'width:110px;border:1.5px solid #fca5a5;color:#dc2626;background:#fff5f5;" title="Manual debit entry">'
+        +(prDebitAmt>0?'<div style="font-size:10px;color:#b91c1c;font-weight:700;text-align:right;margin-top:2px">+PR: '+fmtBirr(prDebitAmt)+'</div>':'')
+        +(prDebitAmt>0?'<div style="font-size:10px;font-weight:800;color:#7f1d1d;text-align:right;border-top:1px solid #fca5a5;margin-top:1px">Total: '+fmtBirr(totalDebit)+'</div>':'')
+      +'</td>'
       +'<td style="padding:5px 8px;border:1px solid '+light+'">'
         +'<input type="number" value="'+String(b.credit||0)+'" min="0" step="0.01" '
           +'data-div="'+div+'" data-i="'+i+'" data-f="credit" onchange="divBankChange(this)" '
@@ -5300,6 +5332,8 @@ async function loadPayRequests(forceRefresh){
     initPRAdminToolbar();
     renderPRList();
     if(!window._omniLoading) renderAll();
+    // Re-render bank registers to reflect new PR debits
+    if(typeof renderAllDivBanks==='function') renderAllDivBanks();
   }catch(e){console.warn('PR load:',e.message);}
 }
 
