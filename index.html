@@ -1792,7 +1792,7 @@ function startRealtime(){
         transactions = mapped;
         ls('omni-tx', transactions);
         renderAll();
-        showSync('ok','Synced ✓');
+        showSync('ok','Synced ✓ — '+mapped.length+' transactions');
       }
     } catch(e){ console.warn('Poll:', e.message); }
   }, 15000); // poll every 15s for near-realtime sync
@@ -2484,7 +2484,7 @@ function nav(id,el){
   }
   if(id==='EngProjects'){ loadEngProjects(); }
   if(id==='EngContracts'){ loadEngContracts(); }
-  if(id==='EngProgress'){ loadEngProgress().then(populateProgressProjectDropdown); }
+  if(id==='EngProgress'){ loadEngProgress().then(function(){ populateProgressProjectFilter(); populateProgressProjectDropdown(); }); }
   if(id==='EngIPC'){ loadEngIPC(); }
   if(id==='EngVariations'){ loadEngVariations(); }
   if(id==='EngDiary'){ loadEngDiary(); }
@@ -2991,7 +2991,7 @@ function renderAll(){if(window._omniLoading)return;populateEfySelectors();render
 // ══════════════════════════════════════
 function renderDashboard(){
   if(window._omniLoading) return;
-  const allTx=getMergedTransactions();
+  let allTx=getMergedTransactions();
   // Apply EFY filter on dashboard (only if explicitly selected — default is All Years)
   const dashEfyVal = document.getElementById('dashEfyFilter')?.value;
   if(dashEfyVal && dashEfyVal!=='') allTx = filterByEFY(allTx, parseInt(dashEfyVal));
@@ -4051,6 +4051,7 @@ function deleteDivision(coId,divCode){
   var co=companies.find(function(c){return c.id===coId;});if(!co)return;
   co.divisions=co.divisions.filter(function(d){return d.code!==divCode;});
   saveCompaniesToCloud();populateCoSelects();renderCompanies();
+  showFlash('✓ Division removed & saved to cloud','coFlash','coFlashMsg');
 }
 function renameDivision(coId,divCode){
   var co=companies.find(function(c){return c.id===coId;});if(!co)return;
@@ -4071,12 +4072,17 @@ function addSubdivision(coId,divCode){
   if(div.subdivisions.find(function(s){return s.name.toLowerCase()===name.toLowerCase();})){alert('Already exists.');return;}
   var subCode=divCode+'-S'+(div.subdivisions.length+1);
   div.subdivisions.push({code:subCode,name:name,client:clientVal,project:projectVal,location:locationVal});
-  saveCompaniesToCloud();
+  // Save to cloud immediately — no need to click anything
   ['subInput_','subClient_','subProject_','subLocation_'].forEach(function(p){
     var el=document.getElementById(p+coId+'_'+divCode);if(el)el.value='';
   });
   populateCoSelects();renderCompanies();
-  showFlash('✓ Site "'+name+'" added to '+divCode,'coFlash','coFlashMsg');
+  showFlash('✓ Site "'+name+'" added — saving to cloud...','coFlash','coFlashMsg');
+  saveCompaniesToCloud().then(function(){
+    showFlash('✓ Site "'+name+'" saved permanently to cloud ☁','coFlash','coFlashMsg');
+  }).catch(function(e){
+    showFlash('⚠ Site added locally — cloud save failed. Try "☁ Save to Cloud" button.','coFlash','coFlashMsg');
+  });
 }
 function renameSubdivision(coId,divCode,subCode){ editSubdivision(coId,divCode,subCode); }
 function editSubdivision(coId,divCode,subCode){
@@ -4092,8 +4098,8 @@ function editSubdivision(coId,divCode,subCode){
   sub.client=newClient||'';
   sub.project=newProject||'';
   sub.location=newLocation||'';
-  saveCompaniesToCloud();renderCompanies();
-  showFlash('✓ Site updated: '+sub.name,'coFlash','coFlashMsg');
+  renderCompanies();
+  saveCompaniesToCloud().then(function(){showFlash('✓ Site updated & saved to cloud ☁: '+sub.name,'coFlash','coFlashMsg');});
 }
 function deleteSubdivision(coId,divCode,subCode){
   var co=companies.find(function(c){return c.id===coId;});if(!co)return;
@@ -7507,6 +7513,11 @@ async function loadEngProgress(force){
   _markFetched('engProg');
   populateProgressProjectFilter();
   renderEngProgress();
+  // If a project is already selected in filter, show module tabs
+  setTimeout(function(){
+    const sel = document.getElementById('eprfProject');
+    if(sel && sel.value) onProgPageProjectChange();
+  }, 100);
 }
 
 function populateProgressProjectFilter(){
