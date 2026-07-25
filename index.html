@@ -458,6 +458,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   .hub-tab{background:transparent;border:none;color:rgba(255,255,255,.7);padding:9px 16px;cursor:pointer;font-size:12px;font-weight:600;border-radius:8px 8px 0 0;white-space:nowrap;transition:all .15s}
   .hub-tab:hover{background:rgba(255,255,255,.1);color:#fff}
   .hub-tab.active{background:var(--surface);color:var(--teal-dark)}
+
+  .prog-mod-tab{background:transparent;border:none;padding:8px 14px;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);border-radius:7px;transition:all .15s}
+  .prog-mod-tab:hover{background:var(--surface);color:var(--ink)}
+  .prog-mod-tab.active{background:var(--surface);color:var(--teal-dark);box-shadow:0 1px 4px rgba(0,0,0,.08)}
 </style>
 </head>
 <body>
@@ -1060,23 +1064,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       <button class="modal-close" onclick="closeContractModal()">&times;</button>
     </div>
     <input type="hidden" id="contrEditId">
-    <div class="fr" style="margin-bottom:8px">
-      <div class="ff"><label>Company</label>
-        <select id="contrCompany" onchange="onContrCompanyChange()">
-          <option value="">— All companies —</option>
-          <option value="WE">Wanofi Engineering Plc</option>
-          <option value="ME">Matisan Engineering Plc</option>
-        </select>
-      </div>
-      <div class="ff"><label>Division</label>
-        <select id="contrDivision" onchange="onContrDivisionChange()">
-          <option value="">— All divisions —</option>
-        </select>
-      </div>
-    </div>
     <div class="ff" style="margin-bottom:8px">
-      <label>Linked Project * <span style="font-size:10px;color:var(--muted)">(only projects registered in Project Tracking)</span></label>
-      <select id="contrProjectId" onchange="onContrProjectChange()"></select>
+      <label>Linked Project * <span style="font-size:10px;color:var(--muted)">(from Project Tracking)</span></label>
+      <select id="contrProjectId" onchange="onContrProjectChange()" style="font-size:13px"></select>
     </div>
     <div id="contrProjectInfoBanner" style="display:none;background:var(--bg);border-radius:9px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--ink2)"></div>
     <input type="hidden" id="contrClient">
@@ -1246,14 +1236,28 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   </div>
   <div class="flash-bar" id="engProgFlash"><span id="engProgFlashMsg"></span></div>
 
-  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
-    <select id="eprfProject" onchange="renderEngProgress()" style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px;min-width:220px">
+  <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+    <select id="eprfProject" onchange="onProgPageProjectChange()" style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px;min-width:260px">
       <option value="">All Projects</option>
     </select>
     <input type="text" id="eprfSearch" oninput="renderEngProgress()" placeholder="Search reports..." style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px;flex:1;min-width:180px">
   </div>
 
+  <!-- Project module tabs — shown when a specific project is selected -->
+  <div id="progModuleTabs" style="display:none;margin-bottom:14px">
+    <div style="display:flex;gap:2px;overflow-x:auto;background:var(--bg);border-radius:10px;padding:6px">
+      <button class="prog-mod-tab active" onclick="switchProgTab('reports',this)" style="white-space:nowrap">📋 Progress Reports</button>
+      <button class="prog-mod-tab" onclick="switchProgTab('ipc',this)" style="white-space:nowrap">🧾 IPC</button>
+      <button class="prog-mod-tab" onclick="switchProgTab('variations',this)" style="white-space:nowrap">🔄 Variations</button>
+      <button class="prog-mod-tab" onclick="switchProgTab('diary',this)" style="white-space:nowrap">📓 Site Diary</button>
+      <button class="prog-mod-tab" onclick="switchProgTab('documents',this)" style="white-space:nowrap">📁 Documents</button>
+      <button class="prog-mod-tab" onclick="switchProgTab('staff',this)" style="white-space:nowrap">👷 Staff</button>
+      <button class="prog-mod-tab" onclick="switchProgTab('equipment',this)" style="white-space:nowrap">🚛 Equipment</button>
+    </div>
+  </div>
+
   <div id="engProgressGrid" style="display:grid;gap:14px"></div>
+  <div id="progModuleContent" style="display:none"></div>
 </div>
 
 <!-- Progress Report Modal -->
@@ -1791,7 +1795,13 @@ function startRealtime(){
         showSync('ok','Synced ✓');
       }
     } catch(e){ console.warn('Poll:', e.message); }
-  }, 30000); // poll every 30s (was 5s — reduced to save bandwidth)
+  }, 15000); // poll every 15s for near-realtime sync
+
+  // Also poll Payment Requests every 45s
+  setInterval(async function(){
+    if(!window.PR_ANON) return;
+    try{ await loadPayRequests(); }catch(e){}
+  }, 45000);
 }
 
 // ── USER DEFINITIONS ──
@@ -3180,8 +3190,8 @@ function populateEfySelectors(){
       sel.appendChild(o);
     });
     // Dashboard defaults to All Years (so all data shows); Ledger defaults to current EFY
-    // Both ledger and dashboard default to All Years so all data is visible
-    sel.value = cur_val || '';
+    // Both default to All Years — never auto-filter on load
+    sel.value = '';
   });
   updateEfyBanner();
 }
@@ -7333,19 +7343,32 @@ function onContrDivisionChange(){
 function populateContrProjectDropdown(filterCo, filterDiv){
   const sel = document.getElementById('contrProjectId'); if(!sel) return;
   sel.innerHTML = '<option value="">— Select project —</option>';
-  const tracked = getTrackedSubdivisions(filterCo||'', filterDiv||'');
-  if(!tracked.length && (filterCo||filterDiv)){
-    const o=document.createElement('option'); o.disabled=true;
-    o.textContent='No tracked projects — create in Project Tracking first';
-    sel.appendChild(o);
-    return;
-  }
-  tracked.forEach(function(item){
-    const o = document.createElement('option');
-    o.value = item.projId;
-    o.textContent = item.label;
-    sel.appendChild(o);
+  // Show all engProjects grouped by division — same source as Project Tracking
+  const grouped = {};
+  engProjects.forEach(function(p){
+    const key = p.division_code;
+    if(!grouped[key]) grouped[key] = [];
+    grouped[key].push(p);
   });
+  Object.keys(grouped).sort().forEach(function(divCode){
+    const grp = document.createElement('optgroup');
+    grp.label = divCode;
+    grouped[divCode].forEach(function(p){
+      const co = companies.find(function(c){return c.id===p.company_id||c.code===p.company_id;});
+      const div = co&&(co.divisions||[]).find(function(d){return d.code===p.division_code;});
+      const sub = div&&(div.subdivisions||[]).find(function(s){return s.code===p.subdivision_code;});
+      const label = (sub?(sub.project||sub.name):p.project_name)+(p.client||(sub&&sub.client)?' — '+(p.client||(sub&&sub.client)):'');
+      const o = document.createElement('option');
+      o.value = p.id; o.textContent = label;
+      grp.appendChild(o);
+    });
+    sel.appendChild(grp);
+  });
+  if(!engProjects.length){
+    const o=document.createElement('option'); o.disabled=true;
+    o.textContent='No projects — add in Project Tracking first';
+    sel.appendChild(o);
+  }
 }
 function onContrProjectChange(){
   const sel = document.getElementById('contrProjectId');
@@ -7364,22 +7387,12 @@ function onContrProjectChange(){
 }
 
 function openContractModal(editId){
-  // Reset cascade selectors
-  const cco = document.getElementById('contrCompany'); if(cco) cco.value='';
-  const cdiv = document.getElementById('contrDivision'); if(cdiv) cdiv.innerHTML='<option value="">— All divisions —</option>';
-  populateContrProjectDropdown('','');
+  populateContrProjectDropdown();
   document.getElementById('contrModalTitle').textContent = editId ? 'Edit Contract' : 'New Contract';
   document.getElementById('contrEditId').value = editId||'';
   if(editId){
     const c = engContracts.find(function(x){return x.id===editId;});
     if(c){
-      const editProj = engProjects.find(function(p){return p.id===c.project_id;});
-      if(editProj){
-        const cco2=document.getElementById('contrCompany'); if(cco2) cco2.value=editProj.company_id||'';
-        onContrCompanyChange();
-        const cdiv2=document.getElementById('contrDivision'); if(cdiv2) cdiv2.value=editProj.division_code||'';
-        onContrDivisionChange();
-      }
       document.getElementById('contrProjectId').value = c.project_id||'';
       document.getElementById('contrNo').value = c.contract_no||'';
       document.getElementById('contrTitle').value = c.contract_title||'';
@@ -8937,22 +8950,26 @@ function onProgDivisionChange(){
 
 // Override populateProgressProjectDropdown — now driven by cascade above
 function populateProgressProjectDropdown(){
-  const projSel = document.getElementById('progProjectId'); if(!projSel) return;
-  const curVal = projSel.value;
-  projSel.innerHTML = '<option value="">— Select project —</option>';
-  // Show all tracked projects — same flat list as Contract Management
-  engProjects.forEach(function(p){
-    const co = companies.find(function(c){return c.id===p.company_id||c.code===p.company_id;});
-    const div = co&&(co.divisions||[]).find(function(d){return d.code===p.division_code;});
-    const sub = div&&(div.subdivisions||[]).find(function(s){return s.code===p.subdivision_code;});
-    const label = (sub?(sub.project||sub.name):p.project_name)
-      +(p.client||sub&&sub.client?' — '+(p.client||sub.client):'')
-      +' ('+p.division_code+')';
-    const o = document.createElement('option');
-    o.value = p.id; o.textContent = label;
-    projSel.appendChild(o);
+  // Use same grouped format as Contract Management
+  const sel = document.getElementById('progProjectId'); if(!sel) return;
+  const curVal = sel.value;
+  sel.innerHTML = '<option value="">— Select project —</option>';
+  const grouped = {};
+  engProjects.forEach(function(p){ const k=p.division_code; if(!grouped[k]) grouped[k]=[]; grouped[k].push(p); });
+  Object.keys(grouped).sort().forEach(function(divCode){
+    const grp = document.createElement('optgroup'); grp.label = divCode;
+    grouped[divCode].forEach(function(p){
+      const co = companies.find(function(c){return c.id===p.company_id||c.code===p.company_id;});
+      const div = co&&(co.divisions||[]).find(function(d){return d.code===p.division_code;});
+      const sub = div&&(div.subdivisions||[]).find(function(s){return s.code===p.subdivision_code;});
+      const label = (sub?(sub.project||sub.name):p.project_name)+(p.client||(sub&&sub.client)?' — '+(p.client||(sub&&sub.client)):'');
+      const o = document.createElement('option'); o.value=p.id; o.textContent=label;
+      grp.appendChild(o);
+    });
+    sel.appendChild(grp);
   });
-  if(curVal && engProjects.find(function(p){return p.id===curVal;})) projSel.value=curVal;
+  if(!engProjects.length){ const o=document.createElement('option'); o.disabled=true; o.textContent='No projects — add in Project Tracking first'; sel.appendChild(o); }
+  if(curVal && engProjects.find(function(p){return p.id===curVal;})) sel.value=curVal;
 }
 
 
@@ -10118,3 +10135,72 @@ async function deleteEquip(id){
 
 </body>
 </html>
+<script>
+// ══════════════════════════════════════════════════════════
+// SITE PROGRESS PAGE — Project module tabs
+// ══════════════════════════════════════════════════════════
+
+function onProgPageProjectChange(){
+  renderEngProgress();
+  const projId = document.getElementById('eprfProject')?.value||'';
+  const tabsBar = document.getElementById('progModuleTabs');
+  const modContent = document.getElementById('progModuleContent');
+  if(projId){
+    tabsBar.style.display='block';
+    // Reset to reports tab
+    document.querySelectorAll('.prog-mod-tab').forEach(function(t){t.classList.remove('active');});
+    document.querySelector('.prog-mod-tab').classList.add('active');
+    document.getElementById('engProgressGrid').style.display='grid';
+    modContent.style.display='none';
+  } else {
+    tabsBar.style.display='none';
+    modContent.style.display='none';
+    document.getElementById('engProgressGrid').style.display='grid';
+  }
+}
+
+async function switchProgTab(tab, btn){
+  document.querySelectorAll('.prog-mod-tab').forEach(function(t){t.classList.remove('active');});
+  if(btn) btn.classList.add('active');
+  const projId = document.getElementById('eprfProject')?.value||'';
+  const grid = document.getElementById('engProgressGrid');
+  const mod = document.getElementById('progModuleContent');
+  const p = engProjects.find(function(x){return x.id===projId;});
+  if(tab==='reports'){
+    grid.style.display='grid'; mod.style.display='none'; mod.innerHTML='';
+    return;
+  }
+  grid.style.display='none'; mod.style.display='block';
+  mod.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Loading...</div>';
+  if(!p){ mod.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Select a project first.</div>'; return; }
+  if(tab==='ipc') await renderHubIPC(p, mod);
+  else if(tab==='variations') await renderHubVariations(p, mod);
+  else if(tab==='diary') await renderHubDiary(p, mod);
+  else if(tab==='documents') await renderHubDocuments(p, mod);
+  else if(tab==='staff') await renderHubStaff(p, mod);
+  else if(tab==='equipment') await renderHubEquipment(p, mod);
+}
+
+// Override populateProgressProjectFilter to also populate eprfProject as grouped
+const _origPopFilter = populateProgressProjectFilter;
+function populateProgressProjectFilter(){
+  const sel = document.getElementById('eprfProject'); if(!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">All Projects</option>';
+  const grouped = {};
+  engProjects.forEach(function(p){ const k=p.division_code; if(!grouped[k]) grouped[k]=[]; grouped[k].push(p); });
+  Object.keys(grouped).sort().forEach(function(divCode){
+    const grp = document.createElement('optgroup'); grp.label = divCode;
+    grouped[divCode].forEach(function(p){
+      const co = companies.find(function(c){return c.id===p.company_id||c.code===p.company_id;});
+      const div = co&&(co.divisions||[]).find(function(d){return d.code===p.division_code;});
+      const sub = div&&(div.subdivisions||[]).find(function(s){return s.code===p.subdivision_code;});
+      const label = (sub?(sub.project||sub.name):p.project_name)+(p.client||(sub&&sub.client)?' — '+(p.client||(sub&&sub.client)):'');
+      const o = document.createElement('option'); o.value=p.id; o.textContent=label;
+      grp.appendChild(o);
+    });
+    sel.appendChild(grp);
+  });
+  if(cur && engProjects.find(function(p){return p.id===cur;})) sel.value=cur;
+}
+</script>
