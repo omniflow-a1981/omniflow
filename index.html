@@ -1857,7 +1857,9 @@ const DEFAULT_COMPANIES = [
   {id:'WE',name:'Wanofi Engineering Plc',code:'WE',color:'teal',
     divisions:[
       {code:'WE1',name:'Design',subdivisions:[]},
-      {code:'WE2',name:'Supervision',subdivisions:[]},
+      {code:'WE2',name:'Supervision',subdivisions:[
+        {code:'WE2-S1',name:'WE2-S1',client:'',project:'',location:''}
+      ]},
       {code:'WE3',name:'Others',subdivisions:[]}
     ]},
   {id:'ME',name:'Matisan Engineering Plc',code:'ME',color:'blue',
@@ -2409,7 +2411,8 @@ async function initApp(){
     const cloudCo = await loadCompaniesFromCloud();
     if(cloudCo && cloudCo.length){
       companies = cloudCo;
-      ls('omni-companies', companies); // refresh local cache
+      try{ localStorage.setItem('omni-companies', JSON.stringify(companies)); }catch(e){}
+      console.log('[OmniFlow] Loaded companies from cloud:', companies.length,'companies');
     } else if(Array.isArray(coData) && coData.length){
       companies = coData.map(function(co){
         var normId=co.id==='Wanofi'?'WE':co.id==='Matisan'?'ME':co.id;
@@ -2428,8 +2431,8 @@ async function initApp(){
 
     payables = ls('omni-payables')||[];
     showSync('ok','Data loaded ✓');
-    // Migrate: if companies weren't loaded from cloud, save them now
-    if(!cloudCo) setTimeout(saveCompaniesToCloud, 1000);
+    // Always save companies to cloud on startup to keep it in sync
+    setTimeout(saveCompaniesToCloud, 2000);
     // Load PRs in parallel (separate Supabase table)
     loadPayRequests();
   } catch(e){
@@ -3940,70 +3943,73 @@ function hideAddCoForm(){document.getElementById('addCoForm').classList.remove('
 // accessible from any device that logs in
 
 async function saveCompaniesToCloud(){
-  const json = JSON.stringify(companies);
-  saveCompaniesToCloud(); // also keep local cache as backup
+  // Always save to localStorage first (instant, never fails)
+  try{ localStorage.setItem('omni-companies', JSON.stringify(companies)); }catch(e){}
+  // Save to Supabase: PATCH first (most reliable), then POST if row doesn't exist
   try{
-    // Try PATCH first (update existing row)
+    const json = JSON.stringify(companies);
+    // Step 1: Try PATCH (update existing row)
     const patchRes = await fetch(SUPA_URL+'/balances?div_code=eq.__companies__',{
       method:'PATCH',
-      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,
-               'Content-Type':'application/json','Prefer':'return=minimal'},
-      body: JSON.stringify({note: json, updated_at: new Date().toISOString()})
+      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
+      body: JSON.stringify({note: json})
     });
-    if(patchRes.status===404||patchRes.status===0){
-      // Row doesn't exist yet — create it
-      await fetch(SUPA_URL+'/balances',{
+    const patchData = await patchRes.json().catch(function(){return [];});
+    if(Array.isArray(patchData) && patchData.length>0){
+      // PATCH succeeded — row existed and was updated
+      console.log('[OmniFlow] Companies updated in cloud ✓');
+    } else {
+      // Row didn't exist — INSERT new row
+      const postRes = await fetch(SUPA_URL+'/balances',{
         method:'POST',
-        headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,
-                 'Content-Type':'application/json','Prefer':'return=minimal'},
+        headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=minimal'},
         body: JSON.stringify({div_code:'__companies__', note: json})
       });
+      if(postRes.ok || postRes.status===201){
+        console.log('[OmniFlow] Companies created in cloud ✓');
+      } else {
+        const e2 = await postRes.text();
+        console.warn('[OmniFlow] Cloud save POST failed:', postRes.status, e2);
+      }
     }
-    // If PATCH returned no rows, insert
-    const txt = await patchRes.text();
-    if(txt==='' || patchRes.headers.get('content-range')==='*/0'){
-      await fetch(SUPA_URL+'/balances',{
-        method:'POST',
-        headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,
-                 'Content-Type':'application/json','Prefer':'return=minimal'},
-        body: JSON.stringify({div_code:'__companies__', note: json})
-      });
-    }
+    const statusEl = document.getElementById('coCloudStatus');
+    if(statusEl){ statusEl.textContent='✓ Cloud saved '+new Date().toLocaleTimeString(); statusEl.style.color='var(--teal-dark)'; }
   }catch(e){
-    console.warn('saveCompaniesToCloud failed — data still in localStorage:', e.message);
+    console.warn('[OmniFlow] saveCompaniesToCloud error:', e.message);
+    const statusEl = document.getElementById('coCloudStatus');
+    if(statusEl){ statusEl.textContent='⚠ Not saved to cloud'; statusEl.style.color='#dc2626'; }
   }
 }
 
 async function loadCompaniesFromCloud(){
   try{
     const res = await fetch(SUPA_URL+'/balances?div_code=eq.__companies__&select=note',{
-      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON}
+      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Cache-Control':'no-cache'}
     });
-    if(!res.ok) return null;
+    if(!res.ok){ console.warn('[OmniFlow] loadCompaniesFromCloud HTTP:', res.status); return null; }
     const data = await res.json();
     if(Array.isArray(data) && data.length && data[0].note){
       const parsed = JSON.parse(data[0].note);
-      if(Array.isArray(parsed) && parsed.length) return parsed;
+      if(Array.isArray(parsed) && parsed.length){
+        console.log('[OmniFlow] Companies loaded from cloud ✓ ('+parsed.length+' companies)');
+        return parsed;
+      }
     }
+    console.log('[OmniFlow] No companies data in cloud yet — will use localStorage');
   }catch(e){
-    console.warn('loadCompaniesFromCloud failed:', e.message);
+    console.warn('[OmniFlow] loadCompaniesFromCloud error:', e.message);
   }
   return null;
 }
 
 
 async function manualBackupCompanies(){
-  const btn = event.target;
-  btn.textContent = '☁ Saving...'; btn.disabled = true;
-  try{
-    await saveCompaniesToCloud();
-    const statusEl = document.getElementById('coCloudStatus');
-    if(statusEl) statusEl.textContent = '✓ Saved to cloud ' + new Date().toLocaleTimeString();
-    btn.textContent = '✓ Saved!';
-    setTimeout(function(){ btn.textContent='☁ Save to Cloud'; btn.disabled=false; }, 2000);
-  }catch(e){
-    btn.textContent = '✕ Failed'; btn.disabled = false;
-  }
+  const btn = event?.target || document.querySelector('[onclick="manualBackupCompanies()"]');
+  if(btn){ btn.textContent = '☁ Saving...'; btn.disabled = true; }
+  await saveCompaniesToCloud();
+  const statusEl = document.getElementById('coCloudStatus');
+  if(statusEl) statusEl.textContent = '✓ Saved to cloud ' + new Date().toLocaleTimeString();
+  if(btn){ btn.textContent = '✓ Saved!'; setTimeout(function(){ btn.textContent='☁ Save to Cloud'; btn.disabled=false; }, 2000); }
 }
 
 function addCompany(){
@@ -5491,7 +5497,22 @@ function checkPRAlerts(){
   const banner=document.getElementById('prAlertBanner');
   if(dot) dot.style.display=need.length?'inline-block':'none';
   if(banner){
-    if(need.length){document.getElementById('prAlertMsg').textContent=need.length+' request(s) need your action: '+need.map(p=>p.project).join(', ');banner.style.display='flex';}
+    if(need.length){
+      // Group by division for clean summary
+      var grouped={};
+      need.forEach(function(pr){
+        var div=(pr.division||'').split('.')[0].trim()||'Other';
+        if(!grouped[div]) grouped[div]=0;
+        grouped[div]++;
+      });
+      var summary=Object.keys(grouped).sort().map(function(div){
+        return grouped[div]+' in '+div;
+      }).join(' · ');
+      document.getElementById('prAlertMsg').innerHTML=
+        '<strong>'+need.length+' PR'+(need.length>1?'s':'')+' need your action</strong>'
+        +' <span style="font-weight:400;color:#b45309">— '+summary+'</span>';
+      banner.style.display='flex';
+    }
     else banner.style.display='none';
   }
   const nav=document.getElementById('payreqNav');
@@ -7245,12 +7266,18 @@ function openEquipFromHub(projId){
 }
 
 // Hub-context deleters (refresh tab after delete)
-async function hubDeleteIPC(id,projId){ if(!confirm('Delete this IPC?')) return; await engFetch('/eng_ipc?id=eq.'+id,'DELETE'); await renderHubIPC({id:projId}, document.getElementById('projectDetailContent')); }
-async function hubDeleteVariation(id,projId){ if(!confirm('Delete?')) return; await engFetch('/eng_variations?id=eq.'+id,'DELETE'); await renderHubVariations({id:projId}, document.getElementById('projectDetailContent')); }
-async function hubDeleteDiary(id,projId){ if(!confirm('Delete?')) return; await engFetch('/eng_site_diary?id=eq.'+id,'DELETE'); await renderHubDiary({id:projId}, document.getElementById('projectDetailContent')); }
-async function hubDeleteDoc(id,projId){ if(!confirm('Delete?')) return; await engFetch('/eng_documents?id=eq.'+id,'DELETE'); await renderHubDocuments({id:projId}, document.getElementById('projectDetailContent')); }
-async function hubDeleteStaff(id,projId){ if(!confirm('Delete?')) return; await engFetch('/eng_staff?id=eq.'+id,'DELETE'); await renderHubStaff({id:projId}, document.getElementById('projectDetailContent')); }
-async function hubDeleteEquip(id,projId){ if(!confirm('Delete?')) return; await engFetch('/eng_equipment?id=eq.'+id,'DELETE'); await renderHubEquipment({id:projId}, document.getElementById('projectDetailContent')); }
+function _getHubWrap(){
+  // Returns the correct content wrapper — project hub modal or site progress tab
+  return document.getElementById('progModuleContent') && document.getElementById('progModuleContent').style.display!=='none'
+    ? document.getElementById('progModuleContent')
+    : document.getElementById('projectDetailContent');
+}
+async function hubDeleteIPC(id,projId){ if(!confirm('Delete this IPC?')) return; await engFetch('/eng_ipc?id=eq.'+id,'DELETE'); await renderHubIPC({id:projId}, _getHubWrap()); }
+async function hubDeleteVariation(id,projId){ if(!confirm('Delete?')) return; await engFetch('/eng_variations?id=eq.'+id,'DELETE'); await renderHubVariations({id:projId}, _getHubWrap()); }
+async function hubDeleteDiary(id,projId){ if(!confirm('Delete?')) return; await engFetch('/eng_site_diary?id=eq.'+id,'DELETE'); await renderHubDiary({id:projId}, _getHubWrap()); }
+async function hubDeleteDoc(id,projId){ if(!confirm('Delete?')) return; await engFetch('/eng_documents?id=eq.'+id,'DELETE'); await renderHubDocuments({id:projId}, _getHubWrap()); }
+async function hubDeleteStaff(id,projId){ if(!confirm('Delete?')) return; await engFetch('/eng_staff?id=eq.'+id,'DELETE'); await renderHubStaff({id:projId}, _getHubWrap()); }
+async function hubDeleteEquip(id,projId){ if(!confirm('Delete?')) return; await engFetch('/eng_equipment?id=eq.'+id,'DELETE'); await renderHubEquipment({id:projId}, _getHubWrap()); }
 
 function closeProjectDetail(){ document.getElementById('projectDetailModal').style.display='none'; }
 
@@ -10145,21 +10172,36 @@ function onProgPageProjectChange(){
   const projId = document.getElementById('eprfProject')?.value||'';
   const tabsBar = document.getElementById('progModuleTabs');
   const modContent = document.getElementById('progModuleContent');
+  const grid = document.getElementById('engProgressGrid');
   if(projId){
     tabsBar.style.display='block';
+    // Show project name above tabs
+    const p = engProjects.find(function(x){return x.id===projId;});
+    if(p){
+      const co = companies.find(function(c){return c.id===p.company_id||c.code===p.company_id;});
+      const div = co&&(co.divisions||[]).find(function(d){return d.code===p.division_code;});
+      const sub = div&&(div.subdivisions||[]).find(function(s){return s.code===p.subdivision_code;});
+      const projLabel = sub?(sub.project||sub.name):p.project_name;
+      let lbl = document.getElementById('progPageProjLabel');
+      if(!lbl){lbl=document.createElement('div');lbl.id='progPageProjLabel';lbl.style.cssText='font-size:12px;color:var(--teal-dark);font-weight:700;margin-bottom:6px;padding:4px 10px;background:var(--teal-light);border-radius:7px;display:inline-block';tabsBar.parentNode.insertBefore(lbl,tabsBar);}
+      lbl.textContent='📍 '+projLabel+' ('+p.division_code+') — Select module below';
+    }
     // Reset to reports tab
     document.querySelectorAll('.prog-mod-tab').forEach(function(t){t.classList.remove('active');});
     document.querySelector('.prog-mod-tab').classList.add('active');
-    document.getElementById('engProgressGrid').style.display='grid';
-    modContent.style.display='none';
+    if(grid) grid.style.display='grid';
+    if(modContent){modContent.style.display='none';modContent.innerHTML='';}
   } else {
     tabsBar.style.display='none';
-    modContent.style.display='none';
-    document.getElementById('engProgressGrid').style.display='grid';
+    const lbl=document.getElementById('progPageProjLabel'); if(lbl) lbl.remove();
+    if(modContent){modContent.style.display='none';modContent.innerHTML='';}
+    if(grid) grid.style.display='grid';
   }
 }
 
+let _currentProgTab = 'reports';
 async function switchProgTab(tab, btn){
+  _currentProgTab = tab;
   document.querySelectorAll('.prog-mod-tab').forEach(function(t){t.classList.remove('active');});
   if(btn) btn.classList.add('active');
   const projId = document.getElementById('eprfProject')?.value||'';
@@ -10167,18 +10209,42 @@ async function switchProgTab(tab, btn){
   const mod = document.getElementById('progModuleContent');
   const p = engProjects.find(function(x){return x.id===projId;});
   if(tab==='reports'){
-    grid.style.display='grid'; mod.style.display='none'; mod.innerHTML='';
+    if(grid) grid.style.display='grid';
+    if(mod){mod.style.display='none';mod.innerHTML='';}
     return;
   }
-  grid.style.display='none'; mod.style.display='block';
-  mod.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Loading...</div>';
-  if(!p){ mod.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Select a project first.</div>'; return; }
+  if(grid) grid.style.display='none';
+  if(mod){mod.style.display='block';mod.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Loading...</div>';}
+  if(!p){
+    if(mod) mod.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Please select a project from the filter above first.</div>';
+    return;
+  }
   if(tab==='ipc') await renderHubIPC(p, mod);
   else if(tab==='variations') await renderHubVariations(p, mod);
   else if(tab==='diary') await renderHubDiary(p, mod);
   else if(tab==='documents') await renderHubDocuments(p, mod);
   else if(tab==='staff') await renderHubStaff(p, mod);
   else if(tab==='equipment') await renderHubEquipment(p, mod);
+}
+
+// Override hub openers so they refresh the current tab (not navigate away)
+function openIPCFromHub(projId){ window._hubProjectId=projId; openIPCModal(); }
+function openVarFromHub(projId){ window._hubProjectId=projId; openVariationModal(); }
+function openDiaryFromHub(projId){
+  window._hubDiaryProj=projId; openDiaryModal();
+  setTimeout(function(){const el=document.getElementById('diaryProj');if(el)el.value=projId;},100);
+}
+function openDocFromHub(projId){
+  window._hubDocProj=projId; openDocModal();
+  setTimeout(function(){const el=document.getElementById('docProj');if(el)el.value=projId;},100);
+}
+function openStaffFromHub(projId){
+  window._hubStaffProj=projId; openStaffModal();
+  setTimeout(function(){const el=document.getElementById('staffProj');if(el)el.value=projId;},100);
+}
+function openEquipFromHub(projId){
+  window._hubEquipProj=projId; openEquipModal();
+  setTimeout(function(){const el=document.getElementById('equipProj');if(el)el.value=projId;},100);
 }
 
 // Override populateProgressProjectFilter to also populate eprfProject as grouped
