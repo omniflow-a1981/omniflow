@@ -3945,60 +3945,65 @@ function hideAddCoForm(){document.getElementById('addCoForm').classList.remove('
 // accessible from any device that logs in
 
 async function saveCompaniesToCloud(){
-  // Step 1: Always save to localStorage immediately
+  // Step 1: Always save to localStorage immediately (never fails)
   try{ localStorage.setItem('omni-companies', JSON.stringify(companies)); }catch(e){}
-  // Step 2: Save to Supabase transactions table (has 'note' column for arbitrary data)
-  // Use ref='__companies_v1__' as identifier — delete old, insert new
+  // Step 2: Save to Supabase using the transactions table (correct schema)
+  // ref='__companies_v1__' is our identifier — delete old then insert fresh
   try{
     const json = JSON.stringify(companies);
-    const HEADERS = {'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=minimal'};
-    // Delete any existing config row
-    await fetch(SUPA_URL+'/transactions?ref=eq.__companies_v1__',{method:'DELETE',headers:HEADERS});
-    // Insert fresh row
-    const postRes = await fetch(SUPA_URL+'/transactions',{
-      method:'POST', headers:HEADERS,
-      body: JSON.stringify({
-        date: new Date().toISOString().slice(0,10),
-        ref: '__companies_v1__',
-        note: json,
-        div_code: '__config__',
-        type: 'in',
-        etb_in: 0, etb_out: 0
-      })
-    });
+    const H = {
+      'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
+      'Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
+      'Content-Type':'application/json',
+      'Prefer':'return=minimal'
+    };
+    // Delete previous config row (ignore errors)
+    await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?ref=eq.__companies_v1__',
+      {method:'DELETE', headers:H}).catch(function(){});
+    // Insert with correct schema matching the actual transactions table
+    const body = {
+      date: new Date().toISOString().slice(0,10),
+      ref: '__companies_v1__',
+      note: json,
+      div_code: '__config__',
+      div_name: 'Config',
+      company_id: 'SYS',
+      type: 'in',
+      amt: 0,
+      amt_usd: null
+    };
+    const postRes = await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions',
+      {method:'POST', headers:H, body:JSON.stringify(body)});
+    const statusEl = document.getElementById('coCloudStatus');
     if(postRes.ok || postRes.status===201){
-      console.log('[OmniFlow] ✓ Companies saved to cloud ('+companies.length+' companies)');
-      const statusEl = document.getElementById('coCloudStatus');
-      if(statusEl){ statusEl.textContent='✓ Saved to cloud '+new Date().toLocaleTimeString(); statusEl.style.color='var(--teal-dark)'; }
+      console.log('[OmniFlow] ✓ Companies saved to cloud');
+      if(statusEl){statusEl.textContent='✓ Saved to cloud '+new Date().toLocaleTimeString();statusEl.style.color='var(--teal-dark)';}
     } else {
       const errText = await postRes.text();
-      console.warn('[OmniFlow] Cloud save failed:', postRes.status, errText);
-      const statusEl = document.getElementById('coCloudStatus');
-      if(statusEl){ statusEl.textContent='⚠ Cloud save failed — using local only'; statusEl.style.color='#dc2626'; }
+      console.warn('[OmniFlow] Companies cloud save failed:',postRes.status,errText);
+      if(statusEl){statusEl.textContent='⚠ Cloud save failed';statusEl.style.color='#dc2626';}
     }
   }catch(e){
-    console.warn('[OmniFlow] saveCompaniesToCloud error:', e.message);
+    console.warn('[OmniFlow] saveCompaniesToCloud error:',e.message);
   }
 }
 
 async function loadCompaniesFromCloud(){
   try{
-    const res = await fetch(SUPA_URL+'/transactions?ref=eq.__companies_v1__&select=note&order=created_at.desc&limit=1',{
-      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON}
-    });
-    if(!res.ok){ console.warn('[OmniFlow] loadCompaniesFromCloud HTTP:', res.status); return null; }
+    const res = await fetch(
+      'https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?ref=eq.__companies_v1__&select=note&limit=1',
+      {headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE'}}
+    );
+    if(!res.ok){console.warn('[OmniFlow] loadCompaniesFromCloud:',res.status);return null;}
     const data = await res.json();
-    if(Array.isArray(data) && data.length && data[0].note){
+    if(Array.isArray(data)&&data.length&&data[0].note){
       const parsed = JSON.parse(data[0].note);
-      if(Array.isArray(parsed) && parsed.length){
-        console.log('[OmniFlow] ✓ Companies loaded from cloud ('+parsed.length+' companies)');
+      if(Array.isArray(parsed)&&parsed.length){
+        console.log('[OmniFlow] ✓ Companies loaded from cloud (',parsed.length,'companies)');
         return parsed;
       }
     }
-    console.log('[OmniFlow] No cloud companies data — using localStorage/defaults');
-  }catch(e){
-    console.warn('[OmniFlow] loadCompaniesFromCloud error:', e.message);
-  }
+  }catch(e){console.warn('[OmniFlow] loadCompaniesFromCloud error:',e.message);}
   return null;
 }
 
