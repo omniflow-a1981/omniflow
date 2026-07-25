@@ -565,6 +565,24 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   <a class="nav-item" href="#" onclick="nav('EngProgress',this)" id="engProgressNav">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="M18 9l-5 5-3-3-4 4"/></svg>Site Progress
   </a>
+  <a class="nav-item" href="#" onclick="nav('EngIPC',this)" id="engIPCNav">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 10h8M8 14h5"/></svg>IPC
+  </a>
+  <a class="nav-item" href="#" onclick="nav('EngVariations',this)" id="engVariationsNav">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Variations
+  </a>
+  <a class="nav-item" href="#" onclick="nav('EngDiary',this)" id="engDiaryNav">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>Site Diary
+  </a>
+  <a class="nav-item" href="#" onclick="nav('EngDocuments',this)" id="engDocumentsNav">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>Documents
+  </a>
+  <a class="nav-item" href="#" onclick="nav('EngStaff',this)" id="engStaffNav">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Staff Register
+  </a>
+  <a class="nav-item" href="#" onclick="nav('EngEquipment',this)" id="engEquipmentNav">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Equipment
+  </a>
   <div class="sb-sec">Settings</div>
   <a class="nav-item" href="#" onclick="nav('PayReq',this)" id="payreqNav">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Payment Requests
@@ -1487,6 +1505,23 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       </table>
     </div>
     <button onclick="addPRItem()" class="btn-secondary" style="font-size:11px;padding:5px 12px;margin-bottom:12px">+ Add Row</button>
+    <!-- Payroll/Progress attachment — shown only for Manpower PRs -->
+    <div id="prPayrollSection" style="display:none;margin-bottom:12px;background:var(--bg);border-radius:10px;padding:12px 14px;border:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;color:var(--ink2);margin-bottom:8px">📎 Payroll & Progress Attachments <span style="font-size:10px;color:var(--muted);font-weight:400">(Manpower requests only)</span></div>
+      <div class="fr" style="gap:10px;flex-wrap:wrap">
+        <div class="ff">
+          <label style="font-size:11px">Payroll Document (PDF/Excel)</label>
+          <input type="file" id="prPayrollFile" accept=".pdf,.xlsx,.xls" onchange="handlePayrollUpload(this,'payroll')" style="font-size:11px;padding:6px;border:1px solid var(--border);border-radius:8px;width:100%;background:var(--surface)">
+          <div id="prPayrollStatus" style="font-size:10px;color:var(--muted);margin-top:3px"></div>
+        </div>
+        <div class="ff">
+          <label style="font-size:11px">Progress Report (PDF/Excel)</label>
+          <input type="file" id="prProgressFile" accept=".pdf,.xlsx,.xls" onchange="handlePayrollUpload(this,'progress')" style="font-size:11px;padding:6px;border:1px solid var(--border);border-radius:8px;width:100%;background:var(--surface)">
+          <div id="prProgressStatus" style="font-size:10px;color:var(--muted);margin-top:3px"></div>
+        </div>
+      </div>
+      <div id="prPayrollPreview" style="margin-top:8px;font-size:11px;color:var(--teal-dark)"></div>
+    </div>
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:8px;background:var(--bg);padding:9px 13px;border-radius:9px;flex-wrap:wrap">
       <span style="font-size:12px;font-weight:700;color:var(--ink2)">VAT:</span>
       <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="vatMode" value="exclusive" checked onchange="calcPRTotals()"> Exclusive (add 15%)</label>
@@ -2421,6 +2456,12 @@ function nav(id,el){
   if(id==='EngProjects'){ loadEngProjects(); }
   if(id==='EngContracts'){ loadEngContracts(); }
   if(id==='EngProgress'){ loadEngProgress(); }
+  if(id==='EngIPC'){ loadEngIPC(); }
+  if(id==='EngVariations'){ loadEngVariations(); }
+  if(id==='EngDiary'){ loadEngDiary(); }
+  if(id==='EngDocuments'){ loadEngDocuments(); }
+  if(id==='EngStaff'){ loadEngStaff(); }
+  if(id==='EngEquipment'){ loadEngEquipment(); }
 }
 function showAccessDenied(){
   alert('Access restricted. Your account can only access Add Transaction and Ledger within the allowed date window (today and yesterday).');
@@ -2518,7 +2559,8 @@ function getPRPendingPayables(){
 function getPRTransactions(){
   // Convert paid PRs into ledger outflow entries.
   // PRs sharing the same transfer_id are GROUPED into one entry.
-  const paid = payRequests.filter(pr => pr.status === 'paid' && pr.paid_by);
+  // Include both fully paid and partially paid PRs in ledger
+  const paid = payRequests.filter(pr => (pr.status === 'paid' || pr.status === 'partial') && (pr.paid_by || parseFloat(pr.partial_amount||0)>0));
 
   // Separate: PRs with a transfer_id (can be grouped) vs without
   const withTrf  = paid.filter(pr => pr.transfer_id && pr.transfer_id.trim());
@@ -2542,7 +2584,8 @@ function getPRTransactions(){
     }
     const partial = parseFloat(pr.partial_amount||0);
     const net     = parseFloat(pr.net_payable||0);
-    const amt     = (partial > 0 && partial < net) ? partial : net;
+    // Only use partial amount if it's less than net (true partial payment)
+    const amt     = (partial > 0 && partial < net) ? partial : (pr.status==='partial'?partial:net);
     groups[key].prs.push({project: pr.project, sub: pr.sub_project ? ' ['+pr.sub_project+']' : '', type: prGetType(pr), amt});
     groups[key].totalAmt += amt;
     if(!groups[key].pay_method && pr.pay_method) groups[key].pay_method = pr.pay_method;
@@ -4682,6 +4725,7 @@ function setPRType(type,btn){
   currentPRType=type; document.getElementById('prType').value=type;
   document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active');
   document.getElementById('prManpowerRow').style.display=type==='Manpower'?'block':'none';
+  const _ps1=document.getElementById('prPayrollSection'); if(_ps1) _ps1.style.display=type==='Manpower'?'block':'none';
   buildPRHead(type);
   document.getElementById('prItemsBody').innerHTML=''; addPRItem();
 }
@@ -5154,6 +5198,9 @@ function openNewPR(){
   document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active'));
   const mb=document.getElementById('prTypeBtn-Material'); if(mb) mb.classList.add('active');
   document.getElementById('prManpowerRow').style.display='none';
+  const _ps2=document.getElementById('prPayrollSection'); if(_ps2) _ps2.style.display='none';
+  window._prPayrollB64=null; window._prProgressB64=null;
+    const payrollSec2=document.getElementById('prPayrollSection'); if(payrollSec2) payrollSec2.style.display='none';
   document.getElementById('prCategory').value='Purchase';
   document.querySelectorAll('[id^="prCatBtn-"]').forEach(b=>b.classList.remove('active'));
   const cb=document.getElementById('prCatBtn-Purchase'); if(cb) cb.classList.add('active');
@@ -5762,6 +5809,7 @@ function requestPaymentPR(id){
   const tb=document.getElementById('prTypeBtn-'+currentPRType);
   if(tb) tb.classList.add('active');
   document.getElementById('prManpowerRow').style.display=currentPRType==='Manpower'?'block':'none';
+  const _ps3=document.getElementById('prPayrollSection'); if(_ps3) _ps3.style.display=currentPRType==='Manpower'?'block':'none';
 
   // ── Populate Company + Division using guaranteed helpers ──
   const prCoId = pr.company_id==='Wanofi'?'WE':pr.company_id==='Matisan'?'ME':pr.company_id;
@@ -5966,6 +6014,7 @@ function editPR(id){
   document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active'));
   const tb=document.getElementById('prTypeBtn-'+prType); if(tb) tb.classList.add('active');
   document.getElementById('prManpowerRow').style.display=prType==='Manpower'?'block':'none';
+  const _ps4=document.getElementById('prPayrollSection'); if(_ps4) _ps4.style.display=prType==='Manpower'?'block':'none';
   // Restore Purchase/Service category
   const prCat=prGetCategory(pr);
   document.getElementById('prCategory').value=prCat;
@@ -8955,6 +9004,600 @@ function exportEsPdf(){
 }
 
 
+
+// ══════════════════════════════════════════════════════════════════
+// NEW ENGINEERING MODULES — IPC, Variations, Site Diary,
+// Document Register, Staff Register, Equipment Register
+// ══════════════════════════════════════════════════════════════════
+
+// ── DATA STORES ──
+let engIPCs=[], engVariations=[], engDiaryEntries=[], engDocuments=[], engStaff=[], engEquipment=[];
+
+// ── NAV HANDLERS ──
+// These are called from nav() function
+function loadEngIPC(){ loadEngIPCData().then(renderIPC); }
+function loadEngVariations(){ loadEngVariationsData().then(renderVariations); }
+function loadEngDiary(){ loadEngDiaryData().then(renderDiary); }
+function loadEngDocuments(){ loadEngDocumentsData().then(renderDocuments); }
+function loadEngStaff(){ loadEngStaffData().then(renderStaff); }
+function loadEngEquipment(){ loadEngEquipmentData().then(renderEquipment); }
+
+async function loadEngIPCData(){ const d=await engFetch('/eng_ipc?order=created_at.desc&select=*'); engIPCs=Array.isArray(d)?d:[]; }
+async function loadEngVariationsData(){ const d=await engFetch('/eng_variations?order=created_at.desc&select=*'); engVariations=Array.isArray(d)?d:[]; }
+async function loadEngDiaryData(){ const d=await engFetch('/eng_site_diary?order=diary_date.desc&select=*'); engDiaryEntries=Array.isArray(d)?d:[]; }
+async function loadEngDocumentsData(){ const d=await engFetch('/eng_documents?order=created_at.desc&select=*'); engDocuments=Array.isArray(d)?d:[]; }
+async function loadEngStaffData(){ const d=await engFetch('/eng_staff?order=created_at.desc&select=*'); engStaff=Array.isArray(d)?d:[]; }
+async function loadEngEquipmentData(){ const d=await engFetch('/eng_equipment?order=created_at.desc&select=*'); engEquipment=Array.isArray(d)?d:[]; }
+
+// ════════════════════════════════════════
+// 1. IPC — Interim Payment Certificate
+// ════════════════════════════════════════
+function renderIPC(){
+  const wrap=document.getElementById('engIPCGrid'); if(!wrap) return;
+  if(!engIPCs.length){ wrap.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">No IPCs yet. Create the first one.</div>'; return; }
+  wrap.innerHTML = engIPCs.map(function(ipc){
+    const c = engContracts.find(function(x){return x.id===ipc.contract_id;});
+    const p = engProjects.find(function(x){return x.id===ipc.project_id;});
+    const statusColors={'draft':'#94a3b8','submitted':'#f59e0b','certified':'#10b981','paid':'#3b82f6'};
+    const clr = statusColors[ipc.status]||'#94a3b8';
+    return '<div class="pr-card">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
+        +'<div>'
+          +'<div style="font-size:14px;font-weight:700;color:var(--ink2)">IPC #'+ipc.ipc_no+(c?' — '+c.contract_title:'')+'</div>'
+          +'<div style="font-size:12px;color:var(--muted)">'+(p?p.project_name:'')+(ipc.ipc_date?' · '+ipc.ipc_date:'')+(ipc.period_from?' · '+ipc.period_from+' to '+ipc.period_to:'')+'</div>'
+        +'</div>'
+        +'<span style="background:'+clr+';color:#fff;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700">'+ipc.status+'</span>'
+      +'</div>'
+      +'<div style="display:flex;gap:18px;margin-top:10px;flex-wrap:wrap">'
+        +'<div style="font-size:11px;color:var(--muted)">This Certificate: <strong style="color:var(--teal-dark)">'+fmtETB2(ipc.this_certificate)+'</strong></div>'
+        +'<div style="font-size:11px;color:var(--muted)">Gross Executed: <strong>'+fmtETB2(ipc.gross_value_executed)+'</strong></div>'
+        +'<div style="font-size:11px;color:var(--muted)">Retention: <strong style="color:#dc2626">'+fmtETB2(ipc.retention_deduction)+'</strong></div>'
+      +'</div>'
+      +'<div style="margin-top:8px;display:flex;gap:6px">'
+        +'<button onclick="editIPC(\''+ipc.id+'\')" class="btn-secondary" style="font-size:11px;padding:4px 10px">✏ Edit</button>'
+        +'<button onclick="printIPC(\''+ipc.id+'\')" class="btn-secondary" style="font-size:11px;padding:4px 10px">🖨 Print</button>'
+        +'<button onclick="deleteIPC(\''+ipc.id+'\')" style="background:none;border:1px solid #fca5a5;border-radius:7px;cursor:pointer;color:#dc2626;font-size:11px;padding:4px 10px">✕ Delete</button>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+
+function openIPCModal(editId){
+  // Build simple IPC form in a prompt-style modal for now
+  const contractOpts = engContracts.map(function(c){
+    const p=engProjects.find(function(x){return x.id===c.project_id;});
+    return '<option value="'+c.id+'">'+c.contract_title+(p?' ('+p.project_name+')':'')+'</option>';
+  }).join('');
+  const today = new Date().toISOString().slice(0,10);
+  const existing = editId ? engIPCs.find(function(x){return x.id===editId;}) : null;
+  const modal = document.createElement('div');
+  modal.className='modal-overlay'; modal.style.display='flex'; modal.id='ipcFormModal';
+  modal.innerHTML='<div class="modal-box" style="max-width:640px">'
+    +'<div class="modal-header"><div class="modal-title">'+(editId?'Edit':'New')+' Interim Payment Certificate</div>'
+    +'<button class="modal-close" onclick="document.getElementById(\'ipcFormModal\').remove()">&times;</button></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>Linked Contract *</label><select id="ipcContractId">'+contractOpts+'</select></div>'
+    +'<div class="ff"><label>IPC Number</label><input type="number" id="ipcNo" value="'+(existing?existing.ipc_no:1)+'" min="1"></div></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>IPC Date</label><input type="date" id="ipcDate" value="'+(existing?existing.ipc_date:today)+'"></div>'
+    +'<div class="ff"><label>Period From</label><input type="date" id="ipcFrom" value="'+(existing?existing.period_from:'')+'"></div>'
+    +'<div class="ff"><label>Period To</label><input type="date" id="ipcTo" value="'+(existing?existing.period_to:'')+'"></div></div>'
+    +'<div class="fr" style="margin-bottom:10px">'
+    +'<div class="ff"><label>Gross Value Executed (ETB)</label><input type="number" id="ipcGross" value="'+(existing?existing.gross_value_executed:0)+'" oninput="calcIPC()"></div>'
+    +'<div class="ff"><label>Advance Deduction (ETB)</label><input type="number" id="ipcAdv" value="'+(existing?existing.advance_deduction:0)+'" oninput="calcIPC()"></div></div>'
+    +'<div class="fr" style="margin-bottom:10px">'
+    +'<div class="ff"><label>Retention Deduction (ETB)</label><input type="number" id="ipcRet" value="'+(existing?existing.retention_deduction:0)+'" oninput="calcIPC()"></div>'
+    +'<div class="ff"><label>Previous Certified (ETB)</label><input type="number" id="ipcPrev" value="'+(existing?existing.previous_certified:0)+'" oninput="calcIPC()"></div></div>'
+    +'<div style="background:var(--bg);border-radius:9px;padding:12px 14px;margin-bottom:10px">'
+    +'<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;color:var(--teal-dark)"><span>This Certificate Amount</span><span id="ipcThisCert">ETB 0</span></div></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>Status</label><select id="ipcStatus"><option value="draft">Draft</option><option value="submitted">Submitted</option><option value="certified">Certified</option><option value="paid">Paid</option></select></div></div>'
+    +'<div class="ff" style="margin-bottom:10px"><label>Notes</label><textarea id="ipcNotes" style="min-height:42px">'+(existing?existing.notes:'')+'</textarea></div>'
+    +'<div class="btn-row"><button class="btn-primary" onclick="saveIPC(\''+( editId||'')+'\')">Save IPC</button><button class="btn-secondary" onclick="document.getElementById(\'ipcFormModal\').remove()">Cancel</button></div>'
+    +'</div>';
+  document.body.appendChild(modal);
+  if(existing){
+    document.getElementById('ipcContractId').value=existing.contract_id;
+    document.getElementById('ipcStatus').value=existing.status;
+  }
+  calcIPC();
+}
+
+function calcIPC(){
+  const gross=parseFloat(document.getElementById('ipcGross')?.value)||0;
+  const adv=parseFloat(document.getElementById('ipcAdv')?.value)||0;
+  const ret=parseFloat(document.getElementById('ipcRet')?.value)||0;
+  const prev=parseFloat(document.getElementById('ipcPrev')?.value)||0;
+  const thisCert=gross-adv-ret-prev;
+  const el=document.getElementById('ipcThisCert'); if(el) el.textContent=fmtETB2(Math.max(0,thisCert));
+}
+
+async function saveIPC(editId){
+  const contractId=document.getElementById('ipcContractId').value;
+  if(!contractId){ alert('Please select a contract.'); return; }
+  const c=engContracts.find(function(x){return x.id===contractId;});
+  const gross=parseFloat(document.getElementById('ipcGross').value)||0;
+  const adv=parseFloat(document.getElementById('ipcAdv').value)||0;
+  const ret=parseFloat(document.getElementById('ipcRet').value)||0;
+  const prev=parseFloat(document.getElementById('ipcPrev').value)||0;
+  const payload={
+    contract_id:contractId, project_id:c?c.project_id:null,
+    ipc_no:parseInt(document.getElementById('ipcNo').value)||1,
+    ipc_date:document.getElementById('ipcDate').value,
+    period_from:document.getElementById('ipcFrom').value,
+    period_to:document.getElementById('ipcTo').value,
+    gross_value_executed:gross, advance_deduction:adv,
+    retention_deduction:ret, previous_certified:prev,
+    this_certificate:Math.max(0,gross-adv-ret-prev),
+    status:document.getElementById('ipcStatus').value,
+    notes:document.getElementById('ipcNotes').value,
+    created_by:currentUser?.username||'user'
+  };
+  if(editId) await engFetch('/eng_ipc?id=eq.'+editId,'PATCH',payload);
+  else await engFetch('/eng_ipc','POST',payload);
+  await loadEngIPCData(); renderIPC();
+  document.getElementById('ipcFormModal')?.remove();
+}
+
+function editIPC(id){ openIPCModal(id); }
+
+async function deleteIPC(id){
+  if(!confirm('Delete this IPC?')) return;
+  await engFetch('/eng_ipc?id=eq.'+id,'DELETE');
+  engIPCs=engIPCs.filter(function(x){return x.id!==id;}); renderIPC();
+}
+
+function printIPC(id){
+  const ipc=engIPCs.find(function(x){return x.id===id;}); if(!ipc) return;
+  const c=engContracts.find(function(x){return x.id===ipc.contract_id;});
+  const p=engProjects.find(function(x){return x.id===ipc.project_id;});
+  const win=window.open('','_blank');
+  win.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>IPC #'+ipc.ipc_no+'</title>'
+    +'<style>body{font-family:Arial,sans-serif;font-size:12px;margin:30px;color:#111}'
+    +'h1{font-size:18px;text-align:center;color:#1e40af}table{width:100%;border-collapse:collapse;margin:16px 0}'
+    +'td,th{border:1px solid #d1d5db;padding:8px 10px}th{background:#f3f4f6;font-weight:700}'
+    +'.total{font-weight:800;font-size:14px;color:#059669}@media print{button{display:none}}</style></head><body>'
+    +'<h1>INTERIM PAYMENT CERTIFICATE</h1>'
+    +'<p style="text-align:center">IPC No: <strong>'+ipc.ipc_no+'</strong> &nbsp;|&nbsp; Date: <strong>'+(ipc.ipc_date||'')+'</strong></p>'
+    +'<table><tr><th>Contract</th><td>'+(c?c.contract_title:'')+'</td><th>Project</th><td>'+(p?p.project_name:'')+'</td></tr>'
+    +'<tr><th>Period</th><td colspan="3">'+(ipc.period_from||'')+(ipc.period_to?' to '+ipc.period_to:'')+'</td></tr>'
+    +'<tr><th>Client</th><td>'+(c?c.client:'')+'</td><th>Contract No</th><td>'+(c?c.contract_no:'')+'</td></tr></table>'
+    +'<table><tr><th>Description</th><th style="text-align:right">Amount (ETB)</th></tr>'
+    +'<tr><td>Gross Value of Work Executed</td><td style="text-align:right">'+ipc.gross_value_executed.toLocaleString('en-ET',{minimumFractionDigits:2})+'</td></tr>'
+    +'<tr><td>Less: Advance Payment Deduction</td><td style="text-align:right;color:#dc2626">('+ipc.advance_deduction.toLocaleString('en-ET',{minimumFractionDigits:2})+')</td></tr>'
+    +'<tr><td>Less: Retention ('+( c?c.retention_pct:'5')+'%)</td><td style="text-align:right;color:#dc2626">('+ipc.retention_deduction.toLocaleString('en-ET',{minimumFractionDigits:2})+')</td></tr>'
+    +'<tr><td>Less: Previous Certificates</td><td style="text-align:right;color:#dc2626">('+ipc.previous_certified.toLocaleString('en-ET',{minimumFractionDigits:2})+')</td></tr>'
+    +'<tr style="background:#ecfdf5"><td class="total">This Certificate Amount</td><td style="text-align:right" class="total">ETB '+ipc.this_certificate.toLocaleString('en-ET',{minimumFractionDigits:2})+'</td></tr></table>'
+    +(ipc.notes?'<p><strong>Notes:</strong> '+ipc.notes+'</p>':'')
+    +'<div style="margin-top:40px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:30px;text-align:center">'
+    +'<div style="border-top:1px solid #000;padding-top:6px">Prepared by</div>'
+    +'<div style="border-top:1px solid #000;padding-top:6px">Certified by</div>'
+    +'<div style="border-top:1px solid #000;padding-top:6px">Approved by</div></div>'
+    +'<button onclick="window.print()" style="margin-top:20px;padding:10px 24px;background:#1e40af;color:#fff;border:none;border-radius:8px;cursor:pointer">🖨 Print</button>'
+    +'</body></html>');
+  win.document.close();
+}
+
+// ════════════════════════════════════════
+// 2. VARIATION ORDERS
+// ════════════════════════════════════════
+function renderVariations(){
+  const wrap=document.getElementById('engVariationsGrid'); if(!wrap) return;
+  if(!engVariations.length){ wrap.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">No variation orders yet.</div>'; return; }
+  wrap.innerHTML=engVariations.map(function(v){
+    const c=engContracts.find(function(x){return x.id===v.contract_id;});
+    const p=engProjects.find(function(x){return x.id===v.project_id;});
+    const statusClr={pending:'#f59e0b',approved:'#10b981',rejected:'#dc2626'};
+    return '<div class="pr-card">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
+        +'<div>'
+          +'<div style="font-size:14px;font-weight:700;color:var(--ink2)">VO-'+v.vo_no+' · '+v.title+'</div>'
+          +'<div style="font-size:12px;color:var(--muted)">'+(p?p.project_name:'')+(c?' · '+c.contract_title:'')+'</div>'
+          +'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+v.vo_type+(v.issued_date?' · '+v.issued_date:'')+'</div>'
+        +'</div>'
+        +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">'
+          +'<span style="background:'+(statusClr[v.status]||'#94a3b8')+';color:#fff;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700">'+v.status+'</span>'
+          +'<span style="font-size:14px;font-weight:800;color:'+(v.vo_type==='Omission'?'#dc2626':'var(--teal-dark)')+'">'+fmtETB2(v.amount_etb)+'</span>'
+        +'</div>'
+      +'</div>'
+      +(v.description?'<div style="font-size:12px;color:var(--muted);margin-top:6px">'+v.description+'</div>':'')
+      +'<div style="margin-top:8px;display:flex;gap:6px">'
+        +'<button onclick="editVariation(\''+v.id+'\')" class="btn-secondary" style="font-size:11px;padding:4px 10px">✏ Edit</button>'
+        +'<button onclick="deleteVariation(\''+v.id+'\')" style="background:none;border:1px solid #fca5a5;border-radius:7px;cursor:pointer;color:#dc2626;font-size:11px;padding:4px 10px">✕ Delete</button>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+
+function openVariationModal(editId){
+  const contractOpts=engContracts.map(function(c){return '<option value="'+c.id+'">'+c.contract_title+'</option>';}).join('');
+  const existing=editId?engVariations.find(function(x){return x.id===editId;}):null;
+  const today=new Date().toISOString().slice(0,10);
+  const modal=document.createElement('div');
+  modal.className='modal-overlay'; modal.style.display='flex'; modal.id='varFormModal';
+  modal.innerHTML='<div class="modal-box" style="max-width:580px">'
+    +'<div class="modal-header"><div class="modal-title">'+(editId?'Edit':'New')+' Variation Order</div>'
+    +'<button class="modal-close" onclick="document.getElementById(\'varFormModal\').remove()">&times;</button></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>Linked Contract *</label><select id="varContract">'+contractOpts+'</select></div>'
+    +'<div class="ff"><label>VO Number *</label><input type="text" id="varNo" value="'+(existing?existing.vo_no:'')+'" placeholder="e.g. VO-001"></div></div>'
+    +'<div class="ff" style="margin-bottom:10px"><label>VO Title *</label><input type="text" id="varTitle" value="'+(existing?existing.title:'')+'" placeholder="Variation title"></div>'
+    +'<div class="fr" style="margin-bottom:10px">'
+    +'<div class="ff"><label>Type</label><select id="varType"><option>Addition</option><option>Omission</option><option>Substitution</option></select></div>'
+    +'<div class="ff"><label>Amount (ETB)</label><input type="number" id="varAmt" value="'+(existing?existing.amount_etb:0)+'"></div></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>Issued Date</label><input type="date" id="varIssued" value="'+(existing?existing.issued_date:today)+'"></div>'
+    +'<div class="ff"><label>Status</label><select id="varStatus"><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select></div></div>'
+    +'<div class="ff" style="margin-bottom:10px"><label>Description</label><textarea id="varDesc" style="min-height:52px">'+(existing?existing.description:'')+'</textarea></div>'
+    +'<div class="btn-row"><button class="btn-primary" onclick="saveVariation(\''+( editId||'')+'\')">Save</button><button class="btn-secondary" onclick="document.getElementById(\'varFormModal\').remove()">Cancel</button></div>'
+    +'</div>';
+  document.body.appendChild(modal);
+  if(existing){
+    document.getElementById('varContract').value=existing.contract_id;
+    document.getElementById('varType').value=existing.vo_type;
+    document.getElementById('varStatus').value=existing.status;
+  }
+}
+
+function editVariation(id){ openVariationModal(id); }
+
+async function saveVariation(editId){
+  const contractId=document.getElementById('varContract').value;
+  if(!contractId){ alert('Select a contract.'); return; }
+  const title=document.getElementById('varTitle').value.trim();
+  if(!title){ alert('VO title required.'); return; }
+  const c=engContracts.find(function(x){return x.id===contractId;});
+  const payload={
+    contract_id:contractId, project_id:c?c.project_id:null,
+    vo_no:document.getElementById('varNo').value.trim(),
+    title:title, description:document.getElementById('varDesc').value,
+    vo_type:document.getElementById('varType').value,
+    amount_etb:parseFloat(document.getElementById('varAmt').value)||0,
+    issued_date:document.getElementById('varIssued').value,
+    status:document.getElementById('varStatus').value,
+    created_by:currentUser?.username||'user'
+  };
+  if(editId) await engFetch('/eng_variations?id=eq.'+editId,'PATCH',payload);
+  else await engFetch('/eng_variations','POST',payload);
+  await loadEngVariationsData(); renderVariations();
+  document.getElementById('varFormModal')?.remove();
+}
+
+async function deleteVariation(id){
+  if(!confirm('Delete this variation order?')) return;
+  await engFetch('/eng_variations?id=eq.'+id,'DELETE');
+  engVariations=engVariations.filter(function(x){return x.id!==id;}); renderVariations();
+}
+
+// ════════════════════════════════════════
+// 3. DAILY SITE DIARY
+// ════════════════════════════════════════
+function renderDiary(){
+  const wrap=document.getElementById('engDiaryGrid'); if(!wrap) return;
+  const projFilter=document.getElementById('diaryProjFilter')?.value||'';
+  const dateFilter=document.getElementById('diaryDateFilter')?.value||'';
+  let list=engDiaryEntries;
+  if(projFilter) list=list.filter(function(d){return d.project_id===projFilter;});
+  if(dateFilter) list=list.filter(function(d){return d.diary_date===dateFilter;});
+  if(!list.length){ wrap.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">No diary entries.</div>'; return; }
+  wrap.innerHTML=list.map(function(d){
+    const p=engProjects.find(function(x){return x.id===d.project_id;});
+    const weatherIcons={'Sunny':'☀️','Light rain':'🌦','Heavy rain':'🌧','Overcast':'🌥','Stormy':'⛈','Dusty / windy':'💨'};
+    const wIcon=weatherIcons[d.weather]||'🌡';
+    return '<div class="pr-card">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+        +'<div>'
+          +'<div style="font-size:14px;font-weight:700;color:var(--ink2)">'+d.diary_date+' — '+(p?p.project_name:'')+'</div>'
+          +'<div style="font-size:12px;color:var(--muted)">'+wIcon+' '+(d.weather||'')+(d.weather_disruption_hours>0?' · Disruption: '+d.weather_disruption_hours+'h':'')+'</div>'
+        +'</div>'
+        +'<div style="display:flex;gap:10px;font-size:11px;color:var(--muted)">'
+          +(d.manpower_skilled?'<span>👷 Skilled: '+d.manpower_skilled+'</span>':'')
+          +(d.manpower_unskilled?'<span>🧱 Unskilled: '+d.manpower_unskilled+'</span>':'')
+          +(d.manpower_staff?'<span>👔 Staff: '+d.manpower_staff+'</span>':'')
+        +'</div>'
+      +'</div>'
+      +(d.work_done?'<div style="font-size:12px;color:var(--ink2);margin-top:6px"><strong>Work Done:</strong> '+d.work_done+'</div>':'')
+      +(d.issues?'<div style="font-size:12px;color:#dc2626;margin-top:4px">⚠ '+d.issues+'</div>':'')
+      +'<div style="margin-top:8px;display:flex;gap:6px">'
+        +'<button onclick="editDiary(\''+d.id+'\')" class="btn-secondary" style="font-size:11px;padding:4px 10px">✏ Edit</button>'
+        +'<button onclick="deleteDiary(\''+d.id+'\')" style="background:none;border:1px solid #fca5a5;border-radius:7px;cursor:pointer;color:#dc2626;font-size:11px;padding:4px 10px">✕</button>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+
+function openDiaryModal(editId){
+  const projOpts=engProjects.map(function(p){return '<option value="'+p.id+'">'+p.project_name+'</option>';}).join('');
+  const existing=editId?engDiaryEntries.find(function(x){return x.id===editId;}):null;
+  const today=new Date().toISOString().slice(0,10);
+  const modal=document.createElement('div');
+  modal.className='modal-overlay'; modal.style.display='flex'; modal.id='diaryFormModal';
+  modal.innerHTML='<div class="modal-box" style="max-width:640px"><div class="modal-header"><div class="modal-title">'+(editId?'Edit':'New')+' Site Diary Entry</div>'
+    +'<button class="modal-close" onclick="document.getElementById(\'diaryFormModal\').remove()">&times;</button></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>Project *</label><select id="diaryProj">'+projOpts+'</select></div>'
+    +'<div class="ff"><label>Date *</label><input type="date" id="diaryDate" value="'+(existing?existing.diary_date:today)+'"></div></div>'
+    +'<div class="fr" style="margin-bottom:10px">'
+    +'<div class="ff"><label>Weather</label><select id="diaryWeather"><option>Sunny</option><option>Partly cloudy</option><option>Overcast</option><option>Light rain</option><option>Heavy rain</option><option>Stormy</option><option>Dusty / windy</option><option>Extreme heat</option></select></div>'
+    +'<div class="ff"><label>Disruption Hours</label><input type="number" id="diaryDisrupt" value="'+(existing?existing.weather_disruption_hours:0)+'" min="0" step="0.5"></div></div>'
+    +'<div class="fr" style="margin-bottom:10px">'
+    +'<div class="ff"><label>Skilled Workers</label><input type="number" id="diarySkilled" value="'+(existing?existing.manpower_skilled:0)+'" min="0"></div>'
+    +'<div class="ff"><label>Unskilled Workers</label><input type="number" id="diaryUnskilled" value="'+(existing?existing.manpower_unskilled:0)+'" min="0"></div>'
+    +'<div class="ff"><label>Staff</label><input type="number" id="diaryStaff" value="'+(existing?existing.manpower_staff:0)+'" min="0"></div></div>'
+    +'<div class="ff" style="margin-bottom:10px"><label>Equipment on Site</label><input type="text" id="diaryEquip" value="'+(existing?existing.equipment_on_site:'')+'" placeholder="e.g. 1 excavator, 2 mixers"></div>'
+    +'<div class="ff" style="margin-bottom:10px"><label>Work Done Today</label><textarea id="diaryWork" style="min-height:56px">'+(existing?existing.work_done:'')+'</textarea></div>'
+    +'<div class="ff" style="margin-bottom:10px"><label>Issues / Delays</label><textarea id="diaryIssues" style="min-height:42px">'+(existing?existing.issues:'')+'</textarea></div>'
+    +'<div class="ff" style="margin-bottom:10px"><label>Instructions Received</label><input type="text" id="diaryInstr" value="'+(existing?existing.instructions:'')+'"></div>'
+    +'<div class="btn-row"><button class="btn-primary" onclick="saveDiary(\''+( editId||'')+'\')">Save Entry</button><button class="btn-secondary" onclick="document.getElementById(\'diaryFormModal\').remove()">Cancel</button></div>'
+    +'</div>';
+  document.body.appendChild(modal);
+  if(existing){
+    document.getElementById('diaryProj').value=existing.project_id;
+    document.getElementById('diaryWeather').value=existing.weather||'Sunny';
+  }
+}
+
+function editDiary(id){ openDiaryModal(id); }
+
+async function saveDiary(editId){
+  const projId=document.getElementById('diaryProj').value;
+  if(!projId){ alert('Select a project.'); return; }
+  const payload={
+    project_id:projId, diary_date:document.getElementById('diaryDate').value,
+    weather:document.getElementById('diaryWeather').value,
+    weather_disruption_hours:parseFloat(document.getElementById('diaryDisrupt').value)||0,
+    manpower_skilled:parseInt(document.getElementById('diarySkilled').value)||0,
+    manpower_unskilled:parseInt(document.getElementById('diaryUnskilled').value)||0,
+    manpower_staff:parseInt(document.getElementById('diaryStaff').value)||0,
+    equipment_on_site:document.getElementById('diaryEquip').value,
+    work_done:document.getElementById('diaryWork').value,
+    issues:document.getElementById('diaryIssues').value,
+    instructions:document.getElementById('diaryInstr').value,
+    prepared_by:currentUser?.username||'user'
+  };
+  if(editId) await engFetch('/eng_site_diary?id=eq.'+editId,'PATCH',payload);
+  else await engFetch('/eng_site_diary','POST',payload);
+  await loadEngDiaryData(); renderDiary();
+  document.getElementById('diaryFormModal')?.remove();
+}
+
+async function deleteDiary(id){
+  if(!confirm('Delete this diary entry?')) return;
+  await engFetch('/eng_site_diary?id=eq.'+id,'DELETE');
+  engDiaryEntries=engDiaryEntries.filter(function(x){return x.id!==id;}); renderDiary();
+}
+
+// ════════════════════════════════════════
+// 4. DOCUMENT REGISTER
+// ════════════════════════════════════════
+function renderDocuments(){
+  const wrap=document.getElementById('engDocumentsGrid'); if(!wrap) return;
+  const pf=document.getElementById('docProjFilter')?.value||'';
+  const tf=document.getElementById('docTypeFilter')?.value||'';
+  const sf=document.getElementById('docStatusFilter')?.value||'';
+  let list=engDocuments;
+  if(pf) list=list.filter(function(d){return d.project_id===pf;});
+  if(tf) list=list.filter(function(d){return d.doc_type===tf;});
+  if(sf) list=list.filter(function(d){return d.status===sf;});
+  if(!list.length){ wrap.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">No documents registered.</div>'; return; }
+  const statusClr={pending:'#f59e0b',approved:'#10b981',approved_with_comments:'#3b82f6',rejected:'#dc2626'};
+  wrap.innerHTML=list.map(function(d){
+    const p=engProjects.find(function(x){return x.id===d.project_id;});
+    return '<div class="pr-card"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
+      +'<div><div style="font-size:14px;font-weight:700;color:var(--ink2)">'+(d.doc_no?d.doc_no+' — ':'')+d.title+'</div>'
+      +'<div style="font-size:12px;color:var(--muted)">'+(p?p.project_name:'')+(d.doc_type?' · '+d.doc_type:'')+(d.revision?' Rev '+d.revision:'')+'</div>'
+      +(d.submitted_date?'<div style="font-size:11px;color:var(--muted)">Submitted: '+d.submitted_date+(d.responded_date?' · Responded: '+d.responded_date:'')+'</div>':'')
+      +'</div>'
+      +'<span style="background:'+(statusClr[d.status]||'#94a3b8')+';color:#fff;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700">'+d.status.replace('_',' ')+'</span>'
+      +'</div>'
+      +'<div style="margin-top:8px;display:flex;gap:6px">'
+      +'<button onclick="editDoc(\''+d.id+'\')" class="btn-secondary" style="font-size:11px;padding:4px 10px">✏ Edit</button>'
+      +'<button onclick="deleteDoc(\''+d.id+'\')" style="background:none;border:1px solid #fca5a5;border-radius:7px;cursor:pointer;color:#dc2626;font-size:11px;padding:4px 10px">✕</button>'
+      +'</div></div>';
+  }).join('');
+}
+
+function openDocModal(editId){
+  const projOpts=engProjects.map(function(p){return '<option value="'+p.id+'">'+p.project_name+'</option>';}).join('');
+  const existing=editId?engDocuments.find(function(x){return x.id===editId;}):null;
+  const today=new Date().toISOString().slice(0,10);
+  const modal=document.createElement('div');
+  modal.className='modal-overlay'; modal.style.display='flex'; modal.id='docFormModal';
+  modal.innerHTML='<div class="modal-box" style="max-width:580px"><div class="modal-header"><div class="modal-title">'+(editId?'Edit':'Register New')+' Document</div>'
+    +'<button class="modal-close" onclick="document.getElementById(\'docFormModal\').remove()">&times;</button></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>Project *</label><select id="docProj">'+projOpts+'</select></div>'
+    +'<div class="ff"><label>Type</label><select id="docType"><option>Drawing</option><option>Submittal</option><option>RFI</option><option>Letter</option><option>Specification</option></select></div></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>Doc Number</label><input type="text" id="docNo" value="'+(existing?existing.doc_no:'')+'" placeholder="e.g. DWG-001"></div>'
+    +'<div class="ff"><label>Revision</label><input type="text" id="docRev" value="'+(existing?existing.revision:'A')+'" style="width:60px"></div></div>'
+    +'<div class="ff" style="margin-bottom:10px"><label>Title *</label><input type="text" id="docTitle" value="'+(existing?existing.title:'')+'" placeholder="Document title"></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>Submitted Date</label><input type="date" id="docSubDate" value="'+(existing?existing.submitted_date:today)+'"></div>'
+    +'<div class="ff"><label>Responded Date</label><input type="date" id="docRespDate" value="'+(existing?existing.responded_date:'')+'"></div></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>Status</label><select id="docStatus"><option value="pending">Pending</option><option value="approved">Approved</option><option value="approved_with_comments">Approved with Comments</option><option value="rejected">Rejected</option></select></div></div>'
+    +'<div class="ff" style="margin-bottom:10px"><label>Notes</label><textarea id="docNotes" style="min-height:42px">'+(existing?existing.notes:'')+'</textarea></div>'
+    +'<div class="btn-row"><button class="btn-primary" onclick="saveDoc(\''+( editId||'')+'\')">Save</button><button class="btn-secondary" onclick="document.getElementById(\'docFormModal\').remove()">Cancel</button></div>'
+    +'</div>';
+  document.body.appendChild(modal);
+  if(existing){
+    document.getElementById('docProj').value=existing.project_id;
+    document.getElementById('docType').value=existing.doc_type;
+    document.getElementById('docStatus').value=existing.status;
+  }
+}
+function editDoc(id){ openDocModal(id); }
+async function saveDoc(editId){
+  const projId=document.getElementById('docProj').value;
+  const title=document.getElementById('docTitle').value.trim();
+  if(!projId||!title){ alert('Project and title required.'); return; }
+  const payload={project_id:projId,doc_type:document.getElementById('docType').value,doc_no:document.getElementById('docNo').value,
+    revision:document.getElementById('docRev').value,title:title,
+    submitted_date:document.getElementById('docSubDate').value,responded_date:document.getElementById('docRespDate').value,
+    status:document.getElementById('docStatus').value,notes:document.getElementById('docNotes').value};
+  if(editId) await engFetch('/eng_documents?id=eq.'+editId,'PATCH',payload);
+  else await engFetch('/eng_documents','POST',payload);
+  await loadEngDocumentsData(); renderDocuments();
+  document.getElementById('docFormModal')?.remove();
+}
+async function deleteDoc(id){
+  if(!confirm('Delete this document record?')) return;
+  await engFetch('/eng_documents?id=eq.'+id,'DELETE');
+  engDocuments=engDocuments.filter(function(x){return x.id!==id;}); renderDocuments();
+}
+
+// ════════════════════════════════════════
+// 5. STAFF REGISTER
+// ════════════════════════════════════════
+function renderStaff(){
+  const wrap=document.getElementById('engStaffGrid'); if(!wrap) return;
+  const pf=document.getElementById('staffProjFilter')?.value||'';
+  const cf=document.getElementById('staffCatFilter')?.value||'';
+  let list=engStaff;
+  if(pf) list=list.filter(function(s){return s.project_id===pf;});
+  if(cf) list=list.filter(function(s){return s.category===cf;});
+  if(!list.length){ wrap.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">No staff records.</div>'; return; }
+  wrap.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg);font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">'
+    +'<th style="padding:8px">Name</th><th style="padding:8px">Position</th><th style="padding:8px">Category</th><th style="padding:8px">Project</th>'
+    +'<th style="padding:8px;text-align:right">Salary (ETB)</th><th style="padding:8px">Start</th><th style="padding:8px">Status</th><th style="padding:8px"></th>'
+    +'</tr></thead><tbody>'
+    +list.map(function(s,i){
+      const p=engProjects.find(function(x){return x.id===s.project_id;});
+      const bg=i%2===0?'':'background:var(--bg)';
+      const statusClr=s.status==='active'?'#10b981':'#94a3b8';
+      return '<tr style="border-bottom:1px solid var(--border2);'+bg+'">'
+        +'<td style="padding:7px 8px;font-weight:600">'+s.full_name+'</td>'
+        +'<td style="padding:7px 8px;color:var(--muted)">'+s.position+'</td>'
+        +'<td style="padding:7px 8px"><span style="background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:1px 7px;font-size:10px">'+s.category+'</span></td>'
+        +'<td style="padding:7px 8px;color:var(--muted)">'+( p?p.project_name:'')+'</td>'
+        +'<td style="padding:7px 8px;text-align:right">'+( s.salary_etb>0?fmtETB2(s.salary_etb):'—')+'</td>'
+        +'<td style="padding:7px 8px;color:var(--muted)">'+( s.start_date||'')+'</td>'
+        +'<td style="padding:7px 8px"><span style="color:'+statusClr+';font-weight:700">'+s.status+'</span></td>'
+        +'<td style="padding:7px 8px;white-space:nowrap">'
+        +'<button onclick="editStaff(\''+s.id+'\')" class="btn-secondary" style="font-size:10px;padding:3px 8px">✏</button> '
+        +'<button onclick="deleteStaff(\''+s.id+'\')" style="background:none;border:1px solid #fca5a5;border-radius:5px;cursor:pointer;color:#dc2626;font-size:10px;padding:3px 8px">✕</button>'
+        +'</td></tr>';
+    }).join('')
+    +'</tbody></table>';
+}
+
+function openStaffModal(editId){
+  const projOpts=engProjects.map(function(p){return '<option value="'+p.id+'">'+p.project_name+'</option>';}).join('');
+  const existing=editId?engStaff.find(function(x){return x.id===editId;}):null;
+  const modal=document.createElement('div');
+  modal.className='modal-overlay'; modal.style.display='flex'; modal.id='staffFormModal';
+  modal.innerHTML='<div class="modal-box" style="max-width:560px"><div class="modal-header"><div class="modal-title">'+(editId?'Edit':'Add')+' Staff</div>'
+    +'<button class="modal-close" onclick="document.getElementById(\'staffFormModal\').remove()">&times;</button></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>Full Name *</label><input type="text" id="staffName" value="'+(existing?existing.full_name:'')+'" placeholder="Full name"></div>'
+    +'<div class="ff"><label>Position</label><input type="text" id="staffPos" value="'+(existing?existing.position:'')+'" placeholder="Position/Title"></div></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>Project</label><select id="staffProj">'+projOpts+'</select></div>'
+    +'<div class="ff"><label>Category</label><select id="staffCat"><option>Staff</option><option>Skilled</option><option>Unskilled</option><option>Subcontract</option></select></div></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>Start Date</label><input type="date" id="staffStart" value="'+(existing?existing.start_date:'')+'"></div>'
+    +'<div class="ff"><label>End Date</label><input type="date" id="staffEnd" value="'+(existing?existing.end_date:'')+'"></div></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>Monthly Salary (ETB)</label><input type="number" id="staffSalary" value="'+(existing?existing.salary_etb:0)+'"></div>'
+    +'<div class="ff"><label>TIN No.</label><input type="text" id="staffTin" value="'+(existing?existing.tin_no:'')+'" placeholder="Tax ID"></div></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>Phone</label><input type="text" id="staffPhone" value="'+(existing?existing.phone:'')+'"></div>'
+    +'<div class="ff"><label>Status</label><select id="staffStatus"><option value="active">Active</option><option value="inactive">Inactive</option></select></div></div>'
+    +'<div class="btn-row"><button class="btn-primary" onclick="saveStaff(\''+( editId||'')+'\')">Save</button><button class="btn-secondary" onclick="document.getElementById(\'staffFormModal\').remove()">Cancel</button></div>'
+    +'</div>';
+  document.body.appendChild(modal);
+  if(existing){
+    document.getElementById('staffProj').value=existing.project_id;
+    document.getElementById('staffCat').value=existing.category;
+    document.getElementById('staffStatus').value=existing.status;
+  }
+}
+function editStaff(id){ openStaffModal(id); }
+async function saveStaff(editId){
+  const name=document.getElementById('staffName').value.trim();
+  if(!name){ alert('Full name required.'); return; }
+  const payload={project_id:document.getElementById('staffProj').value,full_name:name,
+    position:document.getElementById('staffPos').value,category:document.getElementById('staffCat').value,
+    start_date:document.getElementById('staffStart').value||null,end_date:document.getElementById('staffEnd').value||null,
+    salary_etb:parseFloat(document.getElementById('staffSalary').value)||0,
+    tin_no:document.getElementById('staffTin').value,phone:document.getElementById('staffPhone').value,
+    status:document.getElementById('staffStatus').value};
+  if(editId) await engFetch('/eng_staff?id=eq.'+editId,'PATCH',payload);
+  else await engFetch('/eng_staff','POST',payload);
+  await loadEngStaffData(); renderStaff();
+  document.getElementById('staffFormModal')?.remove();
+}
+async function deleteStaff(id){
+  if(!confirm('Delete this staff record?')) return;
+  await engFetch('/eng_staff?id=eq.'+id,'DELETE');
+  engStaff=engStaff.filter(function(x){return x.id!==id;}); renderStaff();
+}
+
+// ════════════════════════════════════════
+// 6. EQUIPMENT REGISTER
+// ════════════════════════════════════════
+function renderEquipment(){
+  const wrap=document.getElementById('engEquipmentGrid'); if(!wrap) return;
+  const pf=document.getElementById('equipProjFilter')?.value||'';
+  const sf=document.getElementById('equipStatusFilter')?.value||'';
+  let list=engEquipment;
+  if(pf) list=list.filter(function(e){return e.project_id===pf;});
+  if(sf) list=list.filter(function(e){return e.status===sf;});
+  if(!list.length){ wrap.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">No equipment records.</div>'; return; }
+  const statusClr={active:'#10b981',idle:'#f59e0b',demobilized:'#94a3b8'};
+  wrap.innerHTML=list.map(function(e){
+    const p=engProjects.find(function(x){return x.id===e.project_id;});
+    return '<div class="pr-card"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
+      +'<div><div style="font-size:14px;font-weight:700;color:var(--ink2)">🚛 '+e.description+(e.equipment_no?' ['+e.equipment_no+']':'')+'</div>'
+      +'<div style="font-size:12px;color:var(--muted)">'+(p?p.project_name:'')+(e.make_model?' · '+e.make_model:'')+(e.capacity?' · '+e.capacity:'')+'</div>'
+      +'<div style="font-size:11px;color:var(--muted)">'+e.type+(e.owner?' · Owner: '+e.owner:'')+(e.daily_rate>0?' · Rate: '+fmtETB2(e.daily_rate)+'/day':'')+'</div>'
+      +(e.mobilization_date?'<div style="font-size:11px;color:var(--muted)">Mobilized: '+e.mobilization_date+(e.demobilization_date?' → '+e.demobilization_date:'')+'</div>':'')
+      +'</div>'
+      +'<span style="background:'+(statusClr[e.status]||'#94a3b8')+';color:#fff;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700">'+e.status+'</span>'
+      +'</div>'
+      +'<div style="margin-top:8px;display:flex;gap:6px">'
+      +'<button onclick="editEquip(\''+e.id+'\')" class="btn-secondary" style="font-size:11px;padding:4px 10px">✏ Edit</button>'
+      +'<button onclick="deleteEquip(\''+e.id+'\')" style="background:none;border:1px solid #fca5a5;border-radius:7px;cursor:pointer;color:#dc2626;font-size:11px;padding:4px 10px">✕</button>'
+      +'</div></div>';
+  }).join('');
+}
+
+function openEquipModal(editId){
+  const projOpts=engProjects.map(function(p){return '<option value="'+p.id+'">'+p.project_name+'</option>';}).join('');
+  const existing=editId?engEquipment.find(function(x){return x.id===editId;}):null;
+  const today=new Date().toISOString().slice(0,10);
+  const modal=document.createElement('div');
+  modal.className='modal-overlay'; modal.style.display='flex'; modal.id='equipFormModal';
+  modal.innerHTML='<div class="modal-box" style="max-width:580px"><div class="modal-header"><div class="modal-title">'+(editId?'Edit':'Add')+' Equipment</div>'
+    +'<button class="modal-close" onclick="document.getElementById(\'equipFormModal\').remove()">&times;</button></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>Description *</label><input type="text" id="equipDesc" value="'+(existing?existing.description:'')+'" placeholder="e.g. Excavator 20T"></div>'
+    +'<div class="ff"><label>Equipment No.</label><input type="text" id="equipNo" value="'+(existing?existing.equipment_no:'')+'" placeholder="Plate/serial no."></div></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>Project</label><select id="equipProj">'+projOpts+'</select></div>'
+    +'<div class="ff"><label>Type</label><select id="equipType"><option>Owned</option><option>Rented</option><option>Subcontract</option></select></div></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>Make / Model</label><input type="text" id="equipModel" value="'+(existing?existing.make_model:'')+'" placeholder="Make and model"></div>'
+    +'<div class="ff"><label>Capacity</label><input type="text" id="equipCap" value="'+(existing?existing.capacity:'')+'" placeholder="e.g. 20T, 5m³"></div></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>Owner / Supplier</label><input type="text" id="equipOwner" value="'+(existing?existing.owner:'')+'" placeholder="Owner name"></div>'
+    +'<div class="ff"><label>Daily Rate (ETB)</label><input type="number" id="equipRate" value="'+(existing?existing.daily_rate:0)+'"></div></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>Mobilization Date</label><input type="date" id="equipMob" value="'+(existing?existing.mobilization_date:today)+'"></div>'
+    +'<div class="ff"><label>Demobilization Date</label><input type="date" id="equipDemob" value="'+(existing?existing.demobilization_date:'')+'"></div></div>'
+    +'<div class="fr" style="margin-bottom:10px"><div class="ff"><label>Status</label><select id="equipStatus"><option value="active">Active</option><option value="idle">Idle</option><option value="demobilized">Demobilized</option></select></div></div>'
+    +'<div class="btn-row"><button class="btn-primary" onclick="saveEquip(\''+( editId||'')+'\')">Save</button><button class="btn-secondary" onclick="document.getElementById(\'equipFormModal\').remove()">Cancel</button></div>'
+    +'</div>';
+  document.body.appendChild(modal);
+  if(existing){
+    document.getElementById('equipProj').value=existing.project_id;
+    document.getElementById('equipType').value=existing.type;
+    document.getElementById('equipStatus').value=existing.status;
+  }
+}
+function editEquip(id){ openEquipModal(id); }
+async function saveEquip(editId){
+  const desc=document.getElementById('equipDesc').value.trim();
+  if(!desc){ alert('Description required.'); return; }
+  const payload={project_id:document.getElementById('equipProj').value,description:desc,
+    equipment_no:document.getElementById('equipNo').value,type:document.getElementById('equipType').value,
+    make_model:document.getElementById('equipModel').value,capacity:document.getElementById('equipCap').value,
+    owner:document.getElementById('equipOwner').value,daily_rate:parseFloat(document.getElementById('equipRate').value)||0,
+    mobilization_date:document.getElementById('equipMob').value||null,demobilization_date:document.getElementById('equipDemob').value||null,
+    status:document.getElementById('equipStatus').value};
+  if(editId) await engFetch('/eng_equipment?id=eq.'+editId,'PATCH',payload);
+  else await engFetch('/eng_equipment','POST',payload);
+  await loadEngEquipmentData(); renderEquipment();
+  document.getElementById('equipFormModal')?.remove();
+}
+async function deleteEquip(id){
+  if(!confirm('Delete this equipment record?')) return;
+  await engFetch('/eng_equipment?id=eq.'+id,'DELETE');
+  engEquipment=engEquipment.filter(function(x){return x.id!==id;}); renderEquipment();
+}
+
+
 </script>
 
 <!-- ════ EXPENSE SUMMARY MODAL ════ -->
@@ -9027,6 +9670,104 @@ function exportEsPdf(){
       <button class="btn-secondary" onclick="closeExpenseSummary()">Close</button>
     </div>
   </div>
+</div>
+
+
+<!-- ════ IPC — INTERIM PAYMENT CERTIFICATE ════ -->
+<div id="pgEngIPC" class="page">
+  <div class="page-header">
+    <div><div class="page-title">Interim Payment <em>Certificates</em></div><div class="page-subtitle">IPC generation from BOQ progress</div></div>
+    <button class="btn-primary" onclick="openIPCModal()">+ New IPC</button>
+  </div>
+  <div id="ipcFlash" style="display:none"><span id="ipcFlashMsg"></span></div>
+  <div id="engIPCGrid" style="display:grid;gap:12px"></div>
+</div>
+
+<!-- ════ VARIATIONS ════ -->
+<div id="pgEngVariations" class="page">
+  <div class="page-header">
+    <div><div class="page-title">Variation <em>Orders</em></div><div class="page-subtitle">Contract variations and amendments</div></div>
+    <button class="btn-primary" onclick="openVariationModal()">+ New Variation</button>
+  </div>
+  <div id="varFlash" style="display:none"><span id="varFlashMsg"></span></div>
+  <div id="engVariationsGrid" style="display:grid;gap:12px"></div>
+</div>
+
+<!-- ════ SITE DIARY ════ -->
+<div id="pgEngDiary" class="page">
+  <div class="page-header">
+    <div><div class="page-title">Daily Site <em>Diary</em></div><div class="page-subtitle">Daily site records — weather, manpower, work done</div></div>
+    <button class="btn-primary" onclick="openDiaryModal()">+ New Entry</button>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    <select id="diaryProjFilter" onchange="renderDiary()" style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px">
+      <option value="">All Projects</option>
+    </select>
+    <input type="date" id="diaryDateFilter" onchange="renderDiary()" style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px">
+  </div>
+  <div id="diaryFlash" style="display:none"><span id="diaryFlashMsg"></span></div>
+  <div id="engDiaryGrid" style="display:grid;gap:10px"></div>
+</div>
+
+<!-- ════ DOCUMENT REGISTER ════ -->
+<div id="pgEngDocuments" class="page">
+  <div class="page-header">
+    <div><div class="page-title">Document <em>Register</em></div><div class="page-subtitle">Drawings, submittals, RFIs, letters</div></div>
+    <button class="btn-primary" onclick="openDocModal()">+ New Document</button>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    <select id="docProjFilter" onchange="renderDocuments()" style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px">
+      <option value="">All Projects</option>
+    </select>
+    <select id="docTypeFilter" onchange="renderDocuments()" style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px">
+      <option value="">All Types</option>
+      <option>Drawing</option><option>Submittal</option><option>RFI</option><option>Letter</option><option>Specification</option>
+    </select>
+    <select id="docStatusFilter" onchange="renderDocuments()" style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px">
+      <option value="">All Status</option>
+      <option>pending</option><option>approved</option><option>approved_with_comments</option><option>rejected</option>
+    </select>
+  </div>
+  <div id="docFlash" style="display:none"><span id="docFlashMsg"></span></div>
+  <div id="engDocumentsGrid" style="display:grid;gap:10px"></div>
+</div>
+
+<!-- ════ STAFF REGISTER ════ -->
+<div id="pgEngStaff" class="page">
+  <div class="page-header">
+    <div><div class="page-title">Staff <em>Register</em></div><div class="page-subtitle">Personnel and manpower records per project</div></div>
+    <button class="btn-primary" onclick="openStaffModal()">+ Add Staff</button>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    <select id="staffProjFilter" onchange="renderStaff()" style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px">
+      <option value="">All Projects</option>
+    </select>
+    <select id="staffCatFilter" onchange="renderStaff()" style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px">
+      <option value="">All Categories</option>
+      <option>Staff</option><option>Skilled</option><option>Unskilled</option><option>Subcontract</option>
+    </select>
+  </div>
+  <div id="staffFlash" style="display:none"><span id="staffFlashMsg"></span></div>
+  <div id="engStaffGrid" style="display:grid;gap:10px"></div>
+</div>
+
+<!-- ════ EQUIPMENT REGISTER ════ -->
+<div id="pgEngEquipment" class="page">
+  <div class="page-header">
+    <div><div class="page-title">Equipment <em>Register</em></div><div class="page-subtitle">Machinery and equipment tracking per site</div></div>
+    <button class="btn-primary" onclick="openEquipModal()">+ Add Equipment</button>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    <select id="equipProjFilter" onchange="renderEquipment()" style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px">
+      <option value="">All Projects</option>
+    </select>
+    <select id="equipStatusFilter" onchange="renderEquipment()" style="padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px">
+      <option value="">All Status</option>
+      <option>active</option><option>idle</option><option>demobilized</option>
+    </select>
+  </div>
+  <div id="equipFlash" style="display:none"><span id="equipFlashMsg"></span></div>
+  <div id="engEquipmentGrid" style="display:grid;gap:10px"></div>
 </div>
 
 </body>
