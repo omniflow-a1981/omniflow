@@ -2705,6 +2705,8 @@ function getMergedTransactions(){
   const cleanManual = transactions.filter(t => {
     if(String(t.id).startsWith('pr-')) return false;
     if(t.ref && prRefs.has(t.ref)) return false;
+    if(t.ref && t.ref.startsWith('__')) return false; // exclude config rows
+    if(t.divCode==='__config__' || t.div_code==='__config__') return false;
     return true;
   });
   
@@ -3943,59 +3945,57 @@ function hideAddCoForm(){document.getElementById('addCoForm').classList.remove('
 // accessible from any device that logs in
 
 async function saveCompaniesToCloud(){
-  // Always save to localStorage first (instant, never fails)
+  // Step 1: Always save to localStorage immediately
   try{ localStorage.setItem('omni-companies', JSON.stringify(companies)); }catch(e){}
-  // Save to Supabase: PATCH first (most reliable), then POST if row doesn't exist
+  // Step 2: Save to Supabase transactions table (has 'note' column for arbitrary data)
+  // Use ref='__companies_v1__' as identifier — delete old, insert new
   try{
     const json = JSON.stringify(companies);
-    // Step 1: Try PATCH (update existing row)
-    const patchRes = await fetch(SUPA_URL+'/balances?div_code=eq.__companies__',{
-      method:'PATCH',
-      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=representation'},
-      body: JSON.stringify({note: json})
+    const HEADERS = {'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=minimal'};
+    // Delete any existing config row
+    await fetch(SUPA_URL+'/transactions?ref=eq.__companies_v1__',{method:'DELETE',headers:HEADERS});
+    // Insert fresh row
+    const postRes = await fetch(SUPA_URL+'/transactions',{
+      method:'POST', headers:HEADERS,
+      body: JSON.stringify({
+        date: new Date().toISOString().slice(0,10),
+        ref: '__companies_v1__',
+        note: json,
+        div_code: '__config__',
+        type: 'in',
+        etb_in: 0, etb_out: 0
+      })
     });
-    const patchData = await patchRes.json().catch(function(){return [];});
-    if(Array.isArray(patchData) && patchData.length>0){
-      // PATCH succeeded — row existed and was updated
-      console.log('[OmniFlow] Companies updated in cloud ✓');
+    if(postRes.ok || postRes.status===201){
+      console.log('[OmniFlow] ✓ Companies saved to cloud ('+companies.length+' companies)');
+      const statusEl = document.getElementById('coCloudStatus');
+      if(statusEl){ statusEl.textContent='✓ Saved to cloud '+new Date().toLocaleTimeString(); statusEl.style.color='var(--teal-dark)'; }
     } else {
-      // Row didn't exist — INSERT new row
-      const postRes = await fetch(SUPA_URL+'/balances',{
-        method:'POST',
-        headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Content-Type':'application/json','Prefer':'return=minimal'},
-        body: JSON.stringify({div_code:'__companies__', note: json})
-      });
-      if(postRes.ok || postRes.status===201){
-        console.log('[OmniFlow] Companies created in cloud ✓');
-      } else {
-        const e2 = await postRes.text();
-        console.warn('[OmniFlow] Cloud save POST failed:', postRes.status, e2);
-      }
+      const errText = await postRes.text();
+      console.warn('[OmniFlow] Cloud save failed:', postRes.status, errText);
+      const statusEl = document.getElementById('coCloudStatus');
+      if(statusEl){ statusEl.textContent='⚠ Cloud save failed — using local only'; statusEl.style.color='#dc2626'; }
     }
-    const statusEl = document.getElementById('coCloudStatus');
-    if(statusEl){ statusEl.textContent='✓ Cloud saved '+new Date().toLocaleTimeString(); statusEl.style.color='var(--teal-dark)'; }
   }catch(e){
     console.warn('[OmniFlow] saveCompaniesToCloud error:', e.message);
-    const statusEl = document.getElementById('coCloudStatus');
-    if(statusEl){ statusEl.textContent='⚠ Not saved to cloud'; statusEl.style.color='#dc2626'; }
   }
 }
 
 async function loadCompaniesFromCloud(){
   try{
-    const res = await fetch(SUPA_URL+'/balances?div_code=eq.__companies__&select=note',{
-      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Cache-Control':'no-cache'}
+    const res = await fetch(SUPA_URL+'/transactions?ref=eq.__companies_v1__&select=note&order=created_at.desc&limit=1',{
+      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON}
     });
     if(!res.ok){ console.warn('[OmniFlow] loadCompaniesFromCloud HTTP:', res.status); return null; }
     const data = await res.json();
     if(Array.isArray(data) && data.length && data[0].note){
       const parsed = JSON.parse(data[0].note);
       if(Array.isArray(parsed) && parsed.length){
-        console.log('[OmniFlow] Companies loaded from cloud ✓ ('+parsed.length+' companies)');
+        console.log('[OmniFlow] ✓ Companies loaded from cloud ('+parsed.length+' companies)');
         return parsed;
       }
     }
-    console.log('[OmniFlow] No companies data in cloud yet — will use localStorage');
+    console.log('[OmniFlow] No cloud companies data — using localStorage/defaults');
   }catch(e){
     console.warn('[OmniFlow] loadCompaniesFromCloud error:', e.message);
   }
