@@ -782,7 +782,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 <div id="pgCompanies" class="page">
   <div class="page-header">
     <div><div class="page-title">Companies & <em>Divisions</em></div><div class="page-subtitle">Manage companies, divisions and subdivisions (sites)</div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span id="coCloudStatus" style="font-size:11px;color:var(--teal-dark)"></span>
+      <button onclick="manualBackupCompanies()" class="btn-secondary" style="font-size:12px;padding:8px 14px;background:#f0fdf4;border-color:#86efac;color:#166534">☁ Save to Cloud</button>
       <button class="btn-secondary" onclick="restoreMe1Defaults()" style="font-size:12px;padding:8px 14px;background:#fef3c7;border-color:#fcd34d;color:#92400e" title="Restore ME1 Construction sites if accidentally deleted">
         ↺ Restore ME1 Sites
       </button>
@@ -2407,7 +2409,12 @@ async function initApp(){
       status: o.status
     })) : ls('omni-out')||JSON.parse(JSON.stringify(DEFAULT_OUT));
 
-    if(Array.isArray(coData) && coData.length){
+    // Load companies: cloud JSON first (has subdivisions), then Supabase companies table, then localStorage
+    const cloudCo = await loadCompaniesFromCloud();
+    if(cloudCo && cloudCo.length){
+      companies = cloudCo;
+      ls('omni-companies', companies); // refresh local cache
+    } else if(Array.isArray(coData) && coData.length){
       companies = coData.map(function(co){
         var normId=co.id==='Wanofi'?'WE':co.id==='Matisan'?'ME':co.id;
         var defCo=DEFAULT_COMPANIES.find(function(d){return d.id===normId||d.code===normId;});
@@ -2425,6 +2432,8 @@ async function initApp(){
 
     payables = ls('omni-payables')||[];
     showSync('ok','Data loaded ✓');
+    // Migrate: if companies weren't loaded from cloud, save them now
+    if(!cloudCo) setTimeout(saveCompaniesToCloud, 1000);
     // Load PRs in parallel (separate Supabase table)
     loadPayRequests();
   } catch(e){
@@ -2435,6 +2444,8 @@ async function initApp(){
     companies    = ls('omni-companies')||JSON.parse(JSON.stringify(DEFAULT_COMPANIES));
     payables     = ls('omni-payables')||[];
     showSync('error','Offline mode — using cached data');
+    // Even in offline mode, try to backup companies to cloud
+    setTimeout(saveCompaniesToCloud, 3000);
     loadPayRequests(); // attempt PR load even after main load fails
   }
 
@@ -3925,6 +3936,80 @@ function renderOutstanding(){
 function showAddCoForm(){document.getElementById('addCoForm').classList.add('vis')}
 function hideAddCoForm(){document.getElementById('addCoForm').classList.remove('vis')}
 
+
+// ── PERSIST COMPANIES TO SUPABASE ─────────────────────────────
+// Saves full companies+divisions+subdivisions JSON to Supabase
+// Uses the balances table with a special marker row (div_code='__companies__')
+// This means data survives localStorage clears, computer restarts, and is
+// accessible from any device that logs in
+
+async function saveCompaniesToCloud(){
+  const json = JSON.stringify(companies);
+  saveCompaniesToCloud(); // also keep local cache as backup
+  try{
+    // Try PATCH first (update existing row)
+    const patchRes = await fetch(SUPA_URL+'/balances?div_code=eq.__companies__',{
+      method:'PATCH',
+      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,
+               'Content-Type':'application/json','Prefer':'return=minimal'},
+      body: JSON.stringify({note: json, updated_at: new Date().toISOString()})
+    });
+    if(patchRes.status===404||patchRes.status===0){
+      // Row doesn't exist yet — create it
+      await fetch(SUPA_URL+'/balances',{
+        method:'POST',
+        headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,
+                 'Content-Type':'application/json','Prefer':'return=minimal'},
+        body: JSON.stringify({div_code:'__companies__', note: json})
+      });
+    }
+    // If PATCH returned no rows, insert
+    const txt = await patchRes.text();
+    if(txt==='' || patchRes.headers.get('content-range')==='*/0'){
+      await fetch(SUPA_URL+'/balances',{
+        method:'POST',
+        headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,
+                 'Content-Type':'application/json','Prefer':'return=minimal'},
+        body: JSON.stringify({div_code:'__companies__', note: json})
+      });
+    }
+  }catch(e){
+    console.warn('saveCompaniesToCloud failed — data still in localStorage:', e.message);
+  }
+}
+
+async function loadCompaniesFromCloud(){
+  try{
+    const res = await fetch(SUPA_URL+'/balances?div_code=eq.__companies__&select=note',{
+      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON}
+    });
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(Array.isArray(data) && data.length && data[0].note){
+      const parsed = JSON.parse(data[0].note);
+      if(Array.isArray(parsed) && parsed.length) return parsed;
+    }
+  }catch(e){
+    console.warn('loadCompaniesFromCloud failed:', e.message);
+  }
+  return null;
+}
+
+
+async function manualBackupCompanies(){
+  const btn = event.target;
+  btn.textContent = '☁ Saving...'; btn.disabled = true;
+  try{
+    await saveCompaniesToCloud();
+    const statusEl = document.getElementById('coCloudStatus');
+    if(statusEl) statusEl.textContent = '✓ Saved to cloud ' + new Date().toLocaleTimeString();
+    btn.textContent = '✓ Saved!';
+    setTimeout(function(){ btn.textContent='☁ Save to Cloud'; btn.disabled=false; }, 2000);
+  }catch(e){
+    btn.textContent = '✕ Failed'; btn.disabled = false;
+  }
+}
+
 function addCompany(){
   const name=document.getElementById('coName').value.trim();
   const code=document.getElementById('coCode').value.trim().toUpperCase();
@@ -3934,7 +4019,7 @@ function addCompany(){
   if(companies.find(c=>c.id===name||c.code===code)){alert('A company with this name or code already exists.');return}
   const divCode=code+'1';
   companies.push({id:name,name,code,color,divisions:[{code:divCode,name:div1,subdivisions:[]}]});
-  ls('omni-companies',companies);
+  saveCompaniesToCloud();
   document.getElementById('coName').value='';document.getElementById('coCode').value='';document.getElementById('coDiv1').value='';
   hideAddCoForm();
   populateCoSelects();
@@ -3952,7 +4037,7 @@ function addDivision(coId){
   const num=co.divisions.length+1;
   const divCode=co.code+num;
   co.divisions.push({code:divCode,name,subdivisions:[]});
-  ls('omni-companies',companies);
+  saveCompaniesToCloud();
   input.value='';
   populateCoSelects();
   renderCompanies();
@@ -3963,13 +4048,13 @@ function deleteDivision(coId,divCode){
   if(!confirm('Delete division '+divCode+'?'))return;
   var co=companies.find(function(c){return c.id===coId;});if(!co)return;
   co.divisions=co.divisions.filter(function(d){return d.code!==divCode;});
-  ls('omni-companies',companies);populateCoSelects();renderCompanies();
+  saveCompaniesToCloud();populateCoSelects();renderCompanies();
 }
 function renameDivision(coId,divCode){
   var co=companies.find(function(c){return c.id===coId;});if(!co)return;
   var div=co.divisions.find(function(d){return d.code===divCode;});if(!div)return;
   var n=prompt('Rename division '+divCode+':',div.name);if(!n||!n.trim())return;
-  div.name=n.trim();ls('omni-companies',companies);populateCoSelects();renderCompanies();
+  div.name=n.trim();saveCompaniesToCloud();populateCoSelects();renderCompanies();
   showFlash('✓ Division renamed','coFlash','coFlashMsg');
 }
 function addSubdivision(coId,divCode){
@@ -3984,7 +4069,7 @@ function addSubdivision(coId,divCode){
   if(div.subdivisions.find(function(s){return s.name.toLowerCase()===name.toLowerCase();})){alert('Already exists.');return;}
   var subCode=divCode+'-S'+(div.subdivisions.length+1);
   div.subdivisions.push({code:subCode,name:name,client:clientVal,project:projectVal,location:locationVal});
-  ls('omni-companies',companies);
+  saveCompaniesToCloud();
   ['subInput_','subClient_','subProject_','subLocation_'].forEach(function(p){
     var el=document.getElementById(p+coId+'_'+divCode);if(el)el.value='';
   });
@@ -4005,7 +4090,7 @@ function editSubdivision(coId,divCode,subCode){
   sub.client=newClient||'';
   sub.project=newProject||'';
   sub.location=newLocation||'';
-  ls('omni-companies',companies);renderCompanies();
+  saveCompaniesToCloud();renderCompanies();
   showFlash('✓ Site updated: '+sub.name,'coFlash','coFlashMsg');
 }
 function deleteSubdivision(coId,divCode,subCode){
@@ -4015,7 +4100,7 @@ function deleteSubdivision(coId,divCode,subCode){
   var subName=sub?sub.name:'this site';
   if(!confirm('Delete site: '+subName+'?')) return;
   div.subdivisions=div.subdivisions.filter(function(s){return s.code!==subCode;});
-  ls('omni-companies',companies);populateCoSelects();renderCompanies();
+  saveCompaniesToCloud();populateCoSelects();renderCompanies();
   showFlash('✓ Site "'+subName+'" removed','coFlash','coFlashMsg');
 }
 function restoreMe1Defaults(){
@@ -4051,7 +4136,7 @@ function restoreMe1Defaults(){
       added++;
     }
   });
-  ls('omni-companies', companies);
+  saveCompaniesToCloud();
   populateCoSelects();
   renderCompanies();
   showFlash('✓ ME1 restored — '+added+' project code(s) added back','coFlash','coFlashMsg');
@@ -4067,7 +4152,7 @@ function deleteCompany(coId){
     return;
   }
   companies=companies.filter(function(c){return c.id!==coId;});
-  ls('omni-companies',companies);populateCoSelects();renderCompanies();renderAll();
+  saveCompaniesToCloud();populateCoSelects();renderCompanies();renderAll();
   showFlash('✓ Company removed','coFlash','coFlashMsg');
 }
 
@@ -4085,7 +4170,7 @@ function renderCompanies(){
     var cached=ls('omni-companies');
     if(cached&&Array.isArray(cached)&&cached.length) companies=cached;
     else companies=JSON.parse(JSON.stringify(DEFAULT_COMPANIES));
-    ls('omni-companies',companies);
+    saveCompaniesToCloud();
     populateCoSelects();
   }
   if(!companies||!companies.length){
@@ -5193,7 +5278,7 @@ async function loadCompanies(){
         if(mapped.every(co=>co.divisions && co.divisions.length > 0)){
           companies = mapped;
         }
-        ls('omni-companies', companies);
+        saveCompaniesToCloud();
       }
     }
   } catch(e){
@@ -6770,7 +6855,7 @@ function quickAddSubdivisionForProject(){
   if(!div.subdivisions) div.subdivisions = [];
   const subCode = divCode+'-S'+(div.subdivisions.length+1);
   div.subdivisions.push({code:subCode, name:name, client:client, project:project||name, location:location});
-  ls('omni-companies', companies);
+  saveCompaniesToCloud();
   showFlash ? null : null;
   onProjDivisionChange();
   document.getElementById('projSubdivision').value = subCode;
