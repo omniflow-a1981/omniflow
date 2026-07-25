@@ -1263,24 +1263,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       <div class="modal-title">New Progress Report</div>
       <button class="modal-close" onclick="closeProgressModal()">&times;</button>
     </div>
-    <div class="fr" style="margin-bottom:8px">
-      <div class="ff"><label>Company *</label>
-        <select id="progCompany" onchange="onProgCompanyChange()">
-          <option value="">— Select company —</option>
-          <option value="WE">Wanofi Engineering Plc</option>
-          <option value="ME">Matisan Engineering Plc</option>
-        </select>
-      </div>
-      <div class="ff"><label>Division *</label>
-        <select id="progDivision" onchange="onProgDivisionChange()">
-          <option value="">— Select division —</option>
-        </select>
-      </div>
-    </div>
     <div class="ff" style="margin-bottom:8px">
-      <label>Subdivision / Project *</label>
-      <select id="progProjectId" onchange="onProgProjectChange()">
-        <option value="">— Select subdivision —</option>
+      <label>Project *</label>
+      <select id="progProjectId" onchange="onProgProjectChange()" style="font-size:13px">
+        <option value="">— Select project —</option>
       </select>
     </div>
     <div id="progProjectInfoBanner" style="display:none;background:var(--bg);border-radius:9px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--ink2)"></div>
@@ -2485,7 +2471,7 @@ function nav(id,el){
   }
   if(id==='EngProjects'){ loadEngProjects(); }
   if(id==='EngContracts'){ loadEngContracts(); }
-  if(id==='EngProgress'){ loadEngProgress(); }
+  if(id==='EngProgress'){ loadEngProgress().then(populateProgressProjectDropdown); }
   if(id==='EngIPC'){ loadEngIPC(); }
   if(id==='EngVariations'){ loadEngVariations(); }
   if(id==='EngDiary'){ loadEngDiary(); }
@@ -7581,35 +7567,21 @@ function onProgProjectChange(){
   const sel = document.getElementById('progProjectId');
   const val = sel.value;
   const banner = document.getElementById('progProjectInfoBanner');
-  // Try to find eng_project by ID
   const p = engProjects.find(function(x){return x.id===val;});
-  // If sub: prefix — find subdivision directly from companies
-  let subInfo = null;
-  if(!p && val && val.startsWith('sub:')){
-    const parts = val.split(':'); // sub:divCode:subCode
-    const divCode = parts[1], subCode = parts[2];
-    companies.forEach(function(co){
-      (co.divisions||[]).forEach(function(div){
-        if(div.code===divCode){
-          (div.subdivisions||[]).forEach(function(sub){
-            if(sub.code===subCode) subInfo={sub,div,co};
-          });
-        }
-      });
-    });
-  }
   if(p){
-    const coName = p.company_id==='WE'?'Wanofi Engineering Plc':'Matisan Engineering Plc';
+    const co = companies.find(function(c){return c.id===p.company_id||c.code===p.company_id;});
+    const div = co&&(co.divisions||[]).find(function(d){return d.code===p.division_code;});
+    const sub = div&&(div.subdivisions||[]).find(function(s){return s.code===p.subdivision_code;});
+    const coName = co?co.name:(p.company_id==='WE'?'Wanofi Engineering Plc':'Matisan Engineering Plc');
     banner.style.display='block';
-    banner.innerHTML='<strong>'+(p.client||'—')+'</strong> · '+(p.location||'—')+' · '+p.division_code+' · '+coName+'<div style="font-size:10px;color:var(--muted);margin-top:2px">Project auto-filled</div>';
-  } else if(subInfo){
-    banner.style.display='block';
-    banner.innerHTML='<strong>'+(subInfo.sub.client||'—')+'</strong> · '+(subInfo.sub.location||'—')+' · '+subInfo.div.code+' · '+(subInfo.co.name||subInfo.co.id)+'<div style="font-size:10px;color:#92400e;margin-top:2px;background:#fef9c3;padding:3px 6px;border-radius:4px;display:inline-block">⚠ No project record yet — create one in Project Tracking first</div>';
+    banner.innerHTML='<strong>'+(p.client||(sub&&sub.client)||'—')+'</strong>'
+      +' · '+(p.location||(sub&&sub.location)||'—')
+      +' · '+p.division_code+' · '+coName
+      +'<div style="font-size:10px;color:var(--muted);margin-top:2px">Auto-filled from project</div>';
   } else {
     banner.style.display='none';
     banner.innerHTML='';
   }
-  // Always load contract BOQ for EVM calculation
   loadContractBoqForProgress();
 }
 
@@ -7639,13 +7611,8 @@ function openProgressModal(){
   const boqWrap2 = document.getElementById('progManualBoqWrap');
   if(catWrap2) catWrap2.style.display='none';
   if(boqWrap2) boqWrap2.style.display='block';
-  // Reset cascade selectors
-  const coSel2 = document.getElementById('progCompany');
-  if(coSel2) coSel2.value='';
-  const divSel2 = document.getElementById('progDivision');
-  if(divSel2) divSel2.innerHTML='<option value="">— Select division —</option>';
-  const projSel2 = document.getElementById('progProjectId');
-  if(projSel2) projSel2.innerHTML='<option value="">— Select subdivision —</option>';
+  // Populate flat project list
+  populateProgressProjectDropdown();
   const banner2 = document.getElementById('progProjectInfoBanner');
   if(banner2){ banner2.style.display='none'; banner2.innerHTML=''; }
   const boqBlocks2 = document.getElementById('progBoqBlocks');
@@ -8970,13 +8937,22 @@ function onProgDivisionChange(){
 
 // Override populateProgressProjectDropdown — now driven by cascade above
 function populateProgressProjectDropdown(){
-  // Reset cascade
-  const coSel = document.getElementById('progCompany');
-  const divSel = document.getElementById('progDivision');
-  const projSel = document.getElementById('progProjectId');
-  if(coSel) coSel.value='';
-  if(divSel) divSel.innerHTML='<option value="">— Select division —</option>';
-  if(projSel) projSel.innerHTML='<option value="">— Select subdivision —</option>';
+  const projSel = document.getElementById('progProjectId'); if(!projSel) return;
+  const curVal = projSel.value;
+  projSel.innerHTML = '<option value="">— Select project —</option>';
+  // Show all tracked projects — same flat list as Contract Management
+  engProjects.forEach(function(p){
+    const co = companies.find(function(c){return c.id===p.company_id||c.code===p.company_id;});
+    const div = co&&(co.divisions||[]).find(function(d){return d.code===p.division_code;});
+    const sub = div&&(div.subdivisions||[]).find(function(s){return s.code===p.subdivision_code;});
+    const label = (sub?(sub.project||sub.name):p.project_name)
+      +(p.client||sub&&sub.client?' — '+(p.client||sub.client):'')
+      +' ('+p.division_code+')';
+    const o = document.createElement('option');
+    o.value = p.id; o.textContent = label;
+    projSel.appendChild(o);
+  });
+  if(curVal && engProjects.find(function(p){return p.id===curVal;})) projSel.value=curVal;
 }
 
 
