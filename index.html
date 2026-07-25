@@ -454,6 +454,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   .bal-grid{grid-template-columns:1fr}
   .kpi-val{font-size:16px}
 }
+
+  .hub-tab{background:transparent;border:none;color:rgba(255,255,255,.7);padding:9px 16px;cursor:pointer;font-size:12px;font-weight:600;border-radius:8px 8px 0 0;white-space:nowrap;transition:all .15s}
+  .hub-tab:hover{background:rgba(255,255,255,.1);color:#fff}
+  .hub-tab.active{background:var(--surface);color:var(--teal-dark)}
 </style>
 </head>
 <body>
@@ -565,24 +569,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   <a class="nav-item" href="#" onclick="nav('EngProgress',this)" id="engProgressNav">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="M18 9l-5 5-3-3-4 4"/></svg>Site Progress
   </a>
-  <a class="nav-item" href="#" onclick="nav('EngIPC',this)" id="engIPCNav">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 10h8M8 14h5"/></svg>IPC
-  </a>
-  <a class="nav-item" href="#" onclick="nav('EngVariations',this)" id="engVariationsNav">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Variations
-  </a>
-  <a class="nav-item" href="#" onclick="nav('EngDiary',this)" id="engDiaryNav">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>Site Diary
-  </a>
-  <a class="nav-item" href="#" onclick="nav('EngDocuments',this)" id="engDocumentsNav">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>Documents
-  </a>
-  <a class="nav-item" href="#" onclick="nav('EngStaff',this)" id="engStaffNav">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Staff Register
-  </a>
-  <a class="nav-item" href="#" onclick="nav('EngEquipment',this)" id="engEquipmentNav">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Equipment
-  </a>
+
   <div class="sb-sec">Settings</div>
   <a class="nav-item" href="#" onclick="nav('PayReq',this)" id="payreqNav">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Payment Requests
@@ -996,8 +983,40 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 </div>
 
 <!-- Project Detail Modal -->
-<div class="modal-overlay" id="projectDetailModal">
-  <div class="modal-box" style="max-width:760px" id="projectDetailContent"></div>
+<div class="modal-overlay" id="projectDetailModal" style="padding:0;align-items:stretch">
+  <div style="background:var(--surface);width:100%;max-width:1100px;margin:auto;border-radius:16px;display:flex;flex-direction:column;max-height:95vh;overflow:hidden">
+    <!-- Project Hub Header -->
+    <div id="projectHubHeader" style="padding:18px 24px 0;background:linear-gradient(135deg,var(--teal-dark),#065f46);color:#fff;flex-shrink:0">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+        <div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.6px;opacity:.7;margin-bottom:4px">Project Hub</div>
+          <div id="hubProjectName" style="font-size:20px;font-weight:800;line-height:1.2"></div>
+          <div id="hubProjectMeta" style="font-size:12px;opacity:.8;margin-top:4px"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div id="hubEVMBadge" style="background:rgba(255,255,255,.15);border-radius:10px;padding:8px 14px;text-align:center">
+            <div style="font-size:10px;opacity:.7;text-transform:uppercase">EVM Progress</div>
+            <div id="hubEVMPct" style="font-size:22px;font-weight:800">0%</div>
+          </div>
+          <button onclick="closeProjectDetail()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;line-height:1">&times;</button>
+        </div>
+      </div>
+      <!-- Tab bar -->
+      <div style="display:flex;gap:2px;overflow-x:auto;padding-bottom:0" id="hubTabs">
+        <button class="hub-tab active" onclick="switchHubTab('overview',this)">📊 Overview</button>
+        <button class="hub-tab" onclick="switchHubTab('contracts',this)">📄 Contracts</button>
+        <button class="hub-tab" onclick="switchHubTab('progress',this)">📋 Progress</button>
+        <button class="hub-tab" onclick="switchHubTab('ipc',this)">🧾 IPC</button>
+        <button class="hub-tab" onclick="switchHubTab('variations',this)">🔄 Variations</button>
+        <button class="hub-tab" onclick="switchHubTab('diary',this)">📓 Site Diary</button>
+        <button class="hub-tab" onclick="switchHubTab('documents',this)">📁 Documents</button>
+        <button class="hub-tab" onclick="switchHubTab('staff',this)">👷 Staff</button>
+        <button class="hub-tab" onclick="switchHubTab('equipment',this)">🚛 Equipment</button>
+      </div>
+    </div>
+    <!-- Tab content -->
+    <div id="projectDetailContent" style="flex:1;overflow-y:auto;padding:20px 24px"></div>
+  </div>
 </div>
 
 
@@ -6843,49 +6862,315 @@ async function saveProject(){
 
 function openProjectDetail(id){
   const p = engProjects.find(x=>x.id===id); if(!p) return;
-  const pct = parseFloat(p.percent_complete||0);
-  const coName = p.company_id==='WE' ? 'Wanofi Engineering Plc' : 'Matisan Engineering Plc';
-  const relatedContracts = engContracts.filter(c=>c.project_id===id);
-  const relatedReports = engProgressReports.filter(r=>r.project_id===id).sort(function(a,b){return (b.report_date||'').localeCompare(a.report_date||'');});
-  const content = document.getElementById('projectDetailContent');
-  content.innerHTML =
-    '<div class="modal-header"><div class="modal-title">'+p.project_name+'</div><button class="modal-close" onclick="closeProjectDetail()">&times;</button></div>'
-    +'<div style="display:flex;gap:8px;margin-bottom:14px">'+engStatusBadge(p.status)+engPhaseBadge(p.phase)+'</div>'
-    +'<div style="font-size:13px;color:var(--muted);margin-bottom:16px">'+(p.client||'—')+' · '+(p.location||'—')+' · '+p.division_code+' · '+coName+'</div>'
-    +'<div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:5px"><span>Overall Progress</span><span style="font-weight:700;color:var(--teal-dark)">'+pct+'%</span></div><div style="height:8px;background:var(--bg);border-radius:5px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--teal),var(--teal-dark))"></div></div></div>'
-    +'<div class="fr" style="margin-bottom:10px">'
-      +'<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Start Date</div><div style="font-size:13px;font-weight:600">'+(p.start_date||'—')+'</div></div>'
-      +'<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Target End</div><div style="font-size:13px;font-weight:600">'+(p.end_date||'—')+'</div></div>'
-    +'</div>'
-    +(function(){
-      if(!p.start_date||!p.end_date) return '';
-      const start=new Date(p.start_date),end=new Date(p.end_date),today=new Date();
-      const totalDays=Math.max(1,Math.round((end-start)/86400000));
-      const elapsed=Math.max(0,Math.round((today-start)/86400000));
-      const elPct=Math.min(100,Math.round(elapsed/totalDays*100));
-      const remain=Math.max(0,totalDays-elapsed);
-      const color=elPct>80?'#dc2626':elPct>60?'#d97706':'#166534';
-      return '<div style="margin-bottom:16px">'
-        +'<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">'
-        +'<span style="color:var(--muted)">Time Elapsed</span>'
-        +'<span style="font-weight:700;color:'+color+'">'+elapsed+' / '+totalDays+' days ('+elPct+'%) · '+remain+' days remaining</span></div>'
-        +'<div style="height:7px;background:var(--bg);border-radius:4px;overflow:hidden">'
-        +'<div style="height:100%;width:'+elPct+'%;background:'+color+';border-radius:4px"></div></div></div>';
-    })()
-    +(p.budget_etb>0?'<div style="margin-bottom:16px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Budget</div><div style="font-size:15px;font-weight:700;color:var(--teal-dark)">'+fmtETB2(p.budget_etb)+(p.budget_usd>0?' / $'+p.budget_usd.toLocaleString():'')+'</div></div>':'')
-    +(p.description?'<div style="margin-bottom:16px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Description</div><div style="font-size:13px;color:var(--ink)">'+p.description+'</div></div>':'')
-    +'<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:8px">Contracts ('+relatedContracts.length+')</div>'
-      +(relatedContracts.length? relatedContracts.map(function(c){return '<div style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;font-size:12px"><strong>'+c.contract_title+'</strong> · '+(c.contract_type||'—')+' · '+fmtETB2(c.contract_value_etb)+' '+engContractStatusBadge(c.status)+'</div>';}).join('') : '<div style="font-size:12px;color:var(--muted)">No contracts linked yet.</div>')
-    +'</div>'
-    +'<div><div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:8px">Recent Progress Reports ('+relatedReports.length+')</div>'
-      +(relatedReports.length? relatedReports.slice(0,5).map(function(r){return '<div style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;font-size:12px"><strong>'+r.report_date+'</strong> '+(r.report_period?'('+r.report_period+')':'')+' — '+(r.overall_percent||0)+'% complete</div>';}).join('') : '<div style="font-size:12px;color:var(--muted)">No progress reports yet.</div>')
-    +'</div>'
-    +'<div class="btn-row" style="margin-top:18px">'
-      +'<button class="btn-primary" onclick="closeProjectDetail();openProjectModal(' + "'" + p.id + "'" + ')">✏ Edit Project</button>'
-      +'<button class="btn-secondary" onclick="closeProjectDetail()">Close</button>'
-    +'</div>';
+  window._hubProjectId = id;
+  // Set header
+  const coName = (p.company_id==='WE'||p.company_id==='Wanofi')?'Wanofi Engineering Plc':'Matisan Engineering Plc';
+  document.getElementById('hubProjectName').textContent = p.project_name;
+  document.getElementById('hubProjectMeta').textContent = (p.client||'—')+' · '+(p.location||'—')+' · '+p.division_code+' · '+coName;
+  document.getElementById('hubEVMPct').textContent = (p.percent_complete||0)+'%';
+  // Reset tabs
+  document.querySelectorAll('.hub-tab').forEach(function(t){t.classList.remove('active');});
+  document.querySelector('.hub-tab').classList.add('active');
   document.getElementById('projectDetailModal').style.display='flex';
+  renderHubTab('overview');
 }
+
+let _hubTabLoading = false;
+async function switchHubTab(tab, btn){
+  document.querySelectorAll('.hub-tab').forEach(function(t){t.classList.remove('active');});
+  if(btn) btn.classList.add('active');
+  await renderHubTab(tab);
+}
+
+async function renderHubTab(tab){
+  const id = window._hubProjectId; if(!id) return;
+  const p = engProjects.find(x=>x.id===id); if(!p) return;
+  const wrap = document.getElementById('projectDetailContent');
+  wrap.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">Loading...</div>';
+
+  if(tab==='overview') renderHubOverview(p, wrap);
+  else if(tab==='contracts') renderHubContracts(p, wrap);
+  else if(tab==='progress') renderHubProgress(p, wrap);
+  else if(tab==='ipc') await renderHubIPC(p, wrap);
+  else if(tab==='variations') await renderHubVariations(p, wrap);
+  else if(tab==='diary') await renderHubDiary(p, wrap);
+  else if(tab==='documents') await renderHubDocuments(p, wrap);
+  else if(tab==='staff') await renderHubStaff(p, wrap);
+  else if(tab==='equipment') await renderHubEquipment(p, wrap);
+}
+
+function renderHubOverview(p, wrap){
+  const pct = parseFloat(p.percent_complete||0);
+  const relatedContracts = engContracts.filter(c=>c.project_id===p.id);
+  const relatedReports = engProgressReports.filter(r=>r.project_id===p.id).sort((a,b)=>(b.report_date||'').localeCompare(a.report_date||''));
+  const totalContractValue = relatedContracts.reduce((s,c)=>s+(parseFloat(c.contract_value_etb)||0),0);
+
+  // Time elapsed
+  let timeHtml = '';
+  if(p.start_date && p.end_date){
+    const start=new Date(p.start_date),end=new Date(p.end_date),today=new Date();
+    const totalDays=Math.max(1,Math.round((end-start)/86400000));
+    const elapsed=Math.max(0,Math.round((today-start)/86400000));
+    const elPct=Math.min(100,Math.round(elapsed/totalDays*100));
+    const remain=Math.max(0,totalDays-elapsed);
+    const clr=elPct>80?'#dc2626':elPct>60?'#d97706':'#166534';
+    timeHtml = '<div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span style="color:var(--muted)">Time Elapsed</span><span style="font-weight:700;color:'+clr+'">'+elapsed+' / '+totalDays+' days ('+elPct+'%) · '+remain+' remaining</span></div><div style="height:7px;background:var(--bg);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+elPct+'%;background:'+clr+';border-radius:4px"></div></div></div>';
+  }
+
+  wrap.innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px">'
+    +'<div style="background:var(--bg);border-radius:10px;padding:14px"><div style="font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.4px">EVM Progress</div><div style="font-size:26px;font-weight:800;color:var(--teal-dark)">'+pct+'%</div></div>'
+    +'<div style="background:var(--bg);border-radius:10px;padding:14px"><div style="font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.4px">Contract Value</div><div style="font-size:18px;font-weight:800;color:var(--ink2)">'+fmtETB2(totalContractValue)+'</div></div>'
+    +'<div style="background:var(--bg);border-radius:10px;padding:14px"><div style="font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.4px">Contracts</div><div style="font-size:26px;font-weight:800;color:var(--ink2)">'+relatedContracts.length+'</div></div>'
+    +'<div style="background:var(--bg);border-radius:10px;padding:14px"><div style="font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.4px">Progress Reports</div><div style="font-size:26px;font-weight:800;color:var(--ink2)">'+relatedReports.length+'</div></div>'
+    +'</div>'
+    +(p.budget_etb>0?'<div style="margin-bottom:14px"><span style="font-size:11px;color:var(--muted)">Budget: </span><strong>'+fmtETB2(p.budget_etb)+'</strong></div>':'')
+    +timeHtml
+    +(p.description?'<div style="margin-bottom:16px;padding:12px;background:var(--bg);border-radius:9px;font-size:13px;color:var(--ink)">'+p.description+'</div>':'')
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
+    +'<button class="btn-primary" onclick="closeProjectDetail();openProjectModal(\"'+p.id+'\")" >✏ Edit Project</button>'
+    +'<button class="btn-secondary" onclick="closeProjectDetail()">Close</button>'
+    +'</div>';
+}
+
+function renderHubContracts(p, wrap){
+  const list = engContracts.filter(c=>c.project_id===p.id);
+  wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+    +'<div style="font-size:14px;font-weight:700">Contracts ('+list.length+')</div>'
+    +'<button class="btn-primary" onclick="closeProjectDetail();openContractModal()" style="font-size:12px;padding:6px 14px">+ New Contract</button>'
+    +'</div>'
+    +(list.length ? list.map(function(c){
+      return '<div class="pr-card" style="margin-bottom:10px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px">'
+          +'<div><div style="font-size:13px;font-weight:700">'+c.contract_title+(c.contract_no?' · <span style="color:var(--muted)">'+c.contract_no+'</span>':'')+'</div>'
+          +'<div style="font-size:11px;color:var(--muted)">'+( c.contract_type||'—')+(c.signed_date?' · Signed: '+c.signed_date:'')+'</div></div>'
+          +engContractStatusBadge(c.status)
+        +'</div>'
+        +'<div style="display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;font-size:11px;color:var(--muted)">'
+          +'<span>Value: <strong style="color:var(--teal-dark)">'+fmtETB2(c.contract_value_etb)+'</strong></span>'
+          +(c.completion_date?'<span>Completion: <strong>'+c.completion_date+'</strong></span>':'')
+          +(c.retention_pct?'<span>Retention: <strong>'+c.retention_pct+'%</strong></span>':'')
+        +'</div>'
+        +'<div style="margin-top:8px">'
+          +'<button data-cid="'+c.id+'" onclick="openBoqBlocksViewBtn(this)" class="btn-secondary" style="font-size:11px;padding:4px 10px">📐 BOQ Blocks</button>'
+        +'</div>'
+      +'</div>';
+    }).join('') : '<div style="padding:24px;text-align:center;color:var(--muted)">No contracts yet. <button class="btn-secondary" onclick="closeProjectDetail();openContractModal()" style="font-size:12px;margin-left:8px">+ Add Contract</button></div>');
+}
+
+function renderHubProgress(p, wrap){
+  const list = engProgressReports.filter(r=>r.project_id===p.id).sort((a,b)=>(b.report_date||'').localeCompare(a.report_date||''));
+  wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+    +'<div style="font-size:14px;font-weight:700">Progress Reports ('+list.length+')</div>'
+    +'<button class="btn-primary" onclick="closeProjectDetail();setTimeout(function(){nav(\"EngProgress\",document.getElementById(\"engProgressNav\"));setTimeout(openProgressModal,400);},100)" style="font-size:12px;padding:6px 14px">+ New Report</button>'
+    +'</div>'
+    +(list.length ? list.map(function(r){
+      const pct=parseFloat(r.overall_percent||0);
+      return '<div class="pr-card" style="cursor:pointer;margin-bottom:8px" onclick=\"openProgressDetail(\'"+r.id+"\')\">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center">'
+          +'<div><span style="background:var(--teal-dark);color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:5px;margin-right:8px">'+pct+'%</span>'
+          +'<strong>'+r.report_date+'</strong>'+(r.report_period?' · '+r.report_period:'')+'</div>'
+          +'<span style="font-size:11px;color:var(--muted)">'+( r.prepared_by||'')+'</span>'
+        +'</div>'
+      +'</div>';
+    }).join('') : '<div style="padding:24px;text-align:center;color:var(--muted)">No progress reports yet.</div>');
+}
+
+// All renderHub* functions use data-attributes for IDs to avoid quote escaping
+
+function _hubBtn(label, cls, fn, id){ return '<button data-id="'+id+'" onclick="'+fn+'(this.dataset.id)" class="'+cls+'" style="font-size:11px;padding:4px 10px">'+label+'</button>'; }
+function _hubDel(fn, id){ return '<button data-id="'+id+'" onclick="'+fn+'(this.dataset.id)" style="background:none;border:1px solid #fca5a5;border-radius:5px;cursor:pointer;color:#dc2626;font-size:11px;padding:3px 8px">✕</button>'; }
+
+async function renderHubIPC(p, wrap){
+  wrap.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted)">Loading...</div>';
+  const data = await engFetch('/eng_ipc?project_id=eq.'+p.id+'&order=created_at.desc&select=*');
+  const list = Array.isArray(data)?data:[];
+  const contracts = engContracts.filter(function(c){return c.project_id===p.id;});
+  const statusClr={draft:'#94a3b8',submitted:'#f59e0b',certified:'#10b981',paid:'#3b82f6'};
+  wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+    +'<div><div style="font-size:14px;font-weight:700">Interim Payment Certificates ('+list.length+')</div>'
+    +'<div style="font-size:11px;color:var(--muted);margin-top:2px">FIDIC-standard — gross executed, advance, retention</div></div>'
+    +'<button data-proj="'+p.id+'" onclick="openIPCFromHub(this.dataset.proj)" class="btn-primary" style="font-size:12px;padding:6px 14px">+ New IPC</button>'
+    +'</div>'
+    +(list.length ? list.map(function(ipc){
+      const c=contracts.find(function(x){return x.id===ipc.contract_id;});
+      return '<div class="pr-card" style="margin-bottom:10px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
+          +'<div><div style="font-size:13px;font-weight:700">IPC #'+ipc.ipc_no+(c?' — '+c.contract_title:'')+'</div>'
+          +'<div style="font-size:11px;color:var(--muted)">'+(ipc.ipc_date||'')+(ipc.period_from?' · '+ipc.period_from+' to '+ipc.period_to:'')+'</div></div>'
+          +'<span style="background:'+(statusClr[ipc.status]||'#94a3b8')+';color:#fff;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700">'+ipc.status+'</span>'
+        +'</div>'
+        +'<div style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--muted)">'
+          +'<span>This Certificate: <strong style="color:var(--teal-dark)">'+fmtETB2(ipc.this_certificate)+'</strong></span>'
+          +'<span>Gross: <strong>'+fmtETB2(ipc.gross_value_executed)+'</strong></span>'
+          +'<span>Retention: <strong style="color:#dc2626">'+fmtETB2(ipc.retention_deduction)+'</strong></span>'
+        +'</div>'
+        +'<div style="margin-top:8px;display:flex;gap:6px">'
+          +_hubBtn('✏ Edit','btn-secondary','editIPC',ipc.id)
+          +_hubBtn('🖨 Print','btn-secondary','printIPC',ipc.id)
+          +'<button data-id="'+ipc.id+'" data-proj="'+p.id+'" onclick="hubDeleteIPC(this.dataset.id,this.dataset.proj)" style="background:none;border:1px solid #fca5a5;border-radius:7px;cursor:pointer;color:#dc2626;font-size:11px;padding:4px 10px">✕</button>'
+        +'</div>'
+      +'</div>';
+    }).join('') : '<div style="padding:24px;text-align:center;color:var(--muted)">No IPCs yet.</div>');
+}
+
+async function renderHubVariations(p, wrap){
+  wrap.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted)">Loading...</div>';
+  const data = await engFetch('/eng_variations?project_id=eq.'+p.id+'&order=created_at.desc&select=*');
+  const list = Array.isArray(data)?data:[];
+  const totalAdd=list.filter(function(v){return v.vo_type==='Addition';}).reduce(function(s,v){return s+(parseFloat(v.amount_etb)||0);},0);
+  const totalOmit=list.filter(function(v){return v.vo_type==='Omission';}).reduce(function(s,v){return s+(parseFloat(v.amount_etb)||0);},0);
+  const statusClr={pending:'#f59e0b',approved:'#10b981',rejected:'#dc2626'};
+  wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    +'<div style="font-size:14px;font-weight:700">Variation Orders ('+list.length+')</div>'
+    +'<button data-proj="'+p.id+'" onclick="openVarFromHub(this.dataset.proj)" class="btn-primary" style="font-size:12px;padding:6px 14px">+ New VO</button>'
+    +'</div>'
+    +(list.length?'<div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">'
+      +'<div style="background:#f0fdf4;border-radius:8px;padding:8px 14px;font-size:12px">Additions: <strong style="color:#166534">+'+fmtETB2(totalAdd)+'</strong></div>'
+      +'<div style="background:#fff5f5;border-radius:8px;padding:8px 14px;font-size:12px">Omissions: <strong style="color:#dc2626">-'+fmtETB2(totalOmit)+'</strong></div>'
+      +'<div style="background:var(--bg);border-radius:8px;padding:8px 14px;font-size:12px">Net: <strong>'+fmtETB2(totalAdd-totalOmit)+'</strong></div>'
+      +'</div>':'')
+    +(list.length?list.map(function(v){
+      return '<div class="pr-card" style="margin-bottom:8px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px">'
+          +'<div><div style="font-size:13px;font-weight:700">VO-'+v.vo_no+' · '+v.title+'</div>'
+          +'<div style="font-size:11px;color:var(--muted)">'+v.vo_type+(v.issued_date?' · '+v.issued_date:'')+'</div></div>'
+          +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">'
+            +'<span style="background:'+(statusClr[v.status]||'#94a3b8')+';color:#fff;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700">'+v.status+'</span>'
+            +'<span style="font-size:14px;font-weight:800;color:'+(v.vo_type==='Omission'?'#dc2626':'#166534')+'">'+fmtETB2(v.amount_etb)+'</span>'
+          +'</div>'
+        +'</div>'
+        +(v.description?'<div style="font-size:11px;color:var(--muted);margin-top:4px">'+v.description+'</div>':'')
+        +'<div style="margin-top:6px;display:flex;gap:6px">'
+          +_hubBtn('✏ Edit','btn-secondary','editVariation',v.id)
+          +'<button data-id="'+v.id+'" data-proj="'+p.id+'" onclick="hubDeleteVariation(this.dataset.id,this.dataset.proj)" style="background:none;border:1px solid #fca5a5;border-radius:5px;cursor:pointer;color:#dc2626;font-size:11px;padding:3px 8px">✕</button>'
+        +'</div>'
+      +'</div>';
+    }).join(''):'<div style="padding:24px;text-align:center;color:var(--muted)">No variation orders yet.</div>');
+}
+
+async function renderHubDiary(p, wrap){
+  wrap.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted)">Loading...</div>';
+  const data = await engFetch('/eng_site_diary?project_id=eq.'+p.id+'&order=diary_date.desc&select=*');
+  const list = Array.isArray(data)?data:[];
+  const wIcons={'Sunny':'☀️','Light rain':'🌦','Heavy rain':'🌧','Overcast':'🌥','Stormy':'⛈','Dusty / windy':'💨','Extreme heat':'🌡','Partly cloudy':'⛅'};
+  wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+    +'<div><div style="font-size:14px;font-weight:700">Site Diary ('+list.length+' entries)</div>'
+    +'<div style="font-size:11px;color:var(--muted)">Daily records — weather, manpower, work done</div></div>'
+    +'<button data-proj="'+p.id+'" onclick="openDiaryFromHub(this.dataset.proj)" class="btn-primary" style="font-size:12px;padding:6px 14px">+ New Entry</button>'
+    +'</div>'
+    +(list.length?list.map(function(d){
+      const totalMP=(parseInt(d.manpower_skilled)||0)+(parseInt(d.manpower_unskilled)||0)+(parseInt(d.manpower_staff)||0);
+      return '<div class="pr-card" style="margin-bottom:8px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">'
+          +'<div style="font-size:13px;font-weight:700">'+d.diary_date+'</div>'
+          +'<div style="display:flex;gap:12px;font-size:11px;color:var(--muted)">'
+            +(wIcons[d.weather]||'🌡')+' '+(d.weather||'')
+            +(d.weather_disruption_hours>0?' · ⚠ '+d.weather_disruption_hours+'h':'')
+            +(totalMP>0?' · 👷 '+totalMP+' workers':'')
+          +'</div>'
+        +'</div>'
+        +(d.work_done?'<div style="font-size:12px;color:var(--ink2);margin-top:6px">'+d.work_done+'</div>':'')
+        +(d.issues?'<div style="font-size:11px;color:#dc2626;margin-top:3px">⚠ '+d.issues+'</div>':'')
+        +'<div style="margin-top:6px;display:flex;gap:6px">'
+          +_hubBtn('✏ Edit','btn-secondary','editDiary',d.id)
+          +'<button data-id="'+d.id+'" data-proj="'+p.id+'" onclick="hubDeleteDiary(this.dataset.id,this.dataset.proj)" style="background:none;border:1px solid #fca5a5;border-radius:5px;cursor:pointer;color:#dc2626;font-size:11px;padding:3px 8px">✕</button>'
+        +'</div>'
+      +'</div>';
+    }).join(''):'<div style="padding:24px;text-align:center;color:var(--muted)">No diary entries yet.</div>');
+}
+
+async function renderHubDocuments(p, wrap){
+  wrap.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted)">Loading...</div>';
+  const data = await engFetch('/eng_documents?project_id=eq.'+p.id+'&order=created_at.desc&select=*');
+  const list = Array.isArray(data)?data:[];
+  const statusClr={pending:'#f59e0b',approved:'#10b981',approved_with_comments:'#3b82f6',rejected:'#dc2626'};
+  wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+    +'<div style="font-size:14px;font-weight:700">Document Register ('+list.length+')</div>'
+    +'<button data-proj="'+p.id+'" onclick="openDocFromHub(this.dataset.proj)" class="btn-primary" style="font-size:12px;padding:6px 14px">+ Register Doc</button>'
+    +'</div>'
+    +(list.length?'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg);font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">'
+    +'<th style="padding:6px 8px;text-align:left">Doc No.</th><th style="padding:6px 8px;text-align:left">Title</th><th style="padding:6px 8px">Type</th><th style="padding:6px 8px">Rev</th><th style="padding:6px 8px">Submitted</th><th style="padding:6px 8px">Status</th><th style="padding:6px 8px"></th>'
+    +'</tr></thead><tbody>'
+    +list.map(function(d,i){
+      return '<tr style="border-bottom:1px solid var(--border2)'+(i%2===0?'':';background:var(--bg)')+'"><td style="padding:6px 8px;color:var(--muted)">'+(d.doc_no||'—')+'</td><td style="padding:6px 8px;font-weight:600">'+d.title+'</td><td style="padding:6px 8px;text-align:center"><span style="font-size:10px;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:1px 6px">'+d.doc_type+'</span></td><td style="padding:6px 8px;text-align:center">'+(d.revision||'A')+'</td><td style="padding:6px 8px;color:var(--muted)">'+(d.submitted_date||'—')+'</td><td style="padding:6px 8px;text-align:center"><span style="background:'+(statusClr[d.status]||'#94a3b8')+';color:#fff;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700">'+d.status.replace('_',' ')+'</span></td>'
+      +'<td style="padding:6px 8px;white-space:nowrap">'+_hubBtn('✏','btn-secondary','editDoc',d.id)+' <button data-id="'+d.id+'" data-proj="'+p.id+'" onclick="hubDeleteDoc(this.dataset.id,this.dataset.proj)" style="background:none;border:1px solid #fca5a5;border-radius:5px;cursor:pointer;color:#dc2626;font-size:10px;padding:2px 7px">✕</button></td></tr>';
+    }).join('')+'</tbody></table></div>'
+    :'<div style="padding:24px;text-align:center;color:var(--muted)">No documents registered yet.</div>');
+}
+
+async function renderHubStaff(p, wrap){
+  wrap.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted)">Loading...</div>';
+  const data = await engFetch('/eng_staff?project_id=eq.'+p.id+'&order=full_name&select=*');
+  const list = Array.isArray(data)?data:[];
+  const active=list.filter(function(s){return s.status==='active';}).length;
+  wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+    +'<div style="font-size:14px;font-weight:700">Staff Register ('+list.length+' · '+active+' active)</div>'
+    +'<button data-proj="'+p.id+'" onclick="openStaffFromHub(this.dataset.proj)" class="btn-primary" style="font-size:12px;padding:6px 14px">+ Add Staff</button>'
+    +'</div>'
+    +(list.length?'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg);font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase"><th style="padding:6px 8px;text-align:left">Name</th><th style="padding:6px 8px;text-align:left">Position</th><th style="padding:6px 8px">Category</th><th style="padding:6px 8px;text-align:right">Salary</th><th style="padding:6px 8px">TIN</th><th style="padding:6px 8px">Status</th><th style="padding:6px 8px"></th></tr></thead><tbody>'
+    +list.map(function(s,i){
+      return '<tr style="border-bottom:1px solid var(--border2)'+(i%2===0?'':';background:var(--bg)')+'"><td style="padding:6px 8px;font-weight:600">'+s.full_name+'</td><td style="padding:6px 8px;color:var(--muted)">'+(s.position||'—')+'</td><td style="padding:6px 8px;text-align:center"><span style="font-size:10px;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:1px 6px">'+s.category+'</span></td><td style="padding:6px 8px;text-align:right">'+(s.salary_etb>0?fmtETB2(s.salary_etb):'—')+'</td><td style="padding:6px 8px;color:var(--muted);font-size:10px">'+(s.tin_no||'—')+'</td><td style="padding:6px 8px;text-align:center"><span style="color:'+(s.status==='active'?'#10b981':'#94a3b8')+';font-weight:700;font-size:11px">'+s.status+'</span></td><td style="padding:6px 8px;white-space:nowrap">'+_hubBtn('✏','btn-secondary','editStaff',s.id)+' <button data-id="'+s.id+'" data-proj="'+p.id+'" onclick="hubDeleteStaff(this.dataset.id,this.dataset.proj)" style="background:none;border:1px solid #fca5a5;border-radius:5px;cursor:pointer;color:#dc2626;font-size:10px;padding:2px 7px">✕</button></td></tr>';
+    }).join('')+'</tbody></table></div>'
+    :'<div style="padding:24px;text-align:center;color:var(--muted)">No staff records yet.</div>');
+}
+
+async function renderHubEquipment(p, wrap){
+  wrap.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted)">Loading...</div>';
+  const data = await engFetch('/eng_equipment?project_id=eq.'+p.id+'&order=description&select=*');
+  const list = Array.isArray(data)?data:[];
+  const active=list.filter(function(e){return e.status==='active';}).length;
+  const statusClr={active:'#10b981',idle:'#f59e0b',demobilized:'#94a3b8'};
+  wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+    +'<div style="font-size:14px;font-weight:700">Equipment Register ('+list.length+' · '+active+' on site)</div>'
+    +'<button data-proj="'+p.id+'" onclick="openEquipFromHub(this.dataset.proj)" class="btn-primary" style="font-size:12px;padding:6px 14px">+ Add Equipment</button>'
+    +'</div>'
+    +(list.length?list.map(function(e){
+      return '<div class="pr-card" style="margin-bottom:8px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px">'
+          +'<div><div style="font-size:13px;font-weight:700">🚛 '+e.description+(e.equipment_no?' <span style="color:var(--muted);font-weight:400">['+e.equipment_no+']</span>':'')+'</div>'
+          +'<div style="font-size:11px;color:var(--muted)">'+e.type+(e.make_model?' · '+e.make_model:'')+(e.owner?' · '+e.owner:'')+(e.daily_rate>0?' · '+fmtETB2(e.daily_rate)+'/day':'')+'</div></div>'
+          +'<span style="background:'+(statusClr[e.status]||'#94a3b8')+';color:#fff;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700">'+e.status+'</span>'
+        +'</div>'
+        +'<div style="margin-top:6px;display:flex;gap:6px">'
+          +_hubBtn('✏ Edit','btn-secondary','editEquip',e.id)
+          +'<button data-id="'+e.id+'" data-proj="'+p.id+'" onclick="hubDeleteEquip(this.dataset.id,this.dataset.proj)" style="background:none;border:1px solid #fca5a5;border-radius:5px;cursor:pointer;color:#dc2626;font-size:11px;padding:3px 8px">✕</button>'
+        +'</div>'
+      +'</div>';
+    }).join(''):'<div style="padding:24px;text-align:center;color:var(--muted)">No equipment records yet.</div>');
+}
+
+
+
+// Hub-context openers (pre-fill project)
+function openIPCFromHub(projId){ window._hubProjectId=projId; openIPCModal(); }
+function openVarFromHub(projId){ window._hubProjectId=projId; openVariationModal(); }
+function openDiaryFromHub(projId){
+  const sel=document.getElementById('diaryProjSel')||null;
+  window._hubDiaryProj=projId; openDiaryModal();
+  setTimeout(function(){ const el=document.getElementById('diaryProj'); if(el) el.value=projId; },100);
+}
+function openDocFromHub(projId){
+  window._hubDocProj=projId; openDocModal();
+  setTimeout(function(){ const el=document.getElementById('docProj'); if(el) el.value=projId; },100);
+}
+function openStaffFromHub(projId){
+  window._hubStaffProj=projId; openStaffModal();
+  setTimeout(function(){ const el=document.getElementById('staffProj'); if(el) el.value=projId; },100);
+}
+function openEquipFromHub(projId){
+  window._hubEquipProj=projId; openEquipModal();
+  setTimeout(function(){ const el=document.getElementById('equipProj'); if(el) el.value=projId; },100);
+}
+
+// Hub-context deleters (refresh tab after delete)
+async function hubDeleteIPC(id,projId){ if(!confirm('Delete this IPC?')) return; await engFetch('/eng_ipc?id=eq.'+id,'DELETE'); await renderHubIPC({id:projId}, document.getElementById('projectDetailContent')); }
+async function hubDeleteVariation(id,projId){ if(!confirm('Delete?')) return; await engFetch('/eng_variations?id=eq.'+id,'DELETE'); await renderHubVariations({id:projId}, document.getElementById('projectDetailContent')); }
+async function hubDeleteDiary(id,projId){ if(!confirm('Delete?')) return; await engFetch('/eng_site_diary?id=eq.'+id,'DELETE'); await renderHubDiary({id:projId}, document.getElementById('projectDetailContent')); }
+async function hubDeleteDoc(id,projId){ if(!confirm('Delete?')) return; await engFetch('/eng_documents?id=eq.'+id,'DELETE'); await renderHubDocuments({id:projId}, document.getElementById('projectDetailContent')); }
+async function hubDeleteStaff(id,projId){ if(!confirm('Delete?')) return; await engFetch('/eng_staff?id=eq.'+id,'DELETE'); await renderHubStaff({id:projId}, document.getElementById('projectDetailContent')); }
+async function hubDeleteEquip(id,projId){ if(!confirm('Delete?')) return; await engFetch('/eng_equipment?id=eq.'+id,'DELETE'); await renderHubEquipment({id:projId}, document.getElementById('projectDetailContent')); }
+
 function closeProjectDetail(){ document.getElementById('projectDetailModal').style.display='none'; }
 
 // ── CONTRACT MANAGEMENT ───────────────
