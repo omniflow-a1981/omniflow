@@ -3945,68 +3945,49 @@ function hideAddCoForm(){document.getElementById('addCoForm').classList.remove('
 // accessible from any device that logs in
 
 async function saveCompaniesToCloud(){
-  // Step 1: Always save to localStorage immediately (never fails)
+  // Always save locally first (instant backup)
   try{ localStorage.setItem('omni-companies', JSON.stringify(companies)); }catch(e){}
-  // Step 2: Save to Supabase using the transactions table (correct schema)
-  // ref='__companies_v1__' is our identifier — delete old then insert fresh
+  const ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE';
+  const H = {'apikey':ANON,'Authorization':'Bearer '+ANON,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const statusEl = document.getElementById('coCloudStatus');
   try{
     const json = JSON.stringify(companies);
-    const H = {
-      'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
-      'Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE',
-      'Content-Type':'application/json',
-      'Prefer':'return=minimal'
-    };
-    // Delete previous config row (ignore errors)
-    await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?ref=eq.__companies_v1__',
-      {method:'DELETE', headers:H}).catch(function(){});
-    // Insert with correct schema matching the actual transactions table
-    const body = {
-      date: new Date().toISOString().slice(0,10),
-      ref: '__companies_v1__',
-      note: json,
-      div_code: '__config__',
-      div_name: 'Config',
-      company_id: 'SYS',
-      type: 'in',
-      amt: 0,
-      amt_usd: null
-    };
-    const postRes = await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions',
-      {method:'POST', headers:H, body:JSON.stringify(body)});
-    const statusEl = document.getElementById('coCloudStatus');
-    if(postRes.ok || postRes.status===201){
-      console.log('[OmniFlow] ✓ Companies saved to cloud');
-      if(statusEl){statusEl.textContent='✓ Saved to cloud '+new Date().toLocaleTimeString();statusEl.style.color='var(--teal-dark)';}
+    // PATCH the note field on the WE1 balances row (guaranteed to exist)
+    // This is identical to how passwords are stored — safe and reliable
+    const res = await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/balances?div_code=eq.WE1',{
+      method:'PATCH', headers:H,
+      body: JSON.stringify({note: json})
+    });
+    if(res.ok||res.status===204||res.status===200){
+      console.log('[OmniFlow] ✓ Companies saved to cloud via balances.WE1.note');
+      if(statusEl){statusEl.textContent='✓ Saved '+new Date().toLocaleTimeString();statusEl.style.color='#166534';}
     } else {
-      const errText = await postRes.text();
-      console.warn('[OmniFlow] Companies cloud save failed:',postRes.status,errText);
-      if(statusEl){statusEl.textContent='⚠ Cloud save failed';statusEl.style.color='#dc2626';}
+      const err = await res.text().catch(function(){return String(res.status);});
+      console.warn('[OmniFlow] balances PATCH failed:',res.status,err);
+      if(statusEl){statusEl.textContent='⚠ Save failed ('+res.status+')';statusEl.style.color='#dc2626';}
     }
   }catch(e){
     console.warn('[OmniFlow] saveCompaniesToCloud error:',e.message);
+    if(statusEl){statusEl.textContent='⚠ Network error';statusEl.style.color='#dc2626';}
   }
 }
 
 async function loadCompaniesFromCloud(){
+  const ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE';
   try{
-    const res = await fetch(
-      'https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?ref=eq.__companies_v1__&select=note&limit=1',
-      {headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE'}}
-    );
-    if(!res.ok){console.warn('[OmniFlow] loadCompaniesFromCloud:',res.status);return null;}
+    const res = await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/balances?div_code=eq.WE1&select=note',
+      {headers:{'apikey':ANON,'Authorization':'Bearer '+ANON}});
+    if(!res.ok) return null;
     const data = await res.json();
     if(Array.isArray(data)&&data.length&&data[0].note){
-      const parsed = JSON.parse(data[0].note);
-      if(Array.isArray(parsed)&&parsed.length){
-        console.log('[OmniFlow] ✓ Companies loaded from cloud (',parsed.length,'companies)');
-        return parsed;
-      }
+      try{
+        const parsed = JSON.parse(data[0].note);
+        if(Array.isArray(parsed)&&parsed.length) return parsed;
+      }catch(e){}
     }
-  }catch(e){console.warn('[OmniFlow] loadCompaniesFromCloud error:',e.message);}
+  }catch(e){console.warn('[OmniFlow] loadCompaniesFromCloud:',e.message);}
   return null;
 }
-
 
 async function manualBackupCompanies(){
   const btn = event?.target || document.querySelector('[onclick="manualBackupCompanies()"]');
