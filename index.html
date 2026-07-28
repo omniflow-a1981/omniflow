@@ -1810,21 +1810,36 @@ const DEFAULT_PASSWORDS = {
   admin:'omni2024', finance:'finance123',
   wanofi:'wanofi123', matisan:'matisan123',
   we_prepare:'we123', we_check:'we123', we_approve:'we123', we_finance:'wefinance123',
-  me_prepare:'me123', me_check:'me123', me_approve:'me123', me_finance:'mefinance123'
+  me_prepare:'me123', me_check:'me123', me_approve:'me123', me_finance:'mefinance123',
+  eng_admin:'eng123', eng_manager:'eng123',
+  re_we1:'re123', re_we2:'re123', re_we3:'re123',
+  re_me1:'re123', re_me2:'re123', re_me3:'re123'
 };
 const USER_DEFS = [
-  {username:'admin',      role:'admin',      displayRole:'Administrator',   initials:'AD', accessLevel:'full',    company:null, prRole:null},
-  {username:'finance',    role:'finance',    displayRole:'Finance Officer',       initials:'BA', accessLevel:'full',    company:null, prRole:'paid',   realName:'Blen Abera'},
-  {username:'we_finance', role:'finance',    displayRole:'Wanofi Finance Officer',  initials:'BA', accessLevel:'pr_only', company:'WE',  prRole:null,   realName:'WE-Anani'},
-  {username:'me_finance', role:'finance',    displayRole:'Matisan Finance Officer', initials:'BA', accessLevel:'pr_only', company:'ME',  prRole:null,   realName:'ME-Anani'},
-  {username:'wanofi',     role:'limited',    displayRole:'Wanofi Manager',  initials:'WE', accessLevel:'limited', company:'WE', prRole:null},
-  {username:'matisan',    role:'limited',    displayRole:'Matisan Manager', initials:'ME', accessLevel:'limited', company:'ME', prRole:null},
-  {username:'we_prepare', role:'pr_prepare', displayRole:'WE Preparer',    initials:'HT', accessLevel:'pr_only', company:'WE', prRole:'prepare', realName:'Hareg Tesfaye'},
-  {username:'we_check',   role:'pr_check',   displayRole:'WE Checker',     initials:'TT', accessLevel:'pr_only', company:'WE', prRole:'check',   realName:'Tamrat Tilahun'},
-  {username:'we_approve', role:'pr_approve', displayRole:'WE Approver',    initials:'AF', accessLevel:'pr_only', company:'WE', prRole:'approve', realName:'Ashenafi Fufa'},
-  {username:'me_prepare', role:'pr_prepare', displayRole:'ME Preparer',    initials:'MG', accessLevel:'pr_only', company:'ME', prRole:'prepare', realName:'Meadnesh Gebeyehu'},
-  {username:'me_check',   role:'pr_check',   displayRole:'ME Checker',     initials:'AM', accessLevel:'pr_out',  company:'ME', prRole:'check',   realName:'Askale Melese'},
-  {username:'me_approve', role:'pr_approve', displayRole:'ME Approver',    initials:'TT', accessLevel:'pr_out',  company:'ME', prRole:'approve', realName:'Tamrat Tilahun'},
+  {username:'admin',      role:'admin',      displayRole:'Administrator',        initials:'AD', accessLevel:'full',       company:null, division:null, prRole:null},
+  {username:'finance',    role:'finance',    displayRole:'Finance Officer',      initials:'BA', accessLevel:'full',       company:null, division:null, prRole:'paid',   realName:'Blen Abera'},
+  {username:'we_finance', role:'finance',    displayRole:'Wanofi Finance',       initials:'BA', accessLevel:'pr_only',    company:'WE', division:null, prRole:null,     realName:'WE-Finance'},
+  {username:'me_finance', role:'finance',    displayRole:'Matisan Finance',      initials:'BA', accessLevel:'pr_only',    company:'ME', division:null, prRole:null,     realName:'ME-Finance'},
+  {username:'wanofi',     role:'limited',    displayRole:'Wanofi Manager',       initials:'WE', accessLevel:'limited',    company:'WE', division:null, prRole:null},
+  {username:'matisan',    role:'limited',    displayRole:'Matisan Manager',      initials:'ME', accessLevel:'limited',    company:'ME', division:null, prRole:null},
+  {username:'we_prepare', role:'pr_prepare', displayRole:'WE Preparer',         initials:'HT', accessLevel:'pr_only',    company:'WE', division:null, prRole:'prepare', realName:'Hareg Tesfaye'},
+  {username:'we_check',   role:'pr_check',   displayRole:'WE Checker',          initials:'TT', accessLevel:'pr_only',    company:'WE', division:null, prRole:'check',   realName:'Tamrat Tilahun'},
+  {username:'we_approve', role:'pr_approve', displayRole:'WE Approver',         initials:'AF', accessLevel:'pr_only',    company:'WE', division:null, prRole:'approve', realName:'Ashenafi Fufa'},
+  {username:'me_prepare', role:'pr_prepare', displayRole:'ME Preparer',         initials:'MG', accessLevel:'pr_only',    company:'ME', division:null, prRole:'prepare', realName:'Meadnesh Gebeyehu'},
+  {username:'me_check',   role:'pr_check',   displayRole:'ME Checker',          initials:'AM', accessLevel:'pr_out',     company:'ME', division:null, prRole:'check',   realName:'Askale Melese'},
+  {username:'me_approve', role:'pr_approve', displayRole:'ME Approver',         initials:'TT', accessLevel:'pr_out',     company:'ME', division:null, prRole:'approve', realName:'Tamrat Tilahun'},
+  // ── ENGINEERING ROLES ──────────────────────────────────────────────────────
+  // Engineering Admin — full engineering access, all companies/divisions
+  {username:'eng_admin',  role:'eng_admin',  displayRole:'Engineering Admin',    initials:'EA', accessLevel:'eng_admin',  company:null, division:null, prRole:null},
+  // Engineering Manager — all engineering, read-only, all divisions
+  {username:'eng_manager',role:'eng_manager',displayRole:'Engineering Manager',  initials:'EM', accessLevel:'eng_manager',company:null, division:null, prRole:null},
+  // Resident Engineers — restricted to their division only
+  {username:'re_we1',     role:'re',         displayRole:'RE — WE1 Design',      initials:'R1', accessLevel:'re',         company:'WE', division:'WE1',prRole:null},
+  {username:'re_we2',     role:'re',         displayRole:'RE — WE2 Supervision', initials:'R2', accessLevel:'re',         company:'WE', division:'WE2',prRole:null},
+  {username:'re_we3',     role:'re',         displayRole:'RE — WE3',             initials:'R3', accessLevel:'re',         company:'WE', division:'WE3',prRole:null},
+  {username:'re_me1',     role:'re',         displayRole:'RE — ME1 Construction',initials:'R4', accessLevel:'re',         company:'ME', division:'ME1',prRole:null},
+  {username:'re_me2',     role:'re',         displayRole:'RE — ME2',             initials:'R5', accessLevel:'re',         company:'ME', division:'ME2',prRole:null},
+  {username:'re_me3',     role:'re',         displayRole:'RE — ME3',             initials:'R6', accessLevel:'re',         company:'ME', division:'ME3',prRole:null},
 ];
 
 // Limited users: only Entry + Ledger, only today and yesterday
@@ -1838,6 +1853,39 @@ function getUsers(){
 }
 function isLimitedUser(){return currentUser&&currentUser.accessLevel==='limited';}
 function isAdmin(){return currentUser&&currentUser.username==='admin';}
+function isEngAdmin(){return currentUser&&currentUser.accessLevel==='eng_admin';}
+function isEngManager(){return currentUser&&currentUser.accessLevel==='eng_manager';}
+function isRE(){return currentUser&&currentUser.accessLevel==='re';}
+function isEngUser(){return currentUser&&['eng_admin','eng_manager','re'].includes(currentUser.accessLevel);}
+function engUserDivision(){return currentUser?currentUser.division:null;}
+function engUserCompany(){return currentUser?currentUser.company:null;}
+// Check if a project is accessible to the current engineering user
+
+// Hide action buttons for RE users (read-only for certain actions)
+function applyEngAccessRestrictions(){
+  if(!isEngUser()) return;
+  if(isRE()){
+    // RE: can add progress reports and 6 modules, but cannot edit projects/contracts
+    const hideSelectors = [
+      '#pgEngProjects .btn-primary', // new project button
+      '#pgEngContracts .btn-primary', // new contract button
+    ];
+    hideSelectors.forEach(function(sel){
+      document.querySelectorAll(sel).forEach(function(el){el.style.display='none';});
+    });
+  }
+}
+
+function canAccessProject(proj){
+  if(!isEngUser()) return true; // non-eng users: no restriction
+  const cu = currentUser;
+  if(cu.accessLevel==='eng_admin'||cu.accessLevel==='eng_manager') return true;
+  if(cu.accessLevel==='re'){
+    // RE can only see their division
+    return proj.division_code === cu.division;
+  }
+  return true;
+}
 // For limited users: allowed date window = today and yesterday
 function getAllowedDateRange(){
   const today=new Date(); today.setHours(0,0,0,0);
@@ -2116,10 +2164,13 @@ function initLogin(){
   const chips=document.getElementById('userChips');chips.innerHTML='';
   const tl=ls('omni-team-labels')||{};
   const groups=[
-    {label:'System',users:USER_DEFS.filter(function(u){return !u.company&&u.role!=='finance';})},
+    {label:'System',users:USER_DEFS.filter(function(u){return !u.company&&u.role!=='finance'&&!['eng_admin','eng_manager'].includes(u.role);})},
     {label:'Finance',users:USER_DEFS.filter(function(u){return u.role==='finance';})},
     {label:tl.WE||'Wanofi PR Team',users:USER_DEFS.filter(function(u){return u.company==='WE'&&u.prRole;})},
     {label:tl.ME||'Matisan PR Team',users:USER_DEFS.filter(function(u){return u.company==='ME'&&u.prRole;})},
+    {label:'Engineering Management',users:USER_DEFS.filter(function(u){return ['eng_admin','eng_manager'].includes(u.role);})},
+    {label:'Resident Engineers — WE',users:USER_DEFS.filter(function(u){return u.role==='re'&&u.company==='WE';})},
+    {label:'Resident Engineers — ME',users:USER_DEFS.filter(function(u){return u.role==='re'&&u.company==='ME';})},
   ];
   groups.forEach(function(grp){
     if(!grp.users.length)return;
@@ -2350,6 +2401,50 @@ function applyAccessLevel(){
     document.getElementById('limitedBanner').style.display='none';
     document.getElementById('adminNav').style.display='none';
     if(prNav2) nav('PayReq',prNav2);
+  } else if(currentUser && isEngUser()){
+    // ── ENGINEERING ROLES: eng_admin, eng_manager, re ──────────────────────
+    // Hide ALL nav items first
+    allNavItems.forEach(function(item){item.style.display='none';});
+    document.getElementById('limitedBanner').style.display='none';
+    document.getElementById('adminNav').style.display='none';
+
+    // Engineering nav items always visible
+    const engNavIds = ['engProjectsNav','engContractsNav','engProgressNav','signoutNav'];
+    engNavIds.forEach(function(id){
+      const el=document.getElementById(id); if(el) el.style.display='flex';
+    });
+
+    // Engineering Admin — also gets Admin Settings and all company views
+    if(isEngAdmin()){
+      document.getElementById('adminNav').style.display='flex';
+    }
+
+    // Show sidebar sections labels
+    document.querySelectorAll('.sb-sec').forEach(function(sec){
+      sec.style.display = sec.textContent.trim()==='ENGINEERING' ? 'block' : 'none';
+    });
+
+    // Show user info
+    const soNav3=document.getElementById('signoutNav');
+    if(soNav3) soNav3.style.display='flex';
+
+    // Navigate to Project Tracking as default
+    const ptNav=document.getElementById('engProjectsNav');
+    if(ptNav) nav('EngProjects', ptNav);
+
+    // Add division badge to sidebar for RE users
+    if(isRE() && currentUser.division){
+      let badge = document.getElementById('reDivBadge');
+      if(!badge){
+        badge = document.createElement('div');
+        badge.id = 'reDivBadge';
+        badge.style.cssText = 'background:var(--teal-dark);color:#fff;font-size:11px;font-weight:700;padding:6px 14px;margin:8px 14px;border-radius:8px;text-align:center';
+        const sidebarUser = document.querySelector('.sb-user');
+        if(sidebarUser) sidebarUser.parentNode.insertBefore(badge, sidebarUser.nextSibling);
+      }
+      badge.textContent = '📍 '+currentUser.division+' — '+currentUser.displayRole;
+    }
+
   } else {
     allNavItems.forEach(item=>item.style.display='');
     document.getElementById('limitedBanner').style.display='none';
@@ -4276,7 +4371,7 @@ function renderCompanies(){
 
 
 function renderAdminSettings(){
-  if(!isAdmin()){document.getElementById('pgAdminSettings').innerHTML='<div style="padding:40px;text-align:center;color:var(--muted2)">Admin access only.</div>';return;}
+  if(!isAdmin()&&!isEngAdmin()){document.getElementById('pgAdminSettings').innerHTML='<div style="padding:40px;text-align:center;color:var(--muted2)">Admin access only.</div>';return;}
   const pw=getPasswords();
   const grid=document.getElementById('pwGrid');
   grid.innerHTML='';
@@ -6684,7 +6779,9 @@ function renderEngProjects(){
   const div = document.getElementById('epfDivision')?.value||'';
   const st = document.getElementById('epfStatus')?.value||'';
   const q = (document.getElementById('epfSearch')?.value||'').toLowerCase();
+  const _reDivF = isRE()?engUserDivision():null;
   let list = engProjects.filter(p=>{
+    if(_reDivF && p.division_code!==_reDivF) return false;
     if(co && p.company_id!==co) return false;
     if(div && p.division_code!==div) return false;
     if(st && p.status!==st) return false;
@@ -7293,7 +7390,9 @@ function renderEngContracts(){
   const co = document.getElementById('ecfCompany')?.value||'';
   const st = document.getElementById('ecfStatus')?.value||'';
   const q = (document.getElementById('ecfSearch')?.value||'').toLowerCase();
+  const _reDivF2 = isRE()?engUserDivision():null;
   let list = engContracts.filter(function(c){
+    if(_reDivF2 && c.division_code!==_reDivF2) return false;
     if(co && c.company_id!==co) return false;
     if(st && c.status!==st) return false;
     if(q && !((c.contract_title||'').toLowerCase().includes(q)||(c.client||'').toLowerCase().includes(q))) return false;
@@ -7525,7 +7624,12 @@ function renderEngProgress(){
   const wrap = document.getElementById('engProgressGrid'); if(!wrap) return;
   const projFilter = document.getElementById('eprfProject')?.value||'';
   const q = (document.getElementById('eprfSearch')?.value||'').toLowerCase();
+  const _reDivF3 = isRE()?engUserDivision():null;
   let list = engProgressReports.filter(function(r){
+    if(_reDivF3){
+      const _rp=engProjects.find(function(p){return p.id===r.project_id;});
+      if(!_rp||_rp.division_code!==_reDivF3) return false;
+    }
     if(projFilter && r.project_id!==projFilter) return false;
     if(q){
       const proj = engProjects.find(function(p){return p.id===r.project_id;});
@@ -8979,7 +9083,8 @@ function populateProgressProjectDropdown(){
   const curVal = sel.value;
   sel.innerHTML = '<option value="">— Select project —</option>';
   const grouped = {};
-  engProjects.forEach(function(p){ const k=p.division_code; if(!grouped[k]) grouped[k]=[]; grouped[k].push(p); });
+  const _reDiv4 = isRE()?engUserDivision():null;
+  engProjects.filter(function(p){return !_reDiv4||p.division_code===_reDiv4;}).forEach(function(p){ const k=p.division_code; if(!grouped[k]) grouped[k]=[]; grouped[k].push(p); });
   Object.keys(grouped).sort().forEach(function(divCode){
     const grp = document.createElement('optgroup'); grp.label = divCode;
     grouped[divCode].forEach(function(p){
@@ -10251,7 +10356,8 @@ function populateProgressProjectFilter(){
   const cur = sel.value;
   sel.innerHTML = '<option value="">All Projects</option>';
   const grouped = {};
-  engProjects.forEach(function(p){ const k=p.division_code; if(!grouped[k]) grouped[k]=[]; grouped[k].push(p); });
+  const _reDiv4 = isRE()?engUserDivision():null;
+  engProjects.filter(function(p){return !_reDiv4||p.division_code===_reDiv4;}).forEach(function(p){ const k=p.division_code; if(!grouped[k]) grouped[k]=[]; grouped[k].push(p); });
   Object.keys(grouped).sort().forEach(function(divCode){
     const grp = document.createElement('optgroup'); grp.label = divCode;
     grouped[divCode].forEach(function(p){
