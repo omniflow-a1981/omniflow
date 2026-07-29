@@ -4039,31 +4039,25 @@ async function saveCompaniesToCloud(){
   try{ localStorage.setItem('omni-companies', JSON.stringify(companies)); }catch(e){}
   const ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE';
   const BASE='https://carcospsxvrmvkxhdyym.supabase.co/rest/v1';
-  const H={'apikey':ANON,'Authorization':'Bearer '+ANON,'Content-Type':'application/json','Prefer':'return=minimal'};
+  // Single atomic upsert on the div_code unique key — no more PATCH-then-guess-if-I-should-INSERT,
+  // which was the source of the 23505 duplicate-key errors (PATCH always returns an empty body
+  // with Prefer:return=minimal, even on success, so the old code wrongly assumed the row was
+  // missing and tried to INSERT a second copy every time).
+  const H={'apikey':ANON,'Authorization':'Bearer '+ANON,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'};
   const statusEl=document.getElementById('coCloudStatus');
   try{
     const json=JSON.stringify(companies);
-    // Try to update existing row first
-    const pr=await fetch(BASE+'/balances?div_code=eq.__co__',{method:'PATCH',headers:H,body:JSON.stringify({note:json})});
-    if(pr.status===404||pr.status===400){throw new Error('PATCH failed '+pr.status);}
-    const prText=await pr.text().catch(function(){return '';});
-    // Empty response or empty array means row didn't exist — insert it
-    if(prText===''||prText==='[]'||prText==='null'||!prText){
-      const po=await fetch(BASE+'/balances',{
-        method:'POST',headers:H,
-        body:JSON.stringify({div_code:'__co__',opening_etb:0,opening_usd:0,note:json})
-      });
-      if(po.ok||po.status===201||po.status===200){
-        if(statusEl){statusEl.textContent='✓ Saved '+new Date().toLocaleTimeString();statusEl.style.color='#166534';}
-        console.log('[OmniFlow] ✓ Companies saved (new row)');
-      } else {
-        const poErr=await po.text().catch(function(){return po.status;});
-        console.error('[OmniFlow] POST failed:',po.status,poErr);
-        if(statusEl){statusEl.textContent='⚠ ('+po.status+') '+poErr.slice(0,40);statusEl.style.color='#dc2626';}
-      }
+    const res=await fetch(BASE+'/balances?on_conflict=div_code',{
+      method:'POST',headers:H,
+      body:JSON.stringify({div_code:'__co__',opening_etb:0,opening_usd:0,note:json})
+    });
+    if(res.ok||res.status===201||res.status===204){
+      if(statusEl){statusEl.textContent='✓ Saved '+new Date().toLocaleTimeString();statusEl.style.color='#166534';}
+      console.log('[OmniFlow] ✓ Companies saved (upsert)');
     } else {
-      if(statusEl){statusEl.textContent='✓ Saved '+new Date().toLocaleTimeString();statusEl.style.color='#166634';}
-      console.log('[OmniFlow] ✓ Companies updated');
+      const errText=await res.text().catch(function(){return res.status;});
+      console.error('[OmniFlow] Upsert failed:',res.status,errText);
+      if(statusEl){statusEl.textContent='⚠ ('+res.status+') '+String(errText).slice(0,40);statusEl.style.color='#dc2626';}
     }
   }catch(e){
     console.error('[OmniFlow] saveCompanies error:',e.message);
