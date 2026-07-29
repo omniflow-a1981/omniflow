@@ -1730,7 +1730,7 @@ async function apiCall(method, path, body=null, skipQueue=false){
   // Direct Supabase REST
   const hdrs={'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'return=representation'};
   const pathMap={
-    'GET /transactions': SUPA_URL+'/transactions?select=id,date,ref,note,div_code,type,etb_in,etb_out,usd_in,usd_out,bank_account,created_at&order=date.desc,created_at.desc',
+    'GET /transactions': SUPA_URL+'/transactions?select=id,date,company_id,div_code,div_name,type,amt,amt_usd,ref,note,created_at&order=date.desc,created_at.desc&ref=not.like.__*__',
     'GET /balances': SUPA_URL+'/balances?select=*&order=div_code',
     'GET /outstanding': SUPA_URL+'/outstanding?select=*&order=amt.desc',
     'GET /companies': SUPA_URL+'/companies?select=*,divisions(*)',
@@ -1778,13 +1778,13 @@ function startRealtime(){
     if(Date.now() - lastPRPaymentTime < 30000) return; // Pause after PR payment
     try {
       const res = await fetch(
-        "https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?select=id,date,ref,note,div_code,type,etb_in,etb_out,usd_in,usd_out,bank_account,created_at&order=date.desc,created_at.desc",
+        "https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?select=id,date,company_id,div_code,div_name,type,amt,amt_usd,ref,note,created_at&order=date.desc,created_at.desc&ref=not.like.__*__",
         {headers:{"apikey":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE"}}
       );
       if(!res.ok) return;
       const fresh = await res.json();
       if(!Array.isArray(fresh)) return;
-      const mapped = fresh.map(mapTxRow);
+      const mapped = fresh.map(mapTxRow).filter(function(t){return t!==null;});
       // Check if anything changed (count or IDs or amounts)
       const sig = t => String(t.id)+':'+t.amt;
       if(mapped.length !== transactions.length ||
@@ -2485,7 +2485,7 @@ async function initApp(){
     ]);
     
     // Map cloud data to app state
-    transactions = Array.isArray(txData) ? txData.map(mapTxRow) : ls('omni-tx')||[];
+    transactions = Array.isArray(txData) ? txData.map(mapTxRow).filter(function(t){return t!==null;}) : ls('omni-tx')||[];
 
     balances = {};
     if(Array.isArray(balData)){
@@ -2768,23 +2768,19 @@ function getPRTransactions(){
 
 // Map raw Supabase transaction row → app transaction object
 function mapTxRow(t){
-  // Support both column styles: type+amt (old) or etb_in+etb_out (new)
-  let type = t.type;
-  let amt, amtUsd;
-  if(t.etb_in || t.etb_out){
-    type = (parseFloat(t.etb_in)||0) > 0 ? 'in' : 'out';
-    amt = parseFloat(t.etb_in)||parseFloat(t.etb_out)||0;
-    amtUsd = parseFloat(t.usd_in)||parseFloat(t.usd_out)||null;
-  } else {
-    amt = parseFloat(t.amt)||0;
-    amtUsd = t.amt_usd ? parseFloat(t.amt_usd) : null;
-  }
-  // divCode from div_code; co from company_id or derived from divCode
-  const divCode = t.div_code || t.divCode || '';
-  const co = t.company_id || t.co || (divCode.startsWith('WE')?'WE':divCode.startsWith('ME')?'ME':'');
-  const divName = t.div_name || t.divName || divCode;
-  return {id:t.id, date:t.date||'', co, divCode, divName, type:type||'in', amt, amtUsd,
-          ref:t.ref||'', note:t.note||'', bank_account:t.bank_account||''};
+  if(!t||!t.id) return null;
+  // Skip system/config rows
+  if(String(t.ref||'').startsWith('__')) return null;
+  if(String(t.div_code||'').startsWith('__')) return null;
+  // Use proven column names matching the working POST payload
+  const amt = parseFloat(t.amt)||0;
+  const amtUsd = t.amt_usd ? parseFloat(t.amt_usd) : null;
+  const type = (t.type==='in'||t.type==='out') ? t.type : 'in';
+  const divCode = t.div_code||'';
+  const co = t.company_id||(divCode.startsWith('WE')?'WE':divCode.startsWith('ME')?'ME':'');
+  const divName = t.div_name||divCode;
+  return {id:t.id, date:t.date||'', co, divCode, divName, type, amt, amtUsd,
+          ref:t.ref||'', note:t.note||''};
 }
 
 function getMergedTransactions(){
@@ -3069,7 +3065,7 @@ async function saveEdit(){
     await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/transactions?id=eq.'+id,{
       method:'PATCH',
       headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Content-Type':'application/json','Prefer':'return=representation'},
-      body:JSON.stringify({date:tx.date,company_id:tx.co,div_code:tx.divCode,div_name:tx.divName,type:tx.type,amt:tx.amt,amt_usd:tx.amtUsd||null,ref:tx.ref,note:tx.note})
+      body:JSON.stringify({date:tx.date,company_id:tx.co||'',div_code:tx.divCode||'',div_name:tx.divName||tx.divCode||'',type:tx.type,amt:parseFloat(tx.amt)||0,amt_usd:tx.amtUsd||null,ref:tx.ref||'',note:tx.note||'',bank_account:tx.bank_account||''})
     });
     showSync('ok','Updated in cloud ✓');
   }catch(e){ showSync('error','Saved locally — sync pending'); }
@@ -4040,47 +4036,53 @@ function hideAddCoForm(){document.getElementById('addCoForm').classList.remove('
 // accessible from any device that logs in
 
 async function saveCompaniesToCloud(){
-  // Always save locally first (instant backup)
   try{ localStorage.setItem('omni-companies', JSON.stringify(companies)); }catch(e){}
-  const ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE';
-  const H = {'apikey':ANON,'Authorization':'Bearer '+ANON,'Content-Type':'application/json','Prefer':'return=minimal'};
-  const statusEl = document.getElementById('coCloudStatus');
+  const ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE';
+  const BASE='https://carcospsxvrmvkxhdyym.supabase.co/rest/v1';
+  const H={'apikey':ANON,'Authorization':'Bearer '+ANON,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const statusEl=document.getElementById('coCloudStatus');
   try{
-    const json = JSON.stringify(companies);
-    // PATCH the note field on the WE1 balances row (guaranteed to exist)
-    // This is identical to how passwords are stored — safe and reliable
-    const res = await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/balances?div_code=eq.WE1',{
-      method:'PATCH', headers:H,
-      body: JSON.stringify({note: json})
-    });
-    if(res.ok||res.status===204||res.status===200){
-      console.log('[OmniFlow] ✓ Companies saved to cloud via balances.WE1.note');
-      if(statusEl){statusEl.textContent='✓ Saved '+new Date().toLocaleTimeString();statusEl.style.color='#166534';}
+    const json=JSON.stringify(companies);
+    // Try to update existing row first
+    const pr=await fetch(BASE+'/balances?div_code=eq.__co__',{method:'PATCH',headers:H,body:JSON.stringify({note:json})});
+    if(pr.status===404||pr.status===400){throw new Error('PATCH failed '+pr.status);}
+    const prText=await pr.text().catch(function(){return '';});
+    // Empty response or empty array means row didn't exist — insert it
+    if(prText===''||prText==='[]'||prText==='null'||!prText){
+      const po=await fetch(BASE+'/balances',{
+        method:'POST',headers:H,
+        body:JSON.stringify({div_code:'__co__',opening_etb:0,opening_usd:0,note:json})
+      });
+      if(po.ok||po.status===201||po.status===200){
+        if(statusEl){statusEl.textContent='✓ Saved '+new Date().toLocaleTimeString();statusEl.style.color='#166534';}
+        console.log('[OmniFlow] ✓ Companies saved (new row)');
+      } else {
+        const poErr=await po.text().catch(function(){return po.status;});
+        console.error('[OmniFlow] POST failed:',po.status,poErr);
+        if(statusEl){statusEl.textContent='⚠ ('+po.status+') '+poErr.slice(0,40);statusEl.style.color='#dc2626';}
+      }
     } else {
-      const err = await res.text().catch(function(){return String(res.status);});
-      console.warn('[OmniFlow] balances PATCH failed:',res.status,err);
-      if(statusEl){statusEl.textContent='⚠ Save failed ('+res.status+')';statusEl.style.color='#dc2626';}
+      if(statusEl){statusEl.textContent='✓ Saved '+new Date().toLocaleTimeString();statusEl.style.color='#166634';}
+      console.log('[OmniFlow] ✓ Companies updated');
     }
   }catch(e){
-    console.warn('[OmniFlow] saveCompaniesToCloud error:',e.message);
-    if(statusEl){statusEl.textContent='⚠ Network error';statusEl.style.color='#dc2626';}
+    console.error('[OmniFlow] saveCompanies error:',e.message);
+    if(statusEl){statusEl.textContent='⚠ '+e.message;statusEl.style.color='#dc2626';}
   }
 }
 
 async function loadCompaniesFromCloud(){
-  const ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE';
+  const ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE';
+  const BASE='https://carcospsxvrmvkxhdyym.supabase.co/rest/v1';
   try{
-    const res = await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/balances?div_code=eq.WE1&select=note',
-      {headers:{'apikey':ANON,'Authorization':'Bearer '+ANON}});
-    if(!res.ok) return null;
-    const data = await res.json();
-    if(Array.isArray(data)&&data.length&&data[0].note){
-      try{
-        const parsed = JSON.parse(data[0].note);
-        if(Array.isArray(parsed)&&parsed.length) return parsed;
-      }catch(e){}
+    const res=await fetch(BASE+'/balances?div_code=eq.__co__&select=note',{headers:{'apikey':ANON,'Authorization':'Bearer '+ANON}});
+    if(!res.ok){console.warn('[OmniFlow] load HTTP',res.status);return null;}
+    const rows=await res.json();
+    if(Array.isArray(rows)&&rows.length&&rows[0].note){
+      const parsed=JSON.parse(rows[0].note);
+      if(Array.isArray(parsed)&&parsed.length) return parsed;
     }
-  }catch(e){console.warn('[OmniFlow] loadCompaniesFromCloud:',e.message);}
+  }catch(e){console.warn('[OmniFlow] loadCompanies:',e.message);}
   return null;
 }
 
