@@ -1813,33 +1813,43 @@ const DEFAULT_PASSWORDS = {
   me_prepare:'me123', me_check:'me123', me_approve:'me123', me_finance:'mefinance123',
   eng_admin:'eng123', eng_manager:'eng123',
   re_we1:'re123', re_we2:'re123', re_we3:'re123',
-  re_me1:'re123', re_me2:'re123', re_me3:'re123'
+  re_me1:'re123', re_me2:'re123', re_me3:'re123',
+  re_we2_dimeka:'re123', re_we2_jigjiga:'re123'
 };
 const USER_DEFS = [
-  {username:'admin',      role:'admin',      displayRole:'Administrator',        initials:'AD', accessLevel:'full',       company:null, division:null, prRole:null},
-  {username:'finance',    role:'finance',    displayRole:'Finance Officer',      initials:'BA', accessLevel:'full',       company:null, division:null, prRole:'paid',   realName:'Blen Abera'},
-  {username:'we_finance', role:'finance',    displayRole:'Wanofi Finance',       initials:'BA', accessLevel:'pr_only',    company:'WE', division:null, prRole:null,     realName:'WE-Finance'},
-  {username:'me_finance', role:'finance',    displayRole:'Matisan Finance',      initials:'BA', accessLevel:'pr_only',    company:'ME', division:null, prRole:null,     realName:'ME-Finance'},
-  {username:'wanofi',     role:'limited',    displayRole:'Wanofi Manager',       initials:'WE', accessLevel:'limited',    company:'WE', division:null, prRole:null},
-  {username:'matisan',    role:'limited',    displayRole:'Matisan Manager',      initials:'ME', accessLevel:'limited',    company:'ME', division:null, prRole:null},
-  {username:'we_prepare', role:'pr_prepare', displayRole:'WE Preparer',         initials:'HT', accessLevel:'pr_only',    company:'WE', division:null, prRole:'prepare', realName:'Hareg Tesfaye'},
-  {username:'we_check',   role:'pr_check',   displayRole:'WE Checker',          initials:'TT', accessLevel:'pr_only',    company:'WE', division:null, prRole:'check',   realName:'Tamrat Tilahun'},
-  {username:'we_approve', role:'pr_approve', displayRole:'WE Approver',         initials:'AF', accessLevel:'pr_only',    company:'WE', division:null, prRole:'approve', realName:'Ashenafi Fufa'},
-  {username:'me_prepare', role:'pr_prepare', displayRole:'ME Preparer',         initials:'MG', accessLevel:'pr_only',    company:'ME', division:null, prRole:'prepare', realName:'Meadnesh Gebeyehu'},
-  {username:'me_check',   role:'pr_check',   displayRole:'ME Checker',          initials:'AM', accessLevel:'pr_out',     company:'ME', division:null, prRole:'check',   realName:'Askale Melese'},
-  {username:'me_approve', role:'pr_approve', displayRole:'ME Approver',         initials:'TT', accessLevel:'pr_out',     company:'ME', division:null, prRole:'approve', realName:'Tamrat Tilahun'},
+  {username:'admin',      role:'admin',      displayRole:'Administrator',        initials:'AD', accessLevel:'full',       company:null, division:null, subdivision:null, prRole:null},
+  {username:'finance',    role:'finance',    displayRole:'Finance Officer',      initials:'BA', accessLevel:'full',       company:null, division:null, subdivision:null, prRole:'paid',   realName:'Blen Abera'},
+  {username:'we_finance', role:'finance',    displayRole:'Wanofi Finance',       initials:'BA', accessLevel:'pr_only',    company:'WE', division:null, subdivision:null, prRole:null,     realName:'WE-Finance'},
+  {username:'me_finance', role:'finance',    displayRole:'Matisan Finance',      initials:'BA', accessLevel:'pr_only',    company:'ME', division:null, subdivision:null, prRole:null,     realName:'ME-Finance'},
+  {username:'wanofi',     role:'limited',    displayRole:'Wanofi Manager',       initials:'WE', accessLevel:'limited',    company:'WE', division:null, subdivision:null, prRole:null},
+  {username:'matisan',    role:'limited',    displayRole:'Matisan Manager',      initials:'ME', accessLevel:'limited',    company:'ME', division:null, subdivision:null, prRole:null},
+  {username:'we_prepare', role:'pr_prepare', displayRole:'WE Preparer',         initials:'HT', accessLevel:'pr_only',    company:'WE', division:null, subdivision:null, prRole:'prepare', realName:'Hareg Tesfaye'},
+  {username:'we_check',   role:'pr_check',   displayRole:'WE Checker',          initials:'TT', accessLevel:'pr_only',    company:'WE', division:null, subdivision:null, prRole:'check',   realName:'Tamrat Tilahun'},
+  {username:'we_approve', role:'pr_approve', displayRole:'WE Approver',         initials:'AF', accessLevel:'pr_only',    company:'WE', division:null, subdivision:null, prRole:'approve', realName:'Ashenafi Fufa'},
+  {username:'me_prepare', role:'pr_prepare', displayRole:'ME Preparer',         initials:'MG', accessLevel:'pr_only',    company:'ME', division:null, subdivision:null, prRole:'prepare', realName:'Meadnesh Gebeyehu'},
+  {username:'me_check',   role:'pr_check',   displayRole:'ME Checker',          initials:'AM', accessLevel:'pr_out',     company:'ME', division:null, subdivision:null, prRole:'check',   realName:'Askale Melese'},
+  {username:'me_approve', role:'pr_approve', displayRole:'ME Approver',         initials:'TT', accessLevel:'pr_out',     company:'ME', division:null, subdivision:null, prRole:'approve', realName:'Tamrat Tilahun'},
   // ── ENGINEERING ROLES ──────────────────────────────────────────────────────
   // Engineering Admin — full engineering access, all companies/divisions
-  {username:'eng_admin',  role:'eng_admin',  displayRole:'Engineering Admin',    initials:'EA', accessLevel:'eng_admin',  company:null, division:null, prRole:null},
+  {username:'eng_admin',  role:'eng_admin',  displayRole:'Engineering Admin',    initials:'EA', accessLevel:'eng_admin',  company:null, division:null, subdivision:null, prRole:null},
   // Engineering Manager — all engineering, read-only, all divisions
-  {username:'eng_manager',role:'eng_manager',displayRole:'Engineering Manager',  initials:'EM', accessLevel:'eng_manager',company:null, division:null, prRole:null},
-  // Resident Engineers — restricted to their division only
-  {username:'re_we1',     role:'re',         displayRole:'RE — WE1 Design',      initials:'R1', accessLevel:'re',         company:'WE', division:'WE1',prRole:null},
-  {username:'re_we2',     role:'re',         displayRole:'RE — WE2 Supervision', initials:'R2', accessLevel:'re',         company:'WE', division:'WE2',prRole:null},
-  {username:'re_we3',     role:'re',         displayRole:'RE — WE3',             initials:'R3', accessLevel:'re',         company:'WE', division:'WE3',prRole:null},
-  {username:'re_me1',     role:'re',         displayRole:'RE — ME1 Construction',initials:'R4', accessLevel:'re',         company:'ME', division:'ME1',prRole:null},
-  {username:'re_me2',     role:'re',         displayRole:'RE — ME2',             initials:'R5', accessLevel:'re',         company:'ME', division:'ME2',prRole:null},
-  {username:'re_me3',     role:'re',         displayRole:'RE — ME3',             initials:'R6', accessLevel:'re',         company:'ME', division:'ME3',prRole:null},
+  {username:'eng_manager',role:'eng_manager',displayRole:'Engineering Manager',  initials:'EM', accessLevel:'eng_manager',company:null, division:null, subdivision:null, prRole:null},
+  // Resident Engineers — restricted to their division only (subdivision:null = whole division)
+  {username:'re_we1',     role:'re',         displayRole:'RE — WE1 Design',      initials:'R1', accessLevel:'re',         company:'WE', division:'WE1',subdivision:null, prRole:null},
+  {username:'re_we2',     role:'re',         displayRole:'RE — WE2 Supervision', initials:'R2', accessLevel:'re',         company:'WE', division:'WE2',subdivision:null, prRole:null},
+  {username:'re_we3',     role:'re',         displayRole:'RE — WE3',             initials:'R3', accessLevel:'re',         company:'WE', division:'WE3',subdivision:null, prRole:null},
+  {username:'re_me1',     role:'re',         displayRole:'RE — ME1 Construction',initials:'R4', accessLevel:'re',         company:'ME', division:'ME1',subdivision:null, prRole:null},
+  {username:'re_me2',     role:'re',         displayRole:'RE — ME2',             initials:'R5', accessLevel:'re',         company:'ME', division:'ME2',subdivision:null, prRole:null},
+  {username:'re_me3',     role:'re',         displayRole:'RE — ME3',             initials:'R6', accessLevel:'re',         company:'ME', division:'ME3',subdivision:null, prRole:null},
+  // Subdivision-scoped RE accounts — WE2 pilot only. Each sees ONLY their one site
+  // (its project card, IPC, Variations, Diary, Documents, Staff, Equipment) — nothing
+  // else in WE2, unlike re_we2 above which still sees the whole division.
+  // ⚠ VERIFY THE CODES: 'subdivision' below must exactly match the site's code shown
+  // on the Companies & Divisions page (WE2 card) AFTER you run "🔄 Sync from Projects".
+  // Guessed as WE2-S2 / WE2-S3 based on current listing order (Dimeka, then Jigjiga) —
+  // open Companies & Divisions and correct these two values if the actual codes differ.
+  {username:'re_we2_dimeka',  role:'re', displayRole:'RE — Dimeka Vet Lab (WE2)',  initials:'RD', accessLevel:'re', company:'WE', division:'WE2', subdivision:'WE2-S2', prRole:null},
+  {username:'re_we2_jigjiga', role:'re', displayRole:'RE — Jigjiga Vet Lab (WE2)', initials:'RJ', accessLevel:'re', company:'WE', division:'WE2', subdivision:'WE2-S3', prRole:null},
 ];
 
 // Limited users: only Entry + Ledger, only today and yesterday
@@ -1858,6 +1868,7 @@ function isEngManager(){return currentUser&&currentUser.accessLevel==='eng_manag
 function isRE(){return currentUser&&currentUser.accessLevel==='re';}
 function isEngUser(){return currentUser&&['eng_admin','eng_manager','re'].includes(currentUser.accessLevel);}
 function engUserDivision(){return currentUser?currentUser.division:null;}
+function engUserSubdivision(){return currentUser?currentUser.subdivision:null;}
 function engUserCompany(){return currentUser?currentUser.company:null;}
 // Check if a project is accessible to the current engineering user
 
@@ -1881,8 +1892,11 @@ function canAccessProject(proj){
   const cu = currentUser;
   if(cu.accessLevel==='eng_admin'||cu.accessLevel==='eng_manager') return true;
   if(cu.accessLevel==='re'){
-    // RE can only see their division
-    return proj.division_code === cu.division;
+    // RE can only see their division...
+    if(proj.division_code !== cu.division) return false;
+    // ...and if this RE is scoped to a specific subdivision (site), only that site
+    if(cu.subdivision) return proj.subdivision_code === cu.subdivision;
+    return true;
   }
   return true;
 }
@@ -2442,7 +2456,7 @@ function applyAccessLevel(){
         const sidebarUser = document.querySelector('.sb-user');
         if(sidebarUser) sidebarUser.parentNode.insertBefore(badge, sidebarUser.nextSibling);
       }
-      badge.textContent = '📍 '+currentUser.division+' — '+currentUser.displayRole;
+      badge.textContent = '📍 '+currentUser.division+(currentUser.subdivision?' — '+currentUser.subdivision:'')+' — '+currentUser.displayRole;
     }
 
   } else {
@@ -2485,7 +2499,17 @@ async function initApp(){
     ]);
     
     // Map cloud data to app state
-    transactions = Array.isArray(txData) ? txData.map(mapTxRow).filter(function(t){return t!==null;}) : ls('omni-tx')||[];
+    if(Array.isArray(txData)){
+      transactions = txData.map(mapTxRow).filter(function(t){return t!==null;});
+    } else {
+      // txData is not an array — the API call failed (likely blocked by RLS on
+      // the transactions table, or a bad query). Surface this clearly instead of
+      // silently falling back to (probably empty) local storage.
+      transactions = ls('omni-tx')||[];
+      const errMsg = (txData && (txData.message||txData.hint||txData.code)) ? JSON.stringify(txData).slice(0,200) : 'unknown error';
+      console.error('[OmniFlow] ⚠ Failed to load transactions from cloud:', errMsg);
+      showSync('error','⚠ Transactions failed to load: '+errMsg);
+    }
 
     balances = {};
     if(Array.isArray(balData)){
@@ -5560,7 +5584,11 @@ async function loadPayRequests(forceRefresh){
       // Try with minimal columns as fallback
       const res2=await fetch(PR_SB+'/payment_requests?select=*&order=created_at.desc',
         {headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON}});
-      if(!res2.ok){ console.error('PR fallback also failed'); return; }
+      if(!res2.ok){
+        console.error('PR fallback also failed');
+        showSync('error','⚠ Payment Requests failed to load ('+res.status+'): '+errText.slice(0,150));
+        return;
+      }
       payRequests=await res2.json();
     } else {
       payRequests=await res.json();
@@ -5572,7 +5600,10 @@ async function loadPayRequests(forceRefresh){
     if(!window._omniLoading) renderAll();
     // Re-render bank registers to reflect new PR debits
     if(typeof renderAllDivBanks==='function') renderAllDivBanks();
-  }catch(e){console.warn('PR load:',e.message);}
+  }catch(e){
+    console.warn('PR load:',e.message);
+    showSync('error','⚠ Payment Requests failed to load: '+e.message);
+  }
 }
 
 function checkPRAlerts(){
@@ -6777,8 +6808,10 @@ function renderEngProjects(){
   const st = document.getElementById('epfStatus')?.value||'';
   const q = (document.getElementById('epfSearch')?.value||'').toLowerCase();
   const _reDivF = isRE()?engUserDivision():null;
+  const _reSubF = isRE()?engUserSubdivision():null;
   let list = engProjects.filter(p=>{
     if(_reDivF && p.division_code!==_reDivF) return false;
+    if(_reSubF && p.subdivision_code!==_reSubF) return false;
     if(co && p.company_id!==co) return false;
     if(div && p.division_code!==div) return false;
     if(st && p.status!==st) return false;
@@ -7119,6 +7152,7 @@ async function saveProject(){
 
 function openProjectDetail(id){
   const p = engProjects.find(x=>x.id===id); if(!p) return;
+  if(!canAccessProject(p)){ alert('You do not have access to this project.'); return; }
   window._hubProjectId = id;
   // Set header
   const coName = (p.company_id==='WE'||p.company_id==='Wanofi')?'Wanofi Engineering Plc':'Matisan Engineering Plc';
@@ -7457,8 +7491,13 @@ function renderEngContracts(){
   const st = document.getElementById('ecfStatus')?.value||'';
   const q = (document.getElementById('ecfSearch')?.value||'').toLowerCase();
   const _reDivF2 = isRE()?engUserDivision():null;
+  const _reSubF2 = isRE()?engUserSubdivision():null;
   let list = engContracts.filter(function(c){
     if(_reDivF2 && c.division_code!==_reDivF2) return false;
+    if(_reSubF2){
+      const _cp=engProjects.find(function(p){return p.id===c.project_id;});
+      if(!_cp||_cp.subdivision_code!==_reSubF2) return false;
+    }
     if(co && c.company_id!==co) return false;
     if(st && c.status!==st) return false;
     if(q && !((c.contract_title||'').toLowerCase().includes(q)||(c.client||'').toLowerCase().includes(q))) return false;
@@ -7691,10 +7730,12 @@ function renderEngProgress(){
   const projFilter = document.getElementById('eprfProject')?.value||'';
   const q = (document.getElementById('eprfSearch')?.value||'').toLowerCase();
   const _reDivF3 = isRE()?engUserDivision():null;
+  const _reSubF3 = isRE()?engUserSubdivision():null;
   let list = engProgressReports.filter(function(r){
     if(_reDivF3){
       const _rp=engProjects.find(function(p){return p.id===r.project_id;});
       if(!_rp||_rp.division_code!==_reDivF3) return false;
+      if(_reSubF3 && _rp.subdivision_code!==_reSubF3) return false;
     }
     if(projFilter && r.project_id!==projFilter) return false;
     if(q){
@@ -9127,7 +9168,8 @@ function onProgDivisionChange(){
   projSel.innerHTML = '<option value="">— Select subdivision —</option>';
   document.getElementById('progProjectInfoBanner').style.display='none';
   if(!co||!divCode) return;
-  const tracked = getTrackedSubdivisions(co, divCode);
+  let tracked = getTrackedSubdivisions(co, divCode);
+  if(isRE() && engUserSubdivision()) tracked = tracked.filter(function(t){return t.subCode===engUserSubdivision();});
   if(!tracked.length){
     const o=document.createElement('option');
     o.disabled=true; o.textContent='No tracked projects in this division — create one in Project Tracking';
@@ -9150,7 +9192,8 @@ function populateProgressProjectDropdown(){
   sel.innerHTML = '<option value="">— Select project —</option>';
   const grouped = {};
   const _reDiv4 = isRE()?engUserDivision():null;
-  engProjects.filter(function(p){return !_reDiv4||p.division_code===_reDiv4;}).forEach(function(p){ const k=p.division_code; if(!grouped[k]) grouped[k]=[]; grouped[k].push(p); });
+  const _reSub4 = isRE()?engUserSubdivision():null;
+  engProjects.filter(function(p){return (!_reDiv4||p.division_code===_reDiv4)&&(!_reSub4||p.subdivision_code===_reSub4);}).forEach(function(p){ const k=p.division_code; if(!grouped[k]) grouped[k]=[]; grouped[k].push(p); });
   Object.keys(grouped).sort().forEach(function(divCode){
     const grp = document.createElement('optgroup'); grp.label = divCode;
     grouped[divCode].forEach(function(p){
@@ -10423,7 +10466,8 @@ function populateProgressProjectFilter(){
   sel.innerHTML = '<option value="">All Projects</option>';
   const grouped = {};
   const _reDiv4 = isRE()?engUserDivision():null;
-  engProjects.filter(function(p){return !_reDiv4||p.division_code===_reDiv4;}).forEach(function(p){ const k=p.division_code; if(!grouped[k]) grouped[k]=[]; grouped[k].push(p); });
+  const _reSub4 = isRE()?engUserSubdivision():null;
+  engProjects.filter(function(p){return (!_reDiv4||p.division_code===_reDiv4)&&(!_reSub4||p.subdivision_code===_reSub4);}).forEach(function(p){ const k=p.division_code; if(!grouped[k]) grouped[k]=[]; grouped[k].push(p); });
   Object.keys(grouped).sort().forEach(function(divCode){
     const grp = document.createElement('optgroup'); grp.label = divCode;
     grouped[divCode].forEach(function(p){
