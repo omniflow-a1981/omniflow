@@ -1714,10 +1714,24 @@ function queueOffline(method, path, body){
   localStorage.setItem('omni-offline-queue', JSON.stringify(offlineQueue));
 }
 
-function showSync(type, msg){
+window._syncErrs = window._syncErrs || {}; // keyed by subsystem, so unrelated errors don't hide each other
+function showSync(type, msg, key){
   const bar = document.getElementById('syncBar');
   const msgEl = document.getElementById('syncMsg');
   if(!bar||!msgEl) return;
+  if(type==='error'){
+    window._syncErrs[key||msg] = msg;
+    bar.className='sync-bar on error';
+    msgEl.textContent = Object.values(window._syncErrs).join('   |   ');
+    return; // errors persist on screen until their own subsystem clears them
+  }
+  if(key) delete window._syncErrs[key];
+  const remaining = Object.values(window._syncErrs);
+  if(remaining.length){
+    bar.className='sync-bar on error';
+    msgEl.textContent = remaining.join('   |   ');
+    return;
+  }
   bar.className='sync-bar on '+type;
   msgEl.textContent = msg;
   if(type==='ok'||type==='syncing') setTimeout(()=>bar.classList.remove('on'),3000);
@@ -2501,6 +2515,7 @@ async function initApp(){
     // Map cloud data to app state
     if(Array.isArray(txData)){
       transactions = txData.map(mapTxRow).filter(function(t){return t!==null;});
+      delete window._syncErrs['transactions'];
     } else {
       // txData is not an array — the API call failed (likely blocked by RLS on
       // the transactions table, or a bad query). Surface this clearly instead of
@@ -2508,7 +2523,7 @@ async function initApp(){
       transactions = ls('omni-tx')||[];
       const errMsg = (txData && (txData.message||txData.hint||txData.code)) ? JSON.stringify(txData).slice(0,200) : 'unknown error';
       console.error('[OmniFlow] ⚠ Failed to load transactions from cloud:', errMsg);
-      showSync('error','⚠ Transactions failed to load: '+errMsg);
+      showSync('error','⚠ Transactions failed to load: '+errMsg,'transactions');
     }
 
     balances = {};
@@ -5575,7 +5590,7 @@ async function clearAllPRHistory(){
 async function loadPayRequests(forceRefresh){
   try{
     // Remove wht_applied (column may not exist) — use safe column list
-    const PR_COLS = 'id,company_id,division,project,client,request_type,status,net_payable,partial_amount,created_at,prepared_by,prepared_at,checked_by,checked_at,approved_by,approved_at,verified_by,verified_at,paid_by,paid_at,pay_method,transfer_id,paid_comment,rejected,reject_comment,notes';
+    const PR_COLS = 'id,company_id,division,project,client,request_type,status,net_payable,partial_amount,created_at,prepared_by,prepared_at,checked_by,checked_at,approved_by,approved_at,verified_by,verified_at,paid_by,paid_at,pay_method,transfer_id,paid_comment,rejected,reject_comment,note';
     const res=await fetch(PR_SB+'/payment_requests?select='+PR_COLS+'&order=created_at.desc',
       {headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON}});
     if(!res.ok){
@@ -5586,7 +5601,7 @@ async function loadPayRequests(forceRefresh){
         {headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON}});
       if(!res2.ok){
         console.error('PR fallback also failed');
-        showSync('error','⚠ Payment Requests failed to load ('+res.status+'): '+errText.slice(0,150));
+        showSync('error','⚠ Payment Requests failed to load ('+res.status+'): '+errText.slice(0,150),'payment_requests');
         return;
       }
       payRequests=await res2.json();
@@ -5594,6 +5609,7 @@ async function loadPayRequests(forceRefresh){
       payRequests=await res.json();
     }
     if(!Array.isArray(payRequests)) payRequests=[];
+    delete window._syncErrs['payment_requests'];
     checkPRAlerts();
     initPRAdminToolbar();
     renderPRList();
@@ -5602,7 +5618,7 @@ async function loadPayRequests(forceRefresh){
     if(typeof renderAllDivBanks==='function') renderAllDivBanks();
   }catch(e){
     console.warn('PR load:',e.message);
-    showSync('error','⚠ Payment Requests failed to load: '+e.message);
+    showSync('error','⚠ Payment Requests failed to load: '+e.message,'payment_requests');
   }
 }
 
