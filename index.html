@@ -5575,7 +5575,7 @@ async function clearAllPRHistory(){
 async function loadPayRequests(forceRefresh){
   try{
     // Remove wht_applied (column may not exist) — use safe column list
-    const PR_COLS = 'id,company_id,division,project,client,request_type,category,status,net_payable,partial_amount,created_at,prepared_by,prepared_at,checked_by,checked_at,approved_by,approved_at,verified_by,verified_at,paid_by,paid_at,pay_method,transfer_id,paid_comment,rejected,reject_comment,notes';
+    const PR_COLS = 'id,company_id,division,project,client,request_type,status,net_payable,partial_amount,created_at,prepared_by,prepared_at,checked_by,checked_at,approved_by,approved_at,verified_by,verified_at,paid_by,paid_at,pay_method,transfer_id,paid_comment,rejected,reject_comment,notes';
     const res=await fetch(PR_SB+'/payment_requests?select='+PR_COLS+'&order=created_at.desc',
       {headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON}});
     if(!res.ok){
