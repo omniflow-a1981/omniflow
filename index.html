@@ -2273,16 +2273,27 @@ async function doLogin(){
     currentUser={...def};
     localStorage.setItem('omni-session-user',JSON.stringify(currentUser));
     btn.textContent='Sign In →'; btn.disabled=false;
-    // Require a current-version signed declaration before entering the app.
-    // Wrapped defensively: if this check fails unexpectedly for any reason,
-    // let the user into the app rather than locking them out of OmniFlow
-    // entirely over a brand-new feature.
+
+    // admin is exempt from the declaration entirely — always straight in.
+    if(def.username==='admin'){ showApp(); return; }
+
+    // Everyone else: check the LOCAL cache first (instant, no network needed).
+    // Only if there's no local record of this exact version do we ask the
+    // cloud — and that call is timeout-protected and fails open (see
+    // checkDeclarationSigned), so a slow/flaky connection can never trap
+    // someone on the login screen.
+    const localSig = ls('omni-decl-'+def.username);
+    if(localSig && localSig.version===DECLARATION_VERSION){
+      showApp();
+      return;
+    }
     try{
       const signed = await checkDeclarationSigned(def.username);
-      if(!signed || signed.version!==DECLARATION_VERSION){
-        openDeclarationModal(currentUser);
-      } else {
+      if(signed && signed.version===DECLARATION_VERSION){
+        ls('omni-decl-'+def.username, signed); // cache for instant future logins
         showApp();
+      } else {
+        openDeclarationModal(currentUser);
       }
     }catch(e){
       console.warn('[OmniFlow] Declaration check failed, letting user in:',e.message);
@@ -2428,6 +2439,7 @@ async function submitDeclaration(){
   };
   try{
     await saveDeclarationSignature(user.username, record);
+    ls('omni-decl-'+user.username, record); // instant on next login from this device
     document.getElementById('declModal').remove();
     _pendingLoginUser=null;
     showApp();
