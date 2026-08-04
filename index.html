@@ -7991,6 +7991,10 @@ async function loadContractBoqForProgress(){
     return;
   }
   const blocks = await engFetch('/eng_boq_blocks?contract_id=in.('+contractIds.join(',')+')&order=display_order&select=id,contract_id,project_id,block_name,block_description,specification,display_order');
+  if(blocks && blocks.ok===false){
+    if(wrap) wrap.innerHTML = '<div style="padding:14px;color:#dc2626;background:#fee2e2;border-radius:8px;font-size:12px">⚠ Failed to load BOQ blocks: '+String(blocks.error).slice(0,200)+'</div>';
+    return;
+  }
   const blockArr = Array.isArray(blocks) ? blocks : [];
   if(!blockArr.length){
     if(wrap) wrap.innerHTML = '<div style="padding:14px;color:#92400e;background:#fef9c3;border-radius:8px;font-size:12px">No BOQ blocks found. Upload the signed BOQ under Contract Management → BOQ Blocks first.</div>';
@@ -7998,6 +8002,10 @@ async function loadContractBoqForProgress(){
   }
   const blockIds = blockArr.map(function(b){ return b.id; });
   const items = await engFetch('/eng_boq_block_items?block_id=in.('+blockIds.join(',')+')&order=display_order&select=id,block_id,item_no,description,unit,quantity,unit_rate,total_amount,quantity_executed,display_order');
+  if(items && items.ok===false){
+    if(wrap) wrap.innerHTML = '<div style="padding:14px;color:#dc2626;background:#fee2e2;border-radius:8px;font-size:12px">⚠ Found '+blockArr.length+' BOQ block(s) but failed to load their line items: '+String(items.error).slice(0,200)+'</div>';
+    return;
+  }
   const itemArr = Array.isArray(items) ? items : [];
   // Also load all previous progress reports for this project to calculate to-date executed qty
   const prevReports = await engFetch('/eng_progress_reports?project_id=eq.'+projId+'&order=report_date.asc&select=id,breakdown,tracking_mode,report_date');
@@ -8523,12 +8531,13 @@ function onProgQtyTodayChange(bi, ii, val){
 
 function recalcProgBoqOverall(){
   // EVM: % = (To Date executed value + Today) ÷ Contract Total × 100
-  let contractTotal=0, todayTotal=0, toDateTotal=0;
+  let contractTotal=0, todayTotal=0, toDateTotal=0, itemCount=0;
   progManualBoqBlocks.forEach(function(blk){
     (blk.items||[]).forEach(function(it){
       contractTotal += parseFloat(it.contract_amount)||0;
       todayTotal += parseFloat(it.amount_today)||0;
       toDateTotal += parseFloat(it.amount_todate)||0;
+      itemCount++;
     });
   });
   const executed = toDateTotal + todayTotal; // cumulative including today
@@ -8536,7 +8545,8 @@ function recalcProgBoqOverall(){
   const el = document.getElementById('progOverallPct');
   if(el) el.textContent = pct+'%';
   const lbl = document.getElementById('progOverallLabel');
-  if(lbl) lbl.textContent = 'To Date: '+fmtAmt(executed)+' ÷ Contract: '+fmtAmt(contractTotal)+' × 100 = '+pct+'%';
+  if(lbl) lbl.innerHTML = 'To Date: '+fmtAmt(executed)+' ÷ Contract: '+fmtAmt(contractTotal)+' × 100 = '+pct+'%'
+    +'<br><span style="font-size:10px;color:var(--muted)">'+progManualBoqBlocks.length+' BOQ block(s), '+itemCount+' line item(s) loaded — compare against "BOQ Blocks (N)" shown in Contract Management for this contract</span>';
 }
 
 function closeProgressDetail(){ document.getElementById('progressDetailModal').style.display='none'; }
