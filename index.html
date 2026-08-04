@@ -2614,7 +2614,7 @@ function nav(id,el){
   }
   if(id==='EngProjects'){ loadEngProjects(); }
   if(id==='EngContracts'){ loadEngContracts(); }
-  if(id==='EngProgress'){ loadEngProgress().then(function(){ populateProgressProjectFilter(); populateProgressProjectDropdown(); }); }
+  if(id==='EngProgress'){ Promise.all([loadEngProjects(true), loadEngProgress()]).then(function(){ populateProgressProjectFilter(); populateProgressProjectDropdown(); }); }
   if(id==='EngIPC'){ loadEngIPC(); }
   if(id==='EngVariations'){ loadEngVariations(); }
   if(id==='EngDiary'){ loadEngDiary(); }
