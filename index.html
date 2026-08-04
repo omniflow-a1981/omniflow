@@ -2456,11 +2456,17 @@ function applyAccessLevel(){
     document.getElementById('limitedBanner').style.display='none';
     document.getElementById('adminNav').style.display='none';
 
-    // Engineering nav items always visible
-    const engNavIds = ['engProjectsNav','engContractsNav','engProgressNav','signoutNav'];
-    engNavIds.forEach(function(id){
-      const el=document.getElementById(id); if(el) el.style.display='flex';
-    });
+    // Engineering nav items — Resident Engineers get Site Progress only (that page
+    // now contains everything they need: reports + IPC/Variations/Diary/Documents/
+    // Staff/Equipment as tabs). eng_admin and eng_manager still get all three.
+    if(isRE()){
+      const el=document.getElementById('engProgressNav'); if(el) el.style.display='flex';
+    } else {
+      const engNavIds = ['engProjectsNav','engContractsNav','engProgressNav'];
+      engNavIds.forEach(function(id){
+        const el=document.getElementById(id); if(el) el.style.display='flex';
+      });
+    }
 
     // Engineering Admin — also gets Admin Settings and all company views
     if(isEngAdmin()){
@@ -2476,9 +2482,14 @@ function applyAccessLevel(){
     const soNav3=document.getElementById('signoutNav');
     if(soNav3) soNav3.style.display='flex';
 
-    // Navigate to Project Tracking as default
-    const ptNav=document.getElementById('engProjectsNav');
-    if(ptNav) nav('EngProjects', ptNav);
+    // Navigate to the right default page
+    if(isRE()){
+      const spNav=document.getElementById('engProgressNav');
+      if(spNav) nav('EngProgress', spNav);
+    } else {
+      const ptNav=document.getElementById('engProjectsNav');
+      if(ptNav) nav('EngProjects', ptNav);
+    }
 
     // Add division badge to sidebar for RE users
     if(isRE() && currentUser.division){
