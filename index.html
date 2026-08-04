@@ -788,6 +788,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     <div><div class="page-title">Companies & <em>Divisions</em></div><div class="page-subtitle">Manage companies, divisions and subdivisions (sites)</div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <span id="coCloudStatus" style="font-size:11px;color:var(--teal-dark)"></span>
+      <button onclick="openDeclarationReport()" class="btn-secondary" style="font-size:12px;padding:8px 14px;background:#eff6ff;border-color:#93c5fd;color:#1e40af">📜 Declaration Report</button>
       <button onclick="manualBackupCompanies()" class="btn-secondary" style="font-size:12px;padding:8px 14px;background:#f0fdf4;border-color:#86efac;color:#166534">☁ Save to Cloud</button>
       <button class="btn-secondary" onclick="restoreMe1Defaults()" style="font-size:12px;padding:8px 14px;background:#fef3c7;border-color:#fcd34d;color:#92400e" title="Restore ME1 Construction sites if accidentally deleted">
         ↺ Restore ME1 Sites
@@ -2272,7 +2273,13 @@ async function doLogin(){
     currentUser={...def};
     localStorage.setItem('omni-session-user',JSON.stringify(currentUser));
     btn.textContent='Sign In →'; btn.disabled=false;
-    showApp();
+    // Require a current-version signed declaration before entering the app
+    const signed = await checkDeclarationSigned(def.username);
+    if(!signed || signed.version!==DECLARATION_VERSION){
+      openDeclarationModal(currentUser);
+    } else {
+      showApp();
+    }
     return;
   }
 
@@ -2280,6 +2287,142 @@ async function doLogin(){
   errEl.textContent='Incorrect password. Default is: '+defaultPw;
   errEl.style.display='block';
   btn.textContent='Sign In →'; btn.disabled=false;
+}
+
+// ══════════════════════════════════════
+// CONFIDENTIALITY & ACCEPTABLE USE DECLARATION
+// ══════════════════════════════════════
+// Bump this whenever the declaration text changes materially — everyone will
+// be prompted to re-sign the new version on their next login. Old signatures
+// stay on record (see the report in Companies & Divisions) but no longer
+// count as current.
+const DECLARATION_VERSION = '1.0';
+
+// The scope paragraph is tailored to what each role can actually see, per
+// instruction — a Resident Engineer signs a declaration about site/engineering
+// data, not payment request approval data they never touch, and vice versa.
+function getDeclarationScope(user){
+  if(!user) return 'all information accessible to me through the System';
+  const al = user.accessLevel;
+  if(user.username==='admin'){
+    return 'all information in the System without restriction — including financial transactions, cash balances and bank registers, outstanding income and payables, payment requests of every company and division, engineering project records (project tracking, contracts, BOQs, IPCs, variation orders, site diaries, documents, staff and equipment registers), user accounts, and system configuration';
+  }
+  if(user.username==='finance'){
+    return 'financial transactions, cash balances and bank registers, outstanding income and payables, and payment request records across Wanofi Engineering Plc and Matisan Engineering Plc';
+  }
+  if(al==='pr_only'||al==='pr_out'){
+    const co = user.company==='WE'?'Wanofi Engineering Plc':user.company==='ME'?'Matisan Engineering Plc':'the assigned company';
+    return 'payment request records for '+co+' — including requested amounts, vendors, supporting documentation, approval history, and payment status';
+  }
+  if(al==='limited'){
+    const co = user.company==='WE'?'Wanofi Engineering Plc':user.company==='ME'?'Matisan Engineering Plc':'the assigned company';
+    return 'daily cash transactions and ledger entries for '+co;
+  }
+  if(al==='eng_admin'||al==='eng_manager'){
+    return 'engineering project records across Wanofi Engineering Plc and Matisan Engineering Plc — including project tracking, contracts, bills of quantities (BOQ), interim payment certificates, variation orders, site diaries, documents, staff registers, and equipment registers';
+  }
+  if(al==='re'){
+    const scope = user.subdivision ? 'the specific project/site assigned to my account' : ('the '+(user.division||'assigned')+' division');
+    return 'engineering project records for '+scope+' — including progress reports, interim payment certificates (IPC), variation orders, site diary entries, documents, staff records, and equipment records for the project(s) assigned to me';
+  }
+  return 'all information accessible to me through the System';
+}
+
+function getDeclarationHTML(user){
+  const scope = getDeclarationScope(user);
+  return ''
+    +'<p style="font-size:13px;line-height:1.6;margin-bottom:10px">This Declaration is made by every individual granted a user account on the OmniFlow system ("the System"), operated by Wanofi Engineering Plc and Matisan Engineering Plc (together, "the Company"). By signing below, you confirm you have read, understood, and agree to the following as a condition of your continued access.</p>'
+    +'<p style="font-size:13px;line-height:1.6;margin-bottom:6px"><strong>1. Purpose of Access</strong> — Access is granted solely to perform official duties for the Company. I will use the System only for legitimate, work-related Company business.</p>'
+    +'<p style="font-size:13px;line-height:1.6;margin-bottom:6px"><strong>2. Confidentiality of Information</strong> — Based on my role, my access covers: <em>'+scope+'</em> — together with any other business, financial, or operational data currently available in the System or added through future system upgrades ("Confidential Information"). This information is the exclusive property of the Company. I agree to access only what my role requires, and never disclose, share, forward, copy, print, screenshot, or discuss Confidential Information with anyone outside the Company without written authorization.</p>'
+    +'<p style="font-size:13px;line-height:1.6;margin-bottom:6px"><strong>3. Account Security</strong> — I am responsible for all activity under my username. I will keep my password confidential, never share my login with anyone, and report any suspected unauthorized access immediately.</p>'
+    +'<p style="font-size:13px;line-height:1.6;margin-bottom:6px"><strong>4. Company Use Only</strong> — The System and its data remain the Company\u2019s property at all times. My access ends immediately upon termination, resignation, or role change, at which point I will cease use of the System and delete any locally stored data in my possession.</p>'
+    +'<p style="font-size:13px;line-height:1.6;margin-bottom:6px"><strong>5. Data Integrity</strong> — I will enter information truthfully, accurately, and in a timely manner, and will not alter, delete, or falsify any record for an improper purpose.</p>'
+    +'<p style="font-size:13px;line-height:1.6;margin-bottom:0"><strong>6. Consequences of Breach</strong> — Any breach of this Declaration may result in immediate revocation of access, disciplinary action up to termination, and legal action where applicable. These confidentiality obligations survive after my access to the System ends.</p>';
+}
+
+// Cloud storage for signatures — same safe pattern as passwords/companies:
+// a marker row in `balances` (div_code='__decl__'+username), no new table needed.
+async function checkDeclarationSigned(username){
+  try{
+    const r=await fetch(SUPA_URL+'/balances?div_code=eq.__decl__'+encodeURIComponent(username)+'&select=note',{
+      headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}
+    });
+    if(!r.ok) return null;
+    const rows=await r.json();
+    if(!rows?.length||!rows[0].note) return null;
+    return JSON.parse(rows[0].note);
+  }catch(e){ return null; }
+}
+async function saveDeclarationSignature(username,record){
+  const res=await fetch(SUPA_URL+'/balances?on_conflict=div_code',{
+    method:'POST',
+    headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify({div_code:'__decl__'+username, opening_etb:0, opening_usd:0, note:JSON.stringify(record)})
+  });
+  if(!res.ok){ const t=await res.text().catch(function(){return res.status;}); throw new Error(String(t).slice(0,150)); }
+}
+async function fetchAllDeclarationSignatures(){
+  try{
+    const r=await fetch(SUPA_URL+'/balances?div_code=like.__decl__*&select=div_code,note',{
+      headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}
+    });
+    if(!r.ok) return {};
+    const rows=await r.json();
+    const out={};
+    (Array.isArray(rows)?rows:[]).forEach(function(r){
+      if(r.div_code&&r.div_code.indexOf('__decl__')===0&&r.note){
+        try{ out[r.div_code.slice('__decl__'.length)]=JSON.parse(r.note); }catch(e){}
+      }
+    });
+    return out;
+  }catch(e){ return {}; }
+}
+
+let _pendingLoginUser=null;
+function openDeclarationModal(user){
+  _pendingLoginUser=user;
+  const modal=document.createElement('div');
+  modal.className='modal-overlay'; modal.style.display='flex'; modal.id='declModal';
+  modal.innerHTML='<div class="modal-box" style="max-width:640px;max-height:88vh;display:flex;flex-direction:column">'
+    +'<div class="modal-header"><div class="modal-title">📜 OmniFlow Confidentiality & Acceptable Use Declaration</div></div>'
+    +'<div style="overflow-y:auto;padding:2px 4px 10px;flex:1;border-bottom:1px solid var(--border);margin-bottom:14px">'+getDeclarationHTML(user)+'</div>'
+    +'<div class="ff" style="margin-bottom:10px"><label>Type your full name to sign *</label><input type="text" id="declFullName" placeholder="e.g. Alemu Tesfaye"></div>'
+    +'<label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;cursor:pointer;margin-bottom:14px">'
+      +'<input type="checkbox" id="declAgree" style="margin-top:2px">'
+      +'<span>I have read and understood this Declaration, and I agree to comply with its terms as a condition of my access to OmniFlow.</span>'
+    +'</label>'
+    +'<div id="declErr" style="font-size:12px;color:var(--red);margin-bottom:10px;display:none"></div>'
+    +'<div class="btn-row"><button class="btn-primary" onclick="submitDeclaration()">Sign & Continue</button></div>'
+    +'</div>';
+  document.body.appendChild(modal);
+}
+async function submitDeclaration(){
+  const nameEl=document.getElementById('declFullName');
+  const agreeEl=document.getElementById('declAgree');
+  const errEl=document.getElementById('declErr');
+  errEl.style.display='none';
+  if(!nameEl.value.trim()){ errEl.textContent='Please type your full name to sign.'; errEl.style.display='block'; return; }
+  if(!agreeEl.checked){ errEl.textContent='Please check the box to confirm you agree.'; errEl.style.display='block'; return; }
+
+  const user=_pendingLoginUser;
+  const record={
+    full_name: nameEl.value.trim(),
+    username: user.username,
+    role: user.role,
+    company: user.company||'',
+    division: user.division||'',
+    version: DECLARATION_VERSION,
+    signed_at: new Date().toISOString()
+  };
+  try{
+    await saveDeclarationSignature(user.username, record);
+    document.getElementById('declModal').remove();
+    _pendingLoginUser=null;
+    showApp();
+  }catch(e){
+    errEl.textContent='⚠ Could not save your signature: '+e.message+'. Please try again.';
+    errEl.style.display='block';
+  }
 }
 
 function doSignOut(){
@@ -7087,6 +7230,76 @@ function reScopedEngContracts(){
 // data instead of guessed. Shows exactly what's in engProjects (source of truth
 // for Project Tracking) side-by-side with what's in the companies/subdivisions
 // JSON (source of truth for Companies & Divisions), so any mismatch is obvious.
+// ── DECLARATION SIGNATURE REPORT ──────────────────────────────
+// Cross-references every user account against signed declarations stored in
+// the cloud, so admin can see at a glance who's signed the current version,
+// who signed an old version (needs re-signing after DECLARATION_VERSION bump),
+// and who hasn't signed at all.
+async function openDeclarationReport(){
+  const modal=document.createElement('div');
+  modal.className='modal-overlay'; modal.style.display='flex'; modal.id='declReportModal';
+  modal.innerHTML='<div class="modal-box" style="max-width:920px;max-height:88vh;display:flex;flex-direction:column">'
+    +'<div class="modal-header"><div class="modal-title">📜 Confidentiality Declaration — Signature Report</div>'
+    +'<button class="modal-close" onclick="document.getElementById(\'declReportModal\').remove()">&times;</button></div>'
+    +'<div id="declReportBody" style="overflow-y:auto;flex:1">Loading signatures from cloud...</div>'
+    +'<div class="btn-row" style="margin-top:12px"><button class="btn-primary" onclick="exportDeclarationReportCSV()">⬇ Export CSV</button><button class="btn-secondary" onclick="document.getElementById(\'declReportModal\').remove()">Close</button></div>'
+    +'</div>';
+  document.body.appendChild(modal);
+
+  const signed = await fetchAllDeclarationSignatures();
+  window._declReportRows = USER_DEFS.map(function(u){
+    const rec = signed[u.username];
+    const isCurrent = rec && rec.version===DECLARATION_VERSION;
+    return {
+      username: u.username, role: u.displayRole||u.role, company: u.company||'—',
+      full_name: rec?rec.full_name:'', signed_at: rec?rec.signed_at:'', version: rec?rec.version:'',
+      status: !rec?'Not signed':(isCurrent?'Signed (current)':'Signed (outdated v'+rec.version+')')
+    };
+  });
+
+  const rows = window._declReportRows;
+  const notSigned = rows.filter(function(r){return r.status==='Not signed';}).length;
+  const outdated = rows.filter(function(r){return r.status.indexOf('outdated')!==-1;}).length;
+  const current = rows.length-notSigned-outdated;
+
+  let html = '<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">'
+    +'<div style="flex:1;min-width:120px;padding:10px 14px;background:#f0fdf4;border-radius:9px;text-align:center"><div style="font-size:20px;font-weight:800;color:#166534">'+current+'</div><div style="font-size:10px;color:#166534;text-transform:uppercase;font-weight:700">Signed — current</div></div>'
+    +'<div style="flex:1;min-width:120px;padding:10px 14px;background:#fef9c3;border-radius:9px;text-align:center"><div style="font-size:20px;font-weight:800;color:#92400e">'+outdated+'</div><div style="font-size:10px;color:#92400e;text-transform:uppercase;font-weight:700">Outdated version</div></div>'
+    +'<div style="flex:1;min-width:120px;padding:10px 14px;background:#fee2e2;border-radius:9px;text-align:center"><div style="font-size:20px;font-weight:800;color:#dc2626">'+notSigned+'</div><div style="font-size:10px;color:#dc2626;text-transform:uppercase;font-weight:700">Not signed</div></div>'
+    +'</div>';
+
+  html += '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg);font-size:10px;text-transform:uppercase;color:var(--muted);font-weight:700">'
+    +'<th style="padding:7px 8px;text-align:left">Username</th><th style="padding:7px 8px;text-align:left">Role</th><th style="padding:7px 8px;text-align:left">Company</th>'
+    +'<th style="padding:7px 8px;text-align:left">Signed Name</th><th style="padding:7px 8px;text-align:left">Signed At</th><th style="padding:7px 8px;text-align:left">Status</th></tr></thead><tbody>';
+  rows.forEach(function(r,i){
+    const color = r.status==='Not signed'?'#dc2626':r.status.indexOf('outdated')!==-1?'#92400e':'#166534';
+    html += '<tr style="border-bottom:1px solid var(--border2)'+(i%2?';background:var(--bg)':'')+'">'
+      +'<td style="padding:6px 8px;font-weight:600">'+r.username+'</td>'
+      +'<td style="padding:6px 8px;color:var(--muted)">'+r.role+'</td>'
+      +'<td style="padding:6px 8px;color:var(--muted)">'+r.company+'</td>'
+      +'<td style="padding:6px 8px">'+(r.full_name||'—')+'</td>'
+      +'<td style="padding:6px 8px;color:var(--muted);font-size:11px">'+(r.signed_at?new Date(r.signed_at).toLocaleString():'—')+'</td>'
+      +'<td style="padding:6px 8px;font-weight:700;color:'+color+'">'+r.status+'</td>'
+      +'</tr>';
+  });
+  html += '</tbody></table>';
+
+  document.getElementById('declReportBody').innerHTML = html;
+}
+function exportDeclarationReportCSV(){
+  const rows = window._declReportRows||[];
+  let csv = 'Username,Role,Company,Signed Name,Signed At,Status\n';
+  rows.forEach(function(r){
+    csv += ['"'+r.username+'"','"'+r.role+'"','"'+r.company+'"','"'+(r.full_name||'')+'"','"'+(r.signed_at||'')+'"','"'+r.status+'"'].join(',')+'\n';
+  });
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'omniflow_declaration_report_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function showDivisionDebugData(btn){
   const coId = btn.dataset.coid, divCode = btn.dataset.dc;
   const co = companies.find(function(c){ return c.id===coId || c.code===coId; });
