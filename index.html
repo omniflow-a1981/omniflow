@@ -2273,11 +2273,19 @@ async function doLogin(){
     currentUser={...def};
     localStorage.setItem('omni-session-user',JSON.stringify(currentUser));
     btn.textContent='Sign In →'; btn.disabled=false;
-    // Require a current-version signed declaration before entering the app
-    const signed = await checkDeclarationSigned(def.username);
-    if(!signed || signed.version!==DECLARATION_VERSION){
-      openDeclarationModal(currentUser);
-    } else {
+    // Require a current-version signed declaration before entering the app.
+    // Wrapped defensively: if this check fails unexpectedly for any reason,
+    // let the user into the app rather than locking them out of OmniFlow
+    // entirely over a brand-new feature.
+    try{
+      const signed = await checkDeclarationSigned(def.username);
+      if(!signed || signed.version!==DECLARATION_VERSION){
+        openDeclarationModal(currentUser);
+      } else {
+        showApp();
+      }
+    }catch(e){
+      console.warn('[OmniFlow] Declaration check failed, letting user in:',e.message);
       showApp();
     }
     return;
@@ -2344,14 +2352,18 @@ function getDeclarationHTML(user){
 // a marker row in `balances` (div_code='__decl__'+username), no new table needed.
 async function checkDeclarationSigned(username){
   try{
+    const ctrl=new AbortController();
+    const to=setTimeout(()=>ctrl.abort(),5000);
     const r=await fetch(SUPA_URL+'/balances?div_code=eq.__decl__'+encodeURIComponent(username)+'&select=note',{
-      headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}
+      headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON},
+      signal:ctrl.signal
     });
+    clearTimeout(to);
     if(!r.ok) return null;
     const rows=await r.json();
     if(!rows?.length||!rows[0].note) return null;
     return JSON.parse(rows[0].note);
-  }catch(e){ return null; }
+  }catch(e){ console.warn('[OmniFlow] Declaration check timed out or failed, treating as unsigned:',e.message); return null; }
 }
 async function saveDeclarationSignature(username,record){
   const res=await fetch(SUPA_URL+'/balances?on_conflict=div_code',{
