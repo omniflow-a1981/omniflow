@@ -1327,43 +1327,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 
     </div>
 
-    <div class="fr" style="margin-bottom:12px">
-      <div class="ff"><label>Manpower on Site</label><input type="number" id="progManpower" min="0" placeholder="0"></div>
-      <div class="ff"><label>Safety Incidents</label><input type="number" id="progSafety" min="0" placeholder="0"></div>
-    </div>
-    <div class="ff" style="margin-bottom:12px"><label>Equipment on Site</label><input type="text" id="progEquipment" placeholder="e.g. 1 excavator, 2 mixers"></div>
-    <div class="ff" style="margin-bottom:12px">
-      <label>Weather / Site Conditions</label>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
-        <select id="progWeatherCondition" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:12px;background:var(--surface);color:var(--ink);outline:none">
-          <option value="">— Select condition —</option>
-          <option value="Sunny">☀️ Sunny</option>
-          <option value="Partly cloudy">⛅ Partly cloudy</option>
-          <option value="Overcast">🌥 Overcast</option>
-          <option value="Light rain">🌦 Light rain</option>
-          <option value="Heavy rain">🌧 Heavy rain</option>
-          <option value="Stormy">⛈ Stormy</option>
-          <option value="Dusty / windy">💨 Dusty / windy</option>
-          <option value="Extreme heat">🌡 Extreme heat</option>
-        </select>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:12px;color:var(--muted)">Disruption:</span>
-          <input type="number" id="progDisruptionAmt" min="0" step="0.5" placeholder="0" style="width:70px;padding:7px 8px;border:1.5px solid var(--border);border-radius:9px;font-size:12px;background:var(--surface);color:var(--ink);outline:none">
-          <select id="progDisruptionUnit" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:12px;background:var(--surface);color:var(--ink);outline:none">
-            <option value="hours">hours</option>
-            <option value="days">days</option>
-          </select>
-        </div>
-      </div>
-      <input type="text" id="progWeather" placeholder="Additional remarks (optional)..." style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:12px;background:var(--surface);color:var(--ink);outline:none">
-    </div>
-    <div class="ff" style="margin-bottom:12px">
-      <label>Issues / Delays</label>
-      <div id="progIssueRows" style="margin-bottom:6px"></div>
-      <button type="button" onclick="addProgIssueRow()" class="btn-secondary" style="font-size:11px;padding:5px 12px">+ Add Issue</button>
-      <input type="hidden" id="progIssues">
-    </div>
-    <div class="ff" style="margin-bottom:14px"><label>Additional Notes</label><textarea id="progNotes" style="min-height:46px" placeholder="Other notes..."></textarea></div>
     <div class="btn-row">
       <button class="btn-primary" onclick="saveProgress()">Save Progress Report</button>
       <button class="btn-secondary" onclick="closeProgressModal()">Cancel</button>
@@ -7018,6 +6981,23 @@ async function syncSubdivisionsFromProjects(coId, divCode){
   showFlash(msg, 'coFlash', 'coFlashMsg');
 }
 
+// Projects/contracts visible to the current user — non-RE users see everything,
+// RE users see only their division (and their specific site, if scoped).
+function reScopedEngProjects(){
+  if(!isRE()) return engProjects;
+  const div = engUserDivision();
+  const sub = safeReSubdivision(div);
+  return engProjects.filter(function(p){
+    if(p.division_code!==div) return false;
+    if(sub && p.subdivision_code!==sub) return false;
+    return true;
+  });
+}
+function reScopedEngContracts(){
+  if(!isRE()) return engContracts;
+  const ids = reScopedEngProjects().map(function(p){return p.id;});
+  return engContracts.filter(function(c){return ids.indexOf(c.project_id)!==-1;});
+}
 function getDivSubdivisionsForCompany(coId, divCode){
   // Pull real subdivisions from Companies & Divisions data (source of truth)
   const co = companies.find(function(c){ return c.id===coId || c.code===coId; });
@@ -7884,18 +7864,6 @@ function openProgressModal(){
   populateProgressProjectDropdown();
   document.getElementById('progDate').value = new Date().toISOString().slice(0,10);
   document.getElementById('progPeriod').value = '';
-  document.getElementById('progManpower').value = '';
-  document.getElementById('progSafety').value = '';
-  document.getElementById('progEquipment').value = '';
-  document.getElementById('progWeather').value = '';
-  document.getElementById('progIssues').value = '';
-  const wc = document.getElementById('progWeatherCondition'); if(wc) wc.value='';
-  const da = document.getElementById('progDisruptionAmt'); if(da) da.value='';
-  const du = document.getElementById('progDisruptionUnit'); if(du) du.value='hours';
-  progIssueRows = [];
-  renderProgIssueRows();
-  addProgIssueRow(); // start with one blank row
-  document.getElementById('progNotes').value = '';
   const boqModeEl = document.querySelector('input[name="progMode"][value="manual_boq"]');
   if(boqModeEl) boqModeEl.checked = true;
   progManualBoqBlocks = [];
@@ -8098,32 +8066,6 @@ async function saveProgress(){
     tracking_mode: 'manual_boq',
     overall_percent: overall,
     breakdown: JSON.stringify(breakdownData),
-    manpower_count: parseInt(document.getElementById('progManpower').value)||0,
-    equipment_notes: document.getElementById('progEquipment').value.trim(),
-    safety_incidents: parseInt(document.getElementById('progSafety').value)||0,
-    weather_remarks: (function(){
-      const cond = document.getElementById('progWeatherCondition')?.value||'';
-      const disAmt = document.getElementById('progDisruptionAmt')?.value||'';
-      const disUnit = document.getElementById('progDisruptionUnit')?.value||'hours';
-      const extra = document.getElementById('progWeather')?.value?.trim()||'';
-      let parts = [];
-      if(cond) parts.push(cond);
-      if(disAmt && parseFloat(disAmt)>0) parts.push('Disruption: '+disAmt+' '+disUnit);
-      if(extra) parts.push(extra);
-      return parts.join(' · ');
-    })(),
-    issues_delays: (function(){
-      const rows = document.querySelectorAll('.prog-issue-row');
-      const parts = [];
-      rows.forEach(function(row){
-        const desc = row.querySelector('.pi-desc')?.value?.trim()||'';
-        const amt = row.querySelector('.pi-amt')?.value||'';
-        const unit = row.querySelector('.pi-unit')?.value||'hours';
-        if(desc) parts.push(desc + (amt&&parseFloat(amt)>0?' ('+amt+' '+unit+')':''));
-      });
-      return parts.join(' | ');
-    })(),
-    notes: document.getElementById('progNotes').value.trim(),
     prepared_by: currentUser?.username||'user'
   };
   if(!payload.report_date){ alert('Report date is required.'); return; }
@@ -9237,11 +9179,31 @@ function populateProgressProjectDropdown(){
   // Use same grouped format as Contract Management
   const sel = document.getElementById('progProjectId'); if(!sel) return;
   const curVal = sel.value;
-  sel.innerHTML = '<option value="">— Select project —</option>';
-  const grouped = {};
   const _reDiv4 = isRE()?engUserDivision():null;
   const _reSub4 = isRE()?safeReSubdivision(_reDiv4):null;
-  engProjects.filter(function(p){return (!_reDiv4||p.division_code===_reDiv4)&&(!_reSub4||p.subdivision_code===_reSub4);}).forEach(function(p){ const k=p.division_code; if(!grouped[k]) grouped[k]=[]; grouped[k].push(p); });
+  const scoped = engProjects.filter(function(p){return (!_reDiv4||p.division_code===_reDiv4)&&(!_reSub4||p.subdivision_code===_reSub4);});
+
+  if(isRE()){
+    // RE users: no placeholder, no "All Projects", no division grouping — just their
+    // own project(s), nothing else exposed in the dropdown.
+    sel.innerHTML = '';
+    scoped.forEach(function(p){
+      const co = companies.find(function(c){return c.id===p.company_id||c.code===p.company_id;});
+      const div = co&&(co.divisions||[]).find(function(d){return d.code===p.division_code;});
+      const sub = div&&(div.subdivisions||[]).find(function(s){return s.code===p.subdivision_code;});
+      const label = (sub?(sub.project||sub.name):p.project_name)+(p.client||(sub&&sub.client)?' — '+(p.client||(sub&&sub.client)):'');
+      const o = document.createElement('option'); o.value=p.id; o.textContent=label;
+      sel.appendChild(o);
+    });
+    if(!scoped.length){ const o=document.createElement('option'); o.disabled=true; o.textContent='No project assigned — contact your admin'; sel.appendChild(o); }
+    else { sel.value = scoped[0].id; sel.disabled = scoped.length===1; }
+    if(typeof onProgProjectChange==='function') onProgProjectChange();
+    return;
+  }
+
+  sel.innerHTML = '<option value="">— Select project —</option>';
+  const grouped = {};
+  scoped.forEach(function(p){ const k=p.division_code; if(!grouped[k]) grouped[k]=[]; grouped[k].push(p); });
   Object.keys(grouped).sort().forEach(function(divCode){
     const grp = document.createElement('optgroup'); grp.label = divCode;
     grouped[divCode].forEach(function(p){
@@ -9713,7 +9675,7 @@ function renderIPC(){
 
 function openIPCModal(editId){
   // Build simple IPC form in a prompt-style modal for now
-  const contractOpts = engContracts.map(function(c){
+  const contractOpts = reScopedEngContracts().map(function(c){
     const p=engProjects.find(function(x){return x.id===c.project_id;});
     return '<option value="'+c.id+'">'+c.contract_title+(p?' ('+p.project_name+')':'')+'</option>';
   }).join('');
@@ -9856,7 +9818,7 @@ function renderVariations(){
 }
 
 function openVariationModal(editId){
-  const contractOpts=engContracts.map(function(c){return '<option value="'+c.id+'">'+c.contract_title+'</option>';}).join('');
+  const contractOpts=reScopedEngContracts().map(function(c){return '<option value="'+c.id+'">'+c.contract_title+'</option>';}).join('');
   const existing=editId?engVariations.find(function(x){return x.id===editId;}):null;
   const today=new Date().toISOString().slice(0,10);
   const modal=document.createElement('div');
@@ -9951,7 +9913,7 @@ function renderDiary(){
 }
 
 function openDiaryModal(editId){
-  const projOpts=engProjects.map(function(p){return '<option value="'+p.id+'">'+p.project_name+'</option>';}).join('');
+  const projOpts=reScopedEngProjects().map(function(p){return '<option value="'+p.id+'">'+p.project_name+'</option>';}).join('');
   const existing=editId?engDiaryEntries.find(function(x){return x.id===editId;}):null;
   const today=new Date().toISOString().slice(0,10);
   const modal=document.createElement('div');
@@ -10041,7 +10003,7 @@ function renderDocuments(){
 }
 
 function openDocModal(editId){
-  const projOpts=engProjects.map(function(p){return '<option value="'+p.id+'">'+p.project_name+'</option>';}).join('');
+  const projOpts=reScopedEngProjects().map(function(p){return '<option value="'+p.id+'">'+p.project_name+'</option>';}).join('');
   const existing=editId?engDocuments.find(function(x){return x.id===editId;}):null;
   const today=new Date().toISOString().slice(0,10);
   const modal=document.createElement('div');
@@ -10122,7 +10084,7 @@ function renderStaff(){
 }
 
 function openStaffModal(editId){
-  const projOpts=engProjects.map(function(p){return '<option value="'+p.id+'">'+p.project_name+'</option>';}).join('');
+  const projOpts=reScopedEngProjects().map(function(p){return '<option value="'+p.id+'">'+p.project_name+'</option>';}).join('');
   const existing=editId?engStaff.find(function(x){return x.id===editId;}):null;
   const modal=document.createElement('div');
   modal.className='modal-overlay'; modal.style.display='flex'; modal.id='staffFormModal';
@@ -10198,7 +10160,7 @@ function renderEquipment(){
 }
 
 function openEquipModal(editId){
-  const projOpts=engProjects.map(function(p){return '<option value="'+p.id+'">'+p.project_name+'</option>';}).join('');
+  const projOpts=reScopedEngProjects().map(function(p){return '<option value="'+p.id+'">'+p.project_name+'</option>';}).join('');
   const existing=editId?engEquipment.find(function(x){return x.id===editId;}):null;
   const today=new Date().toISOString().slice(0,10);
   const modal=document.createElement('div');
@@ -10511,11 +10473,29 @@ const _origPopFilter = populateProgressProjectFilter;
 function populateProgressProjectFilter(){
   const sel = document.getElementById('eprfProject'); if(!sel) return;
   const cur = sel.value;
-  sel.innerHTML = '<option value="">All Projects</option>';
-  const grouped = {};
   const _reDiv4 = isRE()?engUserDivision():null;
   const _reSub4 = isRE()?safeReSubdivision(_reDiv4):null;
-  engProjects.filter(function(p){return (!_reDiv4||p.division_code===_reDiv4)&&(!_reSub4||p.subdivision_code===_reSub4);}).forEach(function(p){ const k=p.division_code; if(!grouped[k]) grouped[k]=[]; grouped[k].push(p); });
+  const scoped = engProjects.filter(function(p){return (!_reDiv4||p.division_code===_reDiv4)&&(!_reSub4||p.subdivision_code===_reSub4);});
+
+  if(isRE()){
+    sel.innerHTML = '';
+    scoped.forEach(function(p){
+      const co = companies.find(function(c){return c.id===p.company_id||c.code===p.company_id;});
+      const div = co&&(co.divisions||[]).find(function(d){return d.code===p.division_code;});
+      const sub = div&&(div.subdivisions||[]).find(function(s){return s.code===p.subdivision_code;});
+      const label = (sub?(sub.project||sub.name):p.project_name)+(p.client||(sub&&sub.client)?' — '+(p.client||(sub&&sub.client)):'');
+      const o = document.createElement('option'); o.value=p.id; o.textContent=label;
+      sel.appendChild(o);
+    });
+    if(!scoped.length){ const o=document.createElement('option'); o.disabled=true; o.textContent='No project assigned — contact your admin'; sel.appendChild(o); }
+    else { sel.value = scoped[0].id; sel.disabled = scoped.length===1; }
+    if(typeof onProgPageProjectChange==='function') onProgPageProjectChange();
+    return;
+  }
+
+  sel.innerHTML = '<option value="">All Projects</option>';
+  const grouped = {};
+  scoped.forEach(function(p){ const k=p.division_code; if(!grouped[k]) grouped[k]=[]; grouped[k].push(p); });
   Object.keys(grouped).sort().forEach(function(divCode){
     const grp = document.createElement('optgroup'); grp.label = divCode;
     grouped[divCode].forEach(function(p){
