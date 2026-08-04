@@ -578,7 +578,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   <a class="nav-item" href="#" onclick="nav('PayReq',this)" id="payreqNav">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Payment Requests
   </a>
-  <a class="nav-item" href="#" onclick="nav('Companies',this)">
+  <a class="nav-item" href="#" onclick="nav('Companies',this)" id="companiesNav">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>Companies & Divisions
   </a>
   <a class="nav-item" id="adminNav" href="#" onclick="nav('AdminSettings',this)" style="display:none">
@@ -2512,6 +2512,17 @@ function applyAccessLevel(){
     // Payables — admin and finance only
     const payNav=document.getElementById('payablesNav');
     if(payNav) payNav.style.display=(isAdmin()||currentUser.username==='finance')?'flex':'none';
+    // Finance (Blen Abera's account) — no Engineering section, no Companies & Divisions.
+    // Finance shares accessLevel 'full' with admin, so this must check username
+    // specifically rather than accessLevel, to avoid also restricting admin.
+    if(currentUser.username==='finance'){
+      ['engProjectsNav','engContractsNav','engProgressNav','companiesNav'].forEach(function(id){
+        const el=document.getElementById(id); if(el) el.style.display='none';
+      });
+      document.querySelectorAll('.sb-sec').forEach(function(sec){
+        if(sec.textContent.trim()==='Engineering') sec.style.display='none';
+      });
+    }
     // Sign out always visible
     const soNav=document.getElementById('signoutNav');
     if(soNav) soNav.style.display='flex';
