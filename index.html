@@ -1826,7 +1826,7 @@ const USER_DEFS = [
   // Guessed as WE2-S2 / WE2-S3 based on current listing order (Dimeka, then Jigjiga) —
   // open Companies & Divisions and correct these two values if the actual codes differ.
   {username:'re_we2_dimeka',  role:'re', displayRole:'RE — Dimeka Vet Lab (WE2)',  initials:'RD', accessLevel:'re', company:'WE', division:'WE2', subdivision:'WE2-S2', prRole:null},
-  {username:'re_we2_jigjiga', role:'re', displayRole:'RE — Jigjiga Vet Lab (WE2)', initials:'RJ', accessLevel:'re', company:'WE', division:'WE2', subdivision:'WE2-S3', prRole:null},
+  {username:'re_we2_jigjiga', role:'re', displayRole:'RE — Jigjiga Vet Lab (WE2)', initials:'RJ', accessLevel:'re', company:'WE', division:'WE2', subdivision:'WE2-S1', prRole:null},
 ];
 
 // Limited users: only Entry + Ledger, only today and yesterday
@@ -6942,12 +6942,21 @@ async function syncSubdivisionsFromProjects(coId, divCode){
     return p.division_code === divCode && (p.company_id===co.id || p.company_id===co.code);
   });
 
-  var added = 0, linked = 0, alreadyOk = 0;
+  var added = 0, linked = 0, alreadyOk = 0, backfilled = 0;
   for(var i=0;i<matches.length;i++){
     var p = matches[i];
     if(p.subdivision_code){
       var exists = div.subdivisions.find(function(s){ return s.code === p.subdivision_code; });
-      if(exists){ alreadyOk++; continue; }
+      if(exists){
+        // Code already matches — but backfill blank display fields (e.g. a site
+        // that existed as an empty placeholder before its project was linked)
+        var touched=false;
+        if(!exists.project && p.project_name){ exists.project=p.project_name; touched=true; }
+        if(!exists.client && p.client){ exists.client=p.client; touched=true; }
+        if(!exists.location && p.location){ exists.location=p.location; touched=true; }
+        if(touched) backfilled++; else alreadyOk++;
+        continue;
+      }
       div.subdivisions.push({
         code: p.subdivision_code, name: p.subdivision_code,
         client: p.client||'', project: p.project_name||'', location: p.location||''
@@ -6981,6 +6990,7 @@ async function syncSubdivisionsFromProjects(coId, divCode){
   var msg = '✓ Sync complete — '+added+' site(s) added';
   if(linked) msg += ', '+linked+' linked to existing site';
   if(alreadyOk) msg += ', '+alreadyOk+' already matched';
+  if(backfilled) msg += ', '+backfilled+' site name(s) backfilled';
   showFlash(msg, 'coFlash', 'coFlashMsg');
 }
 
