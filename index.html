@@ -1884,6 +1884,26 @@ function isEngUser(){return currentUser&&['eng_admin','eng_manager','re'].includ
 function engUserDivision(){return currentUser?currentUser.division:null;}
 function engUserSubdivision(){return currentUser?currentUser.subdivision:null;}
 function engUserCompany(){return currentUser?currentUser.company:null;}
+// Safe subdivision scope for filtering: if the RE's assigned subdivision code
+// doesn't actually match any project in their division (e.g. a misconfigured
+// code), fall back to the whole division instead of leaving them with nothing
+// to see. Warns once per session so the mismatch is still visible to admins.
+window._reSubFallbackWarned = window._reSubFallbackWarned || {};
+function safeReSubdivision(divCode){
+  if(!isRE()) return null;
+  const sub = engUserSubdivision();
+  if(!sub) return null;
+  const hasMatch = engProjects.some(function(p){return p.division_code===divCode && p.subdivision_code===sub;});
+  if(!hasMatch){
+    if(!window._reSubFallbackWarned[sub]){
+      window._reSubFallbackWarned[sub]=true;
+      console.warn('[OmniFlow] ⚠ RE subdivision "'+sub+'" matched no projects in '+divCode+' — showing whole division instead. Check the subdivision code assigned to this user against Companies & Divisions.');
+      showSync('error','⚠ Account subdivision "'+sub+'" not found — showing all of '+divCode+' instead','re_subdivision');
+    }
+    return null;
+  }
+  return sub;
+}
 // Check if a project is accessible to the current engineering user
 
 // Hide action buttons for RE users (read-only for certain actions)
@@ -1909,7 +1929,7 @@ function canAccessProject(proj){
     // RE can only see their division...
     if(proj.division_code !== cu.division) return false;
     // ...and if this RE is scoped to a specific subdivision (site), only that site
-    if(cu.subdivision) return proj.subdivision_code === cu.subdivision;
+    if(cu.subdivision){ const _safe=safeReSubdivision(cu.division); if(_safe) return proj.subdivision_code === _safe; }
     return true;
   }
   return true;
@@ -6824,7 +6844,7 @@ function renderEngProjects(){
   const st = document.getElementById('epfStatus')?.value||'';
   const q = (document.getElementById('epfSearch')?.value||'').toLowerCase();
   const _reDivF = isRE()?engUserDivision():null;
-  const _reSubF = isRE()?engUserSubdivision():null;
+  const _reSubF = isRE()?safeReSubdivision(_reDivF):null;
   let list = engProjects.filter(p=>{
     if(_reDivF && p.division_code!==_reDivF) return false;
     if(_reSubF && p.subdivision_code!==_reSubF) return false;
@@ -7507,7 +7527,7 @@ function renderEngContracts(){
   const st = document.getElementById('ecfStatus')?.value||'';
   const q = (document.getElementById('ecfSearch')?.value||'').toLowerCase();
   const _reDivF2 = isRE()?engUserDivision():null;
-  const _reSubF2 = isRE()?engUserSubdivision():null;
+  const _reSubF2 = isRE()?safeReSubdivision(_reDivF2):null;
   let list = engContracts.filter(function(c){
     if(_reDivF2 && c.division_code!==_reDivF2) return false;
     if(_reSubF2){
@@ -7746,7 +7766,7 @@ function renderEngProgress(){
   const projFilter = document.getElementById('eprfProject')?.value||'';
   const q = (document.getElementById('eprfSearch')?.value||'').toLowerCase();
   const _reDivF3 = isRE()?engUserDivision():null;
-  const _reSubF3 = isRE()?engUserSubdivision():null;
+  const _reSubF3 = isRE()?safeReSubdivision(_reDivF3):null;
   let list = engProgressReports.filter(function(r){
     if(_reDivF3){
       const _rp=engProjects.find(function(p){return p.id===r.project_id;});
@@ -9185,7 +9205,8 @@ function onProgDivisionChange(){
   document.getElementById('progProjectInfoBanner').style.display='none';
   if(!co||!divCode) return;
   let tracked = getTrackedSubdivisions(co, divCode);
-  if(isRE() && engUserSubdivision()) tracked = tracked.filter(function(t){return t.subCode===engUserSubdivision();});
+  const _safeSub = isRE()?safeReSubdivision(divCode):null;
+  if(_safeSub) tracked = tracked.filter(function(t){return t.subCode===_safeSub;});
   if(!tracked.length){
     const o=document.createElement('option');
     o.disabled=true; o.textContent='No tracked projects in this division — create one in Project Tracking';
@@ -9208,7 +9229,7 @@ function populateProgressProjectDropdown(){
   sel.innerHTML = '<option value="">— Select project —</option>';
   const grouped = {};
   const _reDiv4 = isRE()?engUserDivision():null;
-  const _reSub4 = isRE()?engUserSubdivision():null;
+  const _reSub4 = isRE()?safeReSubdivision(_reDiv4):null;
   engProjects.filter(function(p){return (!_reDiv4||p.division_code===_reDiv4)&&(!_reSub4||p.subdivision_code===_reSub4);}).forEach(function(p){ const k=p.division_code; if(!grouped[k]) grouped[k]=[]; grouped[k].push(p); });
   Object.keys(grouped).sort().forEach(function(divCode){
     const grp = document.createElement('optgroup'); grp.label = divCode;
@@ -10482,7 +10503,7 @@ function populateProgressProjectFilter(){
   sel.innerHTML = '<option value="">All Projects</option>';
   const grouped = {};
   const _reDiv4 = isRE()?engUserDivision():null;
-  const _reSub4 = isRE()?engUserSubdivision():null;
+  const _reSub4 = isRE()?safeReSubdivision(_reDiv4):null;
   engProjects.filter(function(p){return (!_reDiv4||p.division_code===_reDiv4)&&(!_reSub4||p.subdivision_code===_reSub4);}).forEach(function(p){ const k=p.division_code; if(!grouped[k]) grouped[k]=[]; grouped[k].push(p); });
   Object.keys(grouped).sort().forEach(function(divCode){
     const grp = document.createElement('optgroup'); grp.label = divCode;
