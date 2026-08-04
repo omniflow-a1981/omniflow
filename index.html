@@ -1848,22 +1848,24 @@ function engUserDivision(){return currentUser?currentUser.division:null;}
 function engUserSubdivision(){return currentUser?currentUser.subdivision:null;}
 function engUserCompany(){return currentUser?currentUser.company:null;}
 // Safe subdivision scope for filtering: if the RE's assigned subdivision code
-// doesn't actually match any project in their division (e.g. a misconfigured
-// code), fall back to the whole division instead of leaving them with nothing
-// to see. Warns once per session so the mismatch is still visible to admins.
+// doesn't match any real project, this returns a sentinel that matches NOTHING —
+// the RE sees an empty state, never another site's data. Falling back to "whole
+// division" was tried before and is unsafe: if the division happens to contain
+// only one unrelated project, the RE ends up looking at (and could edit) a
+// completely different site's data with no indication anything is wrong.
 window._reSubFallbackWarned = window._reSubFallbackWarned || {};
 function safeReSubdivision(divCode){
   if(!isRE()) return null;
   const sub = engUserSubdivision();
-  if(!sub) return null;
+  if(!sub) return null; // this RE is intentionally division-wide (e.g. re_we2) — not a mismatch
   const hasMatch = engProjects.some(function(p){return p.division_code===divCode && p.subdivision_code===sub;});
   if(!hasMatch){
     if(!window._reSubFallbackWarned[sub]){
       window._reSubFallbackWarned[sub]=true;
-      console.warn('[OmniFlow] ⚠ RE subdivision "'+sub+'" matched no projects in '+divCode+' — showing whole division instead. Check the subdivision code assigned to this user against Companies & Divisions.');
-      showSync('error','⚠ Account subdivision "'+sub+'" not found — showing all of '+divCode+' instead','re_subdivision');
+      console.warn('[OmniFlow] ⚠ RE subdivision "'+sub+'" matched no projects in '+divCode+'. This account will see NO projects until an admin fixes the subdivision code (Companies & Divisions → WE2) to match a real site.');
+      showSync('error','⚠ No project assigned for subdivision "'+sub+'" — contact your admin','re_subdivision');
     }
-    return null;
+    return '__NO_MATCH__'; // guaranteed not to equal any real subdivision_code
   }
   return sub;
 }
@@ -4366,6 +4368,7 @@ function renderCompanies(){
           +'</div>'
           +'<div style="display:flex;gap:5px">'
             +'<button onclick="syncSubdivisionsFromProjectsBtn(this)" data-coid="'+cid+'" data-dc="'+dc+'" title="Pull any sites/projects registered in Project Tracking that are missing here" style="font-size:10px;padding:3px 8px;border:1px solid #86efac;border-radius:6px;background:none;cursor:pointer;color:#059669">🔄 Sync from Projects</button>'
+            +'<button onclick="showDivisionDebugData(this)" data-coid="'+cid+'" data-dc="'+dc+'" title="Show the raw project/subdivision data for this division" style="font-size:10px;padding:3px 8px;border:1px solid #93c5fd;border-radius:6px;background:none;cursor:pointer;color:#2563eb">🔍 View Raw Data</button>'
             +'<button onclick="renameDivisionBtn(this)" data-coid="'+cid+'" data-dc="'+dc+'" style="font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;color:var(--blue)">✏ Rename</button>'
             +'<button onclick="deleteDivisionBtn(this)" data-coid="'+cid+'" data-dc="'+dc+'" style="font-size:10px;padding:3px 8px;border:1px solid #fecaca;border-radius:6px;background:none;cursor:pointer;color:var(--red)">× Remove</button>'
           +'</div>'
@@ -6998,6 +7001,46 @@ function reScopedEngContracts(){
   const ids = reScopedEngProjects().map(function(p){return p.id;});
   return engContracts.filter(function(c){return ids.indexOf(c.project_id)!==-1;});
 }
+// ── DEBUG: show the real project/subdivision data for a division ──
+// Exists so subdivision codes for RE accounts can be read directly off the live
+// data instead of guessed. Shows exactly what's in engProjects (source of truth
+// for Project Tracking) side-by-side with what's in the companies/subdivisions
+// JSON (source of truth for Companies & Divisions), so any mismatch is obvious.
+function showDivisionDebugData(btn){
+  const coId = btn.dataset.coid, divCode = btn.dataset.dc;
+  const co = companies.find(function(c){ return c.id===coId || c.code===coId; });
+  const div = co && co.divisions.find(function(d){ return d.code===divCode; });
+  const subs = (div && div.subdivisions) || [];
+  const projs = engProjects.filter(function(p){
+    return p.division_code===divCode && (p.company_id===coId || (co && p.company_id===co.code));
+  });
+
+  let txt = '═══ '+divCode+' — RAW DATA ═══\n\n';
+  txt += '── Subdivisions in Companies & Divisions ('+subs.length+') ──\n';
+  if(!subs.length) txt += '(none)\n';
+  subs.forEach(function(s){ txt += '  code: "'+s.code+'"   name: "'+(s.name||'')+'"   project: "'+(s.project||'')+'"   client: "'+(s.client||'')+'"\n'; });
+
+  txt += '\n── Projects in Project Tracking / eng_projects ('+projs.length+') ──\n';
+  if(!projs.length) txt += '(none)\n';
+  projs.forEach(function(p){ txt += '  id: '+p.id+'\n    project_name: "'+(p.project_name||'')+'"\n    division_code: "'+(p.division_code||'')+'"\n    subdivision_code: '+(p.subdivision_code?'"'+p.subdivision_code+'"':'(empty)')+'\n    client: "'+(p.client||'')+'"\n    company_id: "'+(p.company_id||'')+'"\n\n'; });
+
+  txt += '── RE accounts currently pointed at '+divCode+' ──\n';
+  USER_DEFS.filter(function(u){ return u.division===divCode; }).forEach(function(u){
+    txt += '  '+u.username+'  →  subdivision: '+(u.subdivision?'"'+u.subdivision+'"':'(whole division)')+'\n';
+  });
+
+  const modal=document.createElement('div');
+  modal.className='modal-overlay'; modal.style.display='flex';
+  modal.innerHTML='<div class="modal-box" style="max-width:640px">'
+    +'<div class="modal-header"><div class="modal-title">🔍 Raw Data — '+divCode+'</div>'
+    +'<button class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">&times;</button></div>'
+    +'<div style="font-size:11px;color:var(--muted);margin-bottom:8px">Copy/screenshot this and send it back — it tells us exactly which subdivision code each project really has.</div>'
+    +'<textarea readonly style="width:100%;min-height:360px;font-family:monospace;font-size:11px;padding:10px;border:1.5px solid var(--border);border-radius:9px;background:var(--bg);color:var(--ink)">'+txt.replace(/</g,'&lt;')+'</textarea>'
+    +'<div class="btn-row" style="margin-top:10px"><button class="btn-secondary" onclick="this.closest(\'.modal-overlay\').remove()">Close</button></div>'
+    +'</div>';
+  document.body.appendChild(modal);
+}
+
 function getDivSubdivisionsForCompany(coId, divCode){
   // Pull real subdivisions from Companies & Divisions data (source of truth)
   const co = companies.find(function(c){ return c.id===coId || c.code===coId; });
