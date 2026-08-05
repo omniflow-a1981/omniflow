@@ -824,17 +824,23 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       <div class="page-title">Outstanding <em>Payables</em></div>
       <div class="page-subtitle">Track what your companies owe to suppliers, contractors and others</div>
     </div>
-    <button class="btn-primary" onclick="toggleAddPayForm()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Payable
-    </button>
+    <div style="display:flex;gap:8px">
+      <button class="btn-secondary" onclick="openIpcLedgerReport()" style="background:#eff6ff;border-color:#93c5fd;color:#1e40af">📊 IPC Payment Ledger</button>
+      <button class="btn-secondary" onclick="exportPayablesCSV()">⬇ Export CSV</button>
+      <button class="btn-primary" onclick="toggleAddPayForm()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Payable
+      </button>
+    </div>
   </div>
   <!-- KPIs -->
   <div class="out-kpi-grid" id="payKpis"></div>
+  <!-- Aging -->
+  <div id="payAging" style="margin-bottom:16px"></div>
   <!-- Add form -->
   <div class="card add-out-form" id="addPayForm">
     <div class="card-title">New payable item</div>
     <div class="fr fr3">
-      <div class="ff"><label>Company</label><select id="pCompany" onchange="updatePayDivs()"></select></div>
+      <div class="ff"><label>Company</label><select id="pCompany" onchange="updatePayDivs();updatePayableProjectOptions()"></select></div>
       <div class="ff"><label>Division</label><select id="pDivision"></select></div>
       <div class="ff"><label>Status</label>
         <select id="pStatus">
@@ -848,11 +854,22 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       <div class="ff"><label>Supplier / Creditor</label><input type="text" id="pSupplier" placeholder="e.g. Lampros Trading"></div>
       <div class="ff"><label>Description</label><input type="text" id="pDesc" placeholder="e.g. Subcontract retention"></div>
     </div>
+    <div class="fr" style="background:var(--bg);padding:10px;border-radius:9px;margin-bottom:12px">
+      <div class="ff">
+        <label>Link to Project (optional)</label>
+        <select id="pProject" onchange="updatePayableIpcOptions()"><option value="">— None —</option></select>
+      </div>
+      <div class="ff">
+        <label>Link to IPC (optional)</label>
+        <select id="pIpc" onchange="onPayableIpcChange()"><option value="">— None —</option></select>
+      </div>
+    </div>
     <div class="fr fr3">
       <div class="ff"><label>Total amount (ETB)</label><input type="number" id="pAmt" placeholder="e.g. 500000" min="0"></div>
-      <div class="ff"><label>Amount paid so far (ETB)</label><input type="number" id="pPaid" placeholder="0" min="0" value="0"></div>
+      <div class="ff"><label>Initial payment received (ETB, optional)</label><input type="number" id="pPaid" placeholder="0" min="0" value="0"></div>
       <div class="ff"><label>Due date</label><input type="date" id="pDue"></div>
     </div>
+    <div style="font-size:11px;color:var(--muted);margin:-6px 0 12px">Further payments are recorded individually against this item after it's created — each one is kept in a running history with a running balance, not just overwritten.</div>
     <div class="ff" style="margin-bottom:12px"><label>Note (optional)</label><input type="text" id="pNote" placeholder="Any additional details"></div>
     <div class="btn-row">
       <button class="btn-primary" onclick="addPayable()">Save Payable</button>
@@ -2800,6 +2817,7 @@ async function initApp(){
     }
 
     payables = ls('omni-payables')||[];
+    loadPayablesFromCloud().then(function(loaded){ if(loaded) renderPayables(); }); // upgrade from local cache once cloud responds
     showSync('ok','Data loaded ✓');
     // Always save companies to cloud on startup to keep it in sync
     setTimeout(saveCompaniesToCloud, 2000);
@@ -4824,6 +4842,38 @@ async function changeAdminPassword(){
 // ══════════════════════════════════════
 let payables = [];
 
+// ── CLOUD SYNC for Outstanding Payables ──────────────────────
+// Previously this data ONLY lived in localStorage — per-browser, never
+// synced, invisible to anyone on another device. The PATCH/DELETE calls
+// further down that reference `/outstanding?id=eq....` were targeting the
+// wrong table (that table belongs to Outstanding INCOME) using client-side
+// Date.now() ids that never match a real row there, so they silently did
+// nothing. This uses the same safe JSON-blob-in-balances pattern already
+// proven for companies, passwords, and declarations — no new table needed.
+async function savePayablesToCloud(){
+  try{
+    const res=await fetch(SUPA_URL+'/balances?on_conflict=div_code',{
+      method:'POST',
+      headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify({div_code:'__payables__',opening_etb:0,opening_usd:0,note:JSON.stringify(payables)})
+    });
+    if(!res.ok){ const t=await res.text().catch(function(){return res.status;}); console.error('[OmniFlow] Payables cloud save failed:',t); }
+  }catch(e){ console.error('[OmniFlow] Payables cloud save error:',e.message); }
+}
+async function loadPayablesFromCloud(){
+  try{
+    const r=await fetch(SUPA_URL+'/balances?div_code=eq.__payables__&select=note',{
+      headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}
+    });
+    if(!r.ok) return false;
+    const rows=await r.json();
+    if(!rows?.length||!rows[0].note) return false;
+    const cloud=JSON.parse(rows[0].note);
+    if(Array.isArray(cloud)){ payables=cloud; ls('omni-payables',payables); return true; }
+  }catch(e){ console.warn('[OmniFlow] Payables cloud load failed, using local cache:',e.message); }
+  return false;
+}
+
 function isFinanceOrAdmin(){ return currentUser && (currentUser.username==='admin'||currentUser.username==='finance'); }
 
 function toggleAddPayForm(){
@@ -4844,23 +4894,83 @@ function updatePayDivs(){
   });
 }
 
+async function updatePayableProjectOptions(){
+  const co=document.getElementById('pCompany').value;
+  const sel=document.getElementById('pProject'); if(!sel) return;
+  sel.innerHTML='<option value="">— None —</option>';
+  document.getElementById('pIpc').innerHTML='<option value="">— None —</option>';
+  if(!co) return;
+  try{
+    const rows=await engFetch('/eng_projects?company_id=eq.'+co+'&select=id,project_name,division_code,client');
+    (Array.isArray(rows)?rows:[]).forEach(function(p){
+      const o=document.createElement('option'); o.value=p.id;
+      o.textContent=p.project_name+(p.client?' — '+p.client:'');
+      sel.appendChild(o);
+    });
+  }catch(e){}
+}
+async function updatePayableIpcOptions(){
+  const projId=document.getElementById('pProject').value;
+  const sel=document.getElementById('pIpc'); if(!sel) return;
+  sel.innerHTML='<option value="">— None —</option>';
+  if(!projId) return;
+  try{
+    // IPCs are linked via contract → project, so pull contracts for this project first
+    const contracts=await engFetch('/eng_contracts?project_id=eq.'+projId+'&select=id,contract_title');
+    const contractIds=(Array.isArray(contracts)?contracts:[]).map(function(c){return c.id;});
+    if(!contractIds.length) return;
+    const ipcs=await engFetch('/eng_ipc?contract_id=in.('+contractIds.join(',')+')&select=id,ipc_number,certified_amount,ipc_date&order=ipc_number');
+    (Array.isArray(ipcs)?ipcs:[]).forEach(function(ipc){
+      const o=document.createElement('option'); o.value=ipc.id;
+      o.dataset.amt=ipc.certified_amount||0;
+      o.textContent='IPC #'+(ipc.ipc_number||'—')+' — '+fmt(ipc.certified_amount||0)+(ipc.ipc_date?' ('+ipc.ipc_date+')':'');
+      sel.appendChild(o);
+    });
+  }catch(e){}
+}
+function onPayableIpcChange(){
+  const sel=document.getElementById('pIpc');
+  const opt=sel.selectedOptions[0];
+  const amtEl=document.getElementById('pAmt');
+  if(opt && opt.dataset.amt && amtEl && (!amtEl.value || parseFloat(amtEl.value)===0)){
+    amtEl.value = opt.dataset.amt;
+    amtEl.style.borderColor='var(--teal)';
+    setTimeout(function(){ amtEl.style.borderColor=''; },1200);
+  }
+}
+
 async function addPayable(){
   const co=document.getElementById('pCompany').value;
   const div=document.getElementById('pDivision').value;
   const supplier=document.getElementById('pSupplier').value.trim();
   const desc=document.getElementById('pDesc').value.trim();
   const amt=parseFloat(document.getElementById('pAmt').value)||0;
-  const paid=parseFloat(document.getElementById('pPaid').value)||0;
+  const initialPaid=parseFloat(document.getElementById('pPaid').value)||0;
   const status=document.getElementById('pStatus').value;
   const due=document.getElementById('pDue').value;
   const note=document.getElementById('pNote').value.trim();
+  const projectId=document.getElementById('pProject')?.value||'';
+  const ipcId=document.getElementById('pIpc')?.value||'';
+  const projectName=projectId?document.getElementById('pProject').selectedOptions[0].textContent:'';
+  const ipcLabel=ipcId?document.getElementById('pIpc').selectedOptions[0].textContent:'';
   if(!supplier||!desc||!amt){alert('Please fill in supplier, description and amount.');return;}
-  const item={id:Date.now(),co,div,supplier,desc,amt:Math.round(amt),paid:Math.round(paid),status,due,note};
+
+  const payments = initialPaid>0 ? [{id:Date.now(),amount:Math.round(initialPaid),date:new Date().toISOString().slice(0,10),note:'Initial payment'}] : [];
+  const item={
+    id:Date.now(),co,div,supplier,desc,amt:Math.round(amt),
+    paid:Math.round(initialPaid), // kept in sync with sum(payments) — existing code throughout the app reads this directly
+    payments, status,due,note,
+    project_id:projectId||null, ipc_id:ipcId||null,
+    project_name:projectName||'', ipc_label:ipcLabel||''
+  };
   payables.push(item);
   ls('omni-payables',payables);
+  savePayablesToCloud();
   ['pSupplier','pDesc','pAmt','pNote'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('pPaid').value='0';
   document.getElementById('pDue').value='';
+  if(document.getElementById('pProject')) document.getElementById('pProject').value='';
+  if(document.getElementById('pIpc')) document.getElementById('pIpc').innerHTML='<option value="">— None —</option>';
   document.getElementById('addPayForm').classList.remove('vis');
   showFlash('✓ Payable added.');
   renderPayables();
@@ -4922,6 +5032,37 @@ function renderPayables(){
       <div style="font-size:10px;color:#92400e">${prPending.length} request(s)</div>
     </div>`:''}
   `;
+
+  // ── Aging summary — standard AP practice: how overdue is what's still owed ──
+  const agingEl = document.getElementById('payAging');
+  if(agingEl){
+    const today = new Date().toISOString().slice(0,10);
+    const buckets = {current:0, d30:0, d60:0, d90:0, d90plus:0};
+    payables.forEach(function(p){
+      const bal = p.amt-(p.paid||0);
+      if(bal<=0) return;
+      if(!p.due || p.due>=today){ buckets.current+=bal; return; }
+      const days = Math.floor((new Date(today)-new Date(p.due))/86400000);
+      if(days<=30) buckets.d30+=bal;
+      else if(days<=60) buckets.d60+=bal;
+      else if(days<=90) buckets.d90+=bal;
+      else buckets.d90plus+=bal;
+    });
+    const totalOwed = Object.values(buckets).reduce((a,b)=>a+b,0);
+    if(totalOwed>0){
+      agingEl.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px">'
+        +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Aging — Amount Owed by Days Overdue</div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+        +'<div style="flex:1;min-width:90px;padding:8px;background:#f0fdf4;border-radius:8px;text-align:center"><div style="font-size:14px;font-weight:800;color:#166534">'+fmt(buckets.current)+'</div><div style="font-size:9px;color:#166534;text-transform:uppercase">Current</div></div>'
+        +'<div style="flex:1;min-width:90px;padding:8px;background:#fef9c3;border-radius:8px;text-align:center"><div style="font-size:14px;font-weight:800;color:#92400e">'+fmt(buckets.d30)+'</div><div style="font-size:9px;color:#92400e;text-transform:uppercase">1–30 days</div></div>'
+        +'<div style="flex:1;min-width:90px;padding:8px;background:#fed7aa;border-radius:8px;text-align:center"><div style="font-size:14px;font-weight:800;color:#9a3412">'+fmt(buckets.d60)+'</div><div style="font-size:9px;color:#9a3412;text-transform:uppercase">31–60 days</div></div>'
+        +'<div style="flex:1;min-width:90px;padding:8px;background:#fecaca;border-radius:8px;text-align:center"><div style="font-size:14px;font-weight:800;color:#991b1b">'+fmt(buckets.d90)+'</div><div style="font-size:9px;color:#991b1b;text-transform:uppercase">61–90 days</div></div>'
+        +'<div style="flex:1;min-width:90px;padding:8px;background:#fca5a5;border-radius:8px;text-align:center"><div style="font-size:14px;font-weight:800;color:#7f1d1d">'+fmt(buckets.d90plus)+'</div><div style="font-size:9px;color:#7f1d1d;text-transform:uppercase">90+ days</div></div>'
+        +'</div></div>';
+    } else {
+      agingEl.innerHTML='';
+    }
+  }
 
   // ── Group by Company → Division → Subdivision ──
   const grid = document.getElementById('payGrid') || document.getElementById('payList');
@@ -4995,6 +5136,7 @@ function renderPayables(){
 
         subItems.forEach(p => {
           const balance = p.amt - (p.paid||0);
+          const numPayments = (p.payments||[]).length;
           html += `<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border2);flex-wrap:wrap;gap:6px">
             <div style="flex:1;min-width:0">
               <div style="font-size:13px;font-weight:700;color:var(--ink2)">
@@ -5002,6 +5144,7 @@ function renderPayables(){
                 ${p.supplier}
               </div>
               <div style="font-size:11px;color:var(--muted);margin-top:2px">${p.desc}</div>
+              ${(p.project_name||p.ipc_label)?`<div style="font-size:10px;color:#1e40af;margin-top:2px">🔗 ${p.project_name||''}${p.ipc_label?' — '+p.ipc_label:''}</div>`:''}
               ${p.isPR?`
               <div style="font-size:10px;color:var(--muted2);margin-top:3px">
                 Type: ${p.reqType||'—'} · Verified by: ${p.verifiedBy}
@@ -5013,11 +5156,16 @@ function renderPayables(){
                 <a href="#" onclick="requestPaymentPR('${p.prId}');return false" style="font-size:11px;color:#92400e;font-weight:600;text-decoration:none">📢 Request Payment</a>
               </div>`:`
               ${p.due?`<div style="font-size:10px;color:var(--muted2);margin-top:2px">Due: ${p.due}</div>`:''}
-              ${p.note?`<div style="font-size:10px;color:var(--muted2);font-style:italic">${p.note}</div>`:''}`}
+              ${p.note?`<div style="font-size:10px;color:var(--muted2);font-style:italic">${p.note}</div>`:''}
+              <div style="margin-top:5px;display:flex;gap:10px;align-items:center">
+                ${canEdit?`<a href="#" onclick="openRecordPaymentModal('${p.id}');return false" style="font-size:11px;color:var(--teal-dark);font-weight:600;text-decoration:none">+ Record Payment</a>`:''}
+                <a href="#" onclick="openPayableHistoryModal('${p.id}');return false" style="font-size:11px;color:var(--muted);font-weight:600;text-decoration:none">📜 History${numPayments?' ('+numPayments+')':''}</a>
+              </div>`}
             </div>
             <div style="text-align:right;flex-shrink:0;min-width:100px">
               <div style="font-size:14px;font-weight:800;color:${p.isPR?'#92400e':balance>0?'var(--red)':'var(--teal-dark)'}">${fmt(balance)}</div>
               ${p.isPR&&p.alreadyPaid>0?`<div style="font-size:10px;color:var(--teal-dark)">Already paid: ${fmt(p.alreadyPaid)}</div>`:''}
+              ${!p.isPR?`<div style="font-size:10px;color:var(--muted)">of ${fmt(p.amt)}</div>`:''}
               ${!p.isPR&&canEdit?`
               <div style="display:flex;gap:4px;margin-top:5px;justify-content:flex-end">
                 <select onchange="updatePayStatus('${p.id}',this.value)" style="font-size:10px;padding:2px 5px;border:1px solid var(--border);border-radius:5px;background:var(--surface)">
@@ -5045,18 +5193,221 @@ function renderPayables(){
   }
 }
 
+function exportPayablesCSV(){
+  let csv = 'Company,Division,Supplier,Description,Linked Project,Linked IPC,Total Amount,Received,Remaining,Status,Due Date,Payment Date,Payment Amount,Payment Note\n';
+  const esc = v => '"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  payables.forEach(function(p){
+    const balance = p.amt-(p.paid||0);
+    const payments = p.payments&&p.payments.length ? p.payments : [null];
+    payments.forEach(function(pm){
+      csv += [
+        esc(p.co), esc(p.div), esc(p.supplier), esc(p.desc),
+        esc(p.project_name||''), esc(p.ipc_label||''),
+        p.amt, p.paid||0, balance, esc(p.status), esc(p.due||''),
+        esc(pm?pm.date:''), pm?pm.amount:'', esc(pm?pm.note:'')
+      ].join(',')+'\n';
+    });
+  });
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'omniflow_outstanding_payables_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
 async function updatePayStatus(id,val){
   const p=payables.find(x=>x.id===id||String(x.id)===String(id));
-  if(p){p.status=val;ls('omni-payables',payables);
-    try{await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/outstanding?id=eq.'+id,{method:'PATCH',headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({status:val})});}catch(e){}
+  if(p){p.status=val;ls('omni-payables',payables);savePayablesToCloud();
     renderPayables();renderDashboard();}
 }
 async function deletePayable(id){
   if(!confirm('Delete this payable item?'))return;
   payables=payables.filter(p=>String(p.id)!==String(id));
   ls('omni-payables',payables);
-  try{await fetch('https://carcospsxvrmvkxhdyym.supabase.co/rest/v1/outstanding?id=eq.'+id,{method:'DELETE',headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcmNvc3BzeHZybXZreGhkeXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTkwNTAsImV4cCI6MjA5NTAzNTA1MH0.dwXLU3u-FkOcNnu-2r_ziWZbG7c9GV5fKPVSODtSXPE'}});}catch(e){}
+  savePayablesToCloud();
   renderPayables();renderDashboard();
+}
+
+// ── Payment history: record each amount received individually, with a
+// running balance, instead of overwriting a single "paid" number ──
+function openRecordPaymentModal(payableId){
+  const p=payables.find(x=>String(x.id)===String(payableId)); if(!p) return;
+  const balance=p.amt-(p.paid||0);
+  const modal=document.createElement('div');
+  modal.className='modal-overlay'; modal.style.display='flex'; modal.id='recPayModal';
+  modal.innerHTML='<div class="modal-box" style="max-width:420px">'
+    +'<div class="modal-header"><div class="modal-title">💰 Record Payment</div>'
+    +'<button class="modal-close" onclick="document.getElementById(\'recPayModal\').remove()">&times;</button></div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:14px">'+p.supplier+' — '+p.desc+'<br>Total: '+fmt(p.amt)+' &nbsp;·&nbsp; Received so far: '+fmt(p.paid||0)+' &nbsp;·&nbsp; Remaining: <strong style="color:var(--red)">'+fmt(balance)+'</strong></div>'
+    +'<div class="ff" style="margin-bottom:10px"><label>Amount Received *</label><input type="number" id="recPayAmt" min="0" max="'+balance+'" placeholder="e.g. 50000" value="'+balance+'"></div>'
+    +'<div class="ff" style="margin-bottom:10px"><label>Date</label><input type="date" id="recPayDate" value="'+new Date().toISOString().slice(0,10)+'"></div>'
+    +'<div class="ff" style="margin-bottom:10px"><label>Note (optional)</label><input type="text" id="recPayNote" placeholder="e.g. Bank transfer ref #..."></div>'
+    +'<div id="recPayErr" style="font-size:12px;color:var(--red);margin-bottom:10px;display:none"></div>'
+    +'<div class="btn-row"><button class="btn-primary" onclick="submitRecordPayment(\''+payableId+'\')">Save Payment</button><button class="btn-secondary" onclick="document.getElementById(\'recPayModal\').remove()">Cancel</button></div>'
+    +'</div>';
+  document.body.appendChild(modal);
+}
+async function submitRecordPayment(payableId){
+  const p=payables.find(x=>String(x.id)===String(payableId)); if(!p) return;
+  const amtEl=document.getElementById('recPayAmt');
+  const dateEl=document.getElementById('recPayDate');
+  const noteEl=document.getElementById('recPayNote');
+  const errEl=document.getElementById('recPayErr');
+  errEl.style.display='none';
+  const amt=Math.round(parseFloat(amtEl.value)||0);
+  if(amt<=0){ errEl.textContent='Enter an amount greater than 0.'; errEl.style.display='block'; return; }
+
+  if(!p.payments) p.payments=[];
+  p.payments.push({id:Date.now(),amount:amt,date:dateEl.value||new Date().toISOString().slice(0,10),note:noteEl.value.trim()});
+  p.paid = p.payments.reduce((s,x)=>s+(x.amount||0),0);
+  if(p.paid>=p.amt) p.status='paid';
+  else if(p.paid>0) p.status='partial';
+
+  ls('omni-payables',payables);
+  savePayablesToCloud();
+  document.getElementById('recPayModal').remove();
+  showFlash('✓ Payment of '+fmt(amt)+' recorded — remaining: '+fmt(p.amt-p.paid));
+  renderPayables();
+  renderDashboard();
+}
+
+// ── IPC PAYMENT LEDGER ──────────────────────────────────────
+// Standard-format statement tracking, for every IPC linked to a payable: the
+// certified amount, cumulative amount received against it, and remaining
+// balance — grouped by project so the whole payment history for a contract's
+// IPCs is visible in one place instead of buried inside individual payables.
+function openIpcLedgerReport(){
+  const modal=document.createElement('div');
+  modal.className='modal-overlay'; modal.style.display='flex'; modal.id='ipcLedgerModal';
+  modal.innerHTML='<div class="modal-box" style="max-width:960px;max-height:88vh;display:flex;flex-direction:column">'
+    +'<div class="modal-header"><div class="modal-title">📊 IPC Payment Ledger</div>'
+    +'<button class="modal-close" onclick="document.getElementById(\'ipcLedgerModal\').remove()">&times;</button></div>'
+    +'<div id="ipcLedgerBody" style="overflow-y:auto;flex:1"></div>'
+    +'<div class="btn-row" style="margin-top:12px"><button class="btn-primary" onclick="exportIpcLedgerCSV()">⬇ Export CSV</button><button class="btn-secondary" onclick="document.getElementById(\'ipcLedgerModal\').remove()">Close</button></div>'
+    +'</div>';
+  document.body.appendChild(modal);
+  renderIpcLedgerReport();
+}
+function renderIpcLedgerReport(){
+  const linked = payables.filter(function(p){ return p.ipc_id; });
+  const grandCertified = linked.reduce((s,p)=>s+(p.amt||0),0);
+  const grandReceived  = linked.reduce((s,p)=>s+(p.paid||0),0);
+  const grandRemaining = grandCertified-grandReceived;
+  const collectionRate = grandCertified>0 ? Math.round((grandReceived/grandCertified)*1000)/10 : 0;
+
+  window._ipcLedgerRows = linked;
+
+  let html = '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">'
+    +'<div style="flex:1;min-width:130px;padding:10px 14px;background:var(--bg);border-radius:9px;text-align:center"><div style="font-size:18px;font-weight:800">'+fmt(grandCertified)+'</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;font-weight:700">Total Certified</div></div>'
+    +'<div style="flex:1;min-width:130px;padding:10px 14px;background:#f0fdf4;border-radius:9px;text-align:center"><div style="font-size:18px;font-weight:800;color:#166534">'+fmt(grandReceived)+'</div><div style="font-size:9px;color:#166534;text-transform:uppercase;font-weight:700">Total Received</div></div>'
+    +'<div style="flex:1;min-width:130px;padding:10px 14px;background:#fee2e2;border-radius:9px;text-align:center"><div style="font-size:18px;font-weight:800;color:#dc2626">'+fmt(grandRemaining)+'</div><div style="font-size:9px;color:#dc2626;text-transform:uppercase;font-weight:700">Remaining</div></div>'
+    +'<div style="flex:1;min-width:130px;padding:10px 14px;background:#eff6ff;border-radius:9px;text-align:center"><div style="font-size:18px;font-weight:800;color:#1e40af">'+collectionRate+'%</div><div style="font-size:9px;color:#1e40af;text-transform:uppercase;font-weight:700">Collection Rate</div></div>'
+    +'</div>';
+
+  if(!linked.length){
+    html += '<div style="text-align:center;color:var(--muted);padding:30px;font-size:13px">No payables are linked to an IPC yet. When adding a payable, select a Project then an IPC to link it — the certified amount will auto-fill.</div>';
+    document.getElementById('ipcLedgerBody').innerHTML = html;
+    return;
+  }
+
+  // Group by project
+  const byProject = {};
+  linked.forEach(function(p){
+    const key = p.project_name||'(No project name)';
+    if(!byProject[key]) byProject[key]=[];
+    byProject[key].push(p);
+  });
+
+  Object.keys(byProject).sort().forEach(function(projName){
+    const rows = byProject[projName];
+    const subCert = rows.reduce((s,p)=>s+(p.amt||0),0);
+    const subPaid = rows.reduce((s,p)=>s+(p.paid||0),0);
+    html += '<div style="margin-bottom:18px">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">'
+        +'<span>🏗 '+projName+'</span>'
+        +'<span style="font-size:11px;font-weight:600;color:var(--muted)">Certified '+fmt(subCert)+' · Received '+fmt(subPaid)+' · Remaining '+fmt(subCert-subPaid)+'</span>'
+      +'</div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg);font-size:10px;text-transform:uppercase;color:var(--muted);font-weight:700">'
+        +'<th style="padding:6px 8px;text-align:left">IPC</th><th style="padding:6px 8px;text-align:left">Supplier / Contractor</th>'
+        +'<th style="padding:6px 8px;text-align:right">Certified</th><th style="padding:6px 8px;text-align:right">Received</th>'
+        +'<th style="padding:6px 8px;text-align:right">Remaining</th><th style="padding:6px 8px;text-align:left">Status</th><th></th></tr></thead><tbody>';
+    rows.forEach(function(p){
+      const rem = (p.amt||0)-(p.paid||0);
+      const statusColor = p.status==='paid'?'#166534':p.status==='partial'?'#92400e':'#dc2626';
+      html += '<tr style="border-bottom:1px solid var(--border2)">'
+        +'<td style="padding:6px 8px;font-weight:600">'+(p.ipc_label||'—')+'</td>'
+        +'<td style="padding:6px 8px">'+(p.supplier||'—')+'</td>'
+        +'<td style="padding:6px 8px;text-align:right">'+fmt(p.amt||0)+'</td>'
+        +'<td style="padding:6px 8px;text-align:right;color:#166534;font-weight:600">'+fmt(p.paid||0)+'</td>'
+        +'<td style="padding:6px 8px;text-align:right;color:'+(rem>0?'#dc2626':'var(--muted)')+';font-weight:600">'+fmt(rem)+'</td>'
+        +'<td style="padding:6px 8px;text-transform:capitalize;color:'+statusColor+';font-weight:700">'+(p.status||'unpaid')+'</td>'
+        +'<td style="padding:6px 8px;text-align:right"><button onclick="document.getElementById(\'ipcLedgerModal\').remove();openPayableHistoryModal(\''+p.id+'\')" style="font-size:10px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer">History</button></td>'
+        +'</tr>';
+    });
+    html += '</tbody></table></div>';
+  });
+
+  document.getElementById('ipcLedgerBody').innerHTML = html;
+}
+function exportIpcLedgerCSV(){
+  const rows = window._ipcLedgerRows||[];
+  let csv = 'Project,IPC,Supplier,Certified Amount,Received,Remaining,Status\n';
+  rows.forEach(function(p){
+    const rem=(p.amt||0)-(p.paid||0);
+    csv += ['"'+(p.project_name||'')+'"','"'+(p.ipc_label||'')+'"','"'+(p.supplier||'')+'"',p.amt||0,p.paid||0,rem,'"'+(p.status||'')+'"'].join(',')+'\n';
+  });
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'omniflow_ipc_ledger_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function openPayableHistoryModal(payableId){
+  const p=payables.find(x=>String(x.id)===String(payableId)); if(!p) return;
+  const canEdit = isFinanceOrAdmin();
+  const payments=(p.payments||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  let running=0;
+  let rows='';
+  payments.forEach(function(pm){
+    running+=pm.amount||0;
+    rows+='<tr style="border-bottom:1px solid var(--border2)">'
+      +'<td style="padding:6px 8px">'+(pm.date||'—')+'</td>'
+      +'<td style="padding:6px 8px;text-align:right;font-weight:700;color:var(--teal-dark)">'+fmt(pm.amount||0)+'</td>'
+      +'<td style="padding:6px 8px;text-align:right;color:var(--muted)">'+fmt(p.amt-running)+'</td>'
+      +'<td style="padding:6px 8px;color:var(--muted);font-size:11px">'+(pm.note||'—')+'</td>'
+      +(canEdit?'<td style="padding:6px 8px;text-align:right"><button onclick="deletePaymentEntry(\''+payableId+'\',\''+pm.id+'\')" style="font-size:10px;padding:2px 6px;border:1px solid var(--border);border-radius:5px;background:none;cursor:pointer;color:var(--red)">✕</button></td>':'')
+      +'</tr>';
+  });
+  const modal=document.createElement('div');
+  modal.className='modal-overlay'; modal.style.display='flex'; modal.id='payHistModal';
+  modal.innerHTML='<div class="modal-box" style="max-width:560px">'
+    +'<div class="modal-header"><div class="modal-title">📜 Payment History</div>'
+    +'<button class="modal-close" onclick="document.getElementById(\'payHistModal\').remove()">&times;</button></div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:14px">'+p.supplier+' — '+p.desc+(p.project_name?'<br>🔗 '+p.project_name+(p.ipc_label?' — '+p.ipc_label:''):'')+'</div>'
+    +'<div style="display:flex;gap:10px;margin-bottom:14px">'
+      +'<div style="flex:1;padding:8px 12px;background:var(--bg);border-radius:8px;text-align:center"><div style="font-size:16px;font-weight:800">'+fmt(p.amt)+'</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Total</div></div>'
+      +'<div style="flex:1;padding:8px 12px;background:#f0fdf4;border-radius:8px;text-align:center"><div style="font-size:16px;font-weight:800;color:#166534">'+fmt(p.paid||0)+'</div><div style="font-size:10px;color:#166534;text-transform:uppercase">Received</div></div>'
+      +'<div style="flex:1;padding:8px 12px;background:#fee2e2;border-radius:8px;text-align:center"><div style="font-size:16px;font-weight:800;color:#dc2626">'+fmt(p.amt-(p.paid||0))+'</div><div style="font-size:10px;color:#dc2626;text-transform:uppercase">Remaining</div></div>'
+    +'</div>'
+    +(payments.length?'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg);font-size:10px;text-transform:uppercase;color:var(--muted)"><th style="padding:6px 8px;text-align:left">Date</th><th style="padding:6px 8px;text-align:right">Amount</th><th style="padding:6px 8px;text-align:right">Balance After</th><th style="padding:6px 8px;text-align:left">Note</th>'+(canEdit?'<th></th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table>':'<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">No payments recorded yet.</div>')
+    +'<div class="btn-row" style="margin-top:14px">'+(canEdit?'<button class="btn-primary" onclick="document.getElementById(\'payHistModal\').remove();openRecordPaymentModal(\''+payableId+'\')">+ Record Payment</button>':'')+'<button class="btn-secondary" onclick="document.getElementById(\'payHistModal\').remove()">Close</button></div>'
+    +'</div>';
+  document.body.appendChild(modal);
+}
+async function deletePaymentEntry(payableId,paymentId){
+  const p=payables.find(x=>String(x.id)===String(payableId)); if(!p) return;
+  if(!confirm('Delete this payment entry? The remaining balance will increase accordingly.')) return;
+  p.payments=(p.payments||[]).filter(x=>String(x.id)!==String(paymentId));
+  p.paid=p.payments.reduce((s,x)=>s+(x.amount||0),0);
+  p.status = p.paid>=p.amt?'paid':p.paid>0?'partial':'unpaid';
+  ls('omni-payables',payables);
+  savePayablesToCloud();
+  document.getElementById('payHistModal').remove();
+  openPayableHistoryModal(payableId);
+  renderPayables();
+  renderDashboard();
 }
 
 // ══════════════════════════════════════
