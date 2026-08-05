@@ -2233,6 +2233,7 @@ function initLogin(){
   var u=document.getElementById('loginUser');if(u)u.onkeydown=function(e){if(e.key==='Enter')document.getElementById('loginPass').focus();};
 }
 
+let _loginAttemptId=0; // guards against a slow/stale login attempt acting after a newer one has already completed
 async function doLogin(){
   try{
     await _doLoginInner();
@@ -2245,6 +2246,9 @@ async function doLogin(){
   }
 }
 async function _doLoginInner(){
+  const myAttempt=++_loginAttemptId;
+  const staleModal=document.getElementById('declModal');
+  if(staleModal) staleModal.remove(); // from a previous, now-superseded attempt
   const un=document.getElementById('loginUser').value.trim().toLowerCase().replace(/\s+/g,'_');
   const pw=document.getElementById('loginPass').value.trim();
   const errEl=document.getElementById('loginErr');
@@ -2290,6 +2294,12 @@ async function _doLoginInner(){
   const declPromise = needsDeclCheck ? checkDeclarationSigned(un) : Promise.resolve(null);
 
   const [cloudPw, cloudSig] = await Promise.all([cloudPwPromise, declPromise]);
+
+  // A newer login attempt (e.g. user switched username and submitted again
+  // while this one was still waiting on the network) has taken over — this
+  // stale attempt must not touch currentUser, showApp, or the declaration
+  // modal at all.
+  if(myAttempt!==_loginAttemptId) return;
 
   // Accept: default password OR admin-set cloud password
   const validPws=[defaultPw,cloudPw].filter(Boolean);
