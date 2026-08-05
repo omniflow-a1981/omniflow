@@ -2268,38 +2268,24 @@ async function _doLoginInner(){
   // Default password always works
   const defaultPw=DEFAULT_PASSWORDS[un]||'';
 
-  // Declaration: check the local cache up front — instant, no network. Only
-  // hit the cloud if there's no current-version record on this device yet.
-  const localSig = ls('omni-decl-'+un);
-  const hasLocalSig = !!(localSig && localSig.version===DECLARATION_VERSION);
-  const needsDeclCheck = def.username!=='admin' && !hasLocalSig;
+  // Fetch cloud password (admin may have changed it) — capped at 4s.
+  // The confidentiality declaration is NOT part of this path at all anymore:
+  // sign-in only ever depends on the password check, exactly as before that
+  // feature existed. The declaration is checked separately, after the app
+  // has already loaded — see initApp().
+  let cloudPw=null;
+  try{
+    const ctrl=new AbortController();
+    const to=setTimeout(()=>ctrl.abort(),4000);
+    const r=await fetch(SUPA_URL+'/balances?div_code=eq.__pw__'+encodeURIComponent(un)+'&select=note',{
+      headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON},
+      signal:ctrl.signal
+    });
+    clearTimeout(to);
+    if(r.ok){const rows=await r.json();if(rows?.length&&rows[0].note)cloudPw=rows[0].note;}
+  }catch(e){}
 
-  // Fire the cloud password check AND the declaration check IN PARALLEL
-  // (previously these ran one after another, so a slow connection could
-  // stack two separate timeouts and take up to 9s combined). Both are
-  // hard-capped at 4s, so the whole login resolves in ~4s worst case either way.
-  const cloudPwPromise = (async()=>{
-    try{
-      const ctrl=new AbortController();
-      const to=setTimeout(()=>ctrl.abort(),4000);
-      const r=await fetch(SUPA_URL+'/balances?div_code=eq.__pw__'+encodeURIComponent(un)+'&select=note',{
-        headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON},
-        signal:ctrl.signal
-      });
-      clearTimeout(to);
-      if(r.ok){const rows=await r.json();if(rows?.length&&rows[0].note)return rows[0].note;}
-    }catch(e){}
-    return null;
-  })();
-  const declPromise = needsDeclCheck ? checkDeclarationSigned(un) : Promise.resolve(null);
-
-  const [cloudPw, cloudSig] = await Promise.all([cloudPwPromise, declPromise]);
-
-  // A newer login attempt (e.g. user switched username and submitted again
-  // while this one was still waiting on the network) has taken over — this
-  // stale attempt must not touch currentUser, showApp, or the declaration
-  // modal at all.
-  if(myAttempt!==_loginAttemptId) return;
+  if(myAttempt!==_loginAttemptId) return; // superseded by a newer attempt
 
   // Accept: default password OR admin-set cloud password
   const validPws=[defaultPw,cloudPw].filter(Boolean);
@@ -2309,18 +2295,7 @@ async function _doLoginInner(){
     currentUser={...def};
     localStorage.setItem('omni-session-user',JSON.stringify(currentUser));
     btn.textContent='Sign In →'; btn.disabled=false;
-
-    // admin is exempt from the declaration entirely — always straight in.
-    if(def.username==='admin'){ showApp(); return; }
-
-    if(hasLocalSig){ showApp(); return; }
-
-    if(cloudSig && cloudSig.version===DECLARATION_VERSION){
-      ls('omni-decl-'+un, cloudSig); // cache for instant future logins
-      showApp();
-    } else {
-      openDeclarationModal(currentUser);
-    }
+    showApp();
     return;
   }
 
@@ -2423,6 +2398,31 @@ async function fetchAllDeclarationSignatures(){
   }catch(e){ return {}; }
 }
 
+// Called once the app UI is already up. Checks in the background whether the
+// current user needs to sign the declaration, and if so, throws up the
+// full-screen modal right over the loaded app — it has no close/X button, so
+// nothing else in the app can be used until it's signed. This is deliberately
+// NOT part of the login flow: signing in only ever depends on the password,
+// so a slow or unreachable declaration check can never delay or block sign-in.
+async function ensureDeclarationSigned(){
+  if(!currentUser || currentUser.username==='admin') return; // admin fully exempt
+  const un=currentUser.username;
+
+  const localSig = ls('omni-decl-'+un);
+  if(localSig && localSig.version===DECLARATION_VERSION) return; // already current on this device
+
+  let cloudSig=null;
+  try{ cloudSig = await checkDeclarationSigned(un); }catch(e){}
+
+  if(cloudSig && cloudSig.version===DECLARATION_VERSION){
+    ls('omni-decl-'+un, cloudSig); // cache for instant future checks
+    return;
+  }
+  // No valid signature found locally or in the cloud (including if the cloud
+  // check failed/timed out — safer to ask again than to silently skip it).
+  openDeclarationModal(currentUser);
+}
+
 let _pendingLoginUser=null;
 function openDeclarationModal(user){
   _pendingLoginUser=user;
@@ -2461,10 +2461,10 @@ async function submitDeclaration(){
   };
   try{
     await saveDeclarationSignature(user.username, record);
-    ls('omni-decl-'+user.username, record); // instant on next login from this device
+    ls('omni-decl-'+user.username, record); // instant on next check from this device
     document.getElementById('declModal').remove();
     _pendingLoginUser=null;
-    showApp();
+    showSync('ok','✓ Declaration signed — thank you');
   }catch(e){
     errEl.textContent='⚠ Could not save your signature: '+e.message+'. Please try again.';
     errEl.style.display='block';
@@ -2733,6 +2733,7 @@ async function initApp(){
   document.getElementById('sbUser').title='Click to change your password';
   document.getElementById('sbUser').onclick=openMyPasswordModal;
   loadUserPasswordsFromCloud(); // fire-and-forget refresh; doLogin already checked cloud at sign-in
+  ensureDeclarationSigned(); // fire-and-forget — blocks the UI with an overlay if needed, doesn't delay anything above
   document.getElementById('sbDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   document.getElementById('fDate').value=new Date().toISOString().slice(0,10);
 
