@@ -1854,8 +1854,8 @@ const USER_DEFS = [
 ];
 
 // Limited users: only Entry + Ledger, only today and yesterday
-const LIMITED_PAGES = ['Entry','Ledger','Outstanding','Payables'];
-const LIMITED_NAV_LABELS = ['Add Transaction','Ledger','Outstanding Income','Outstanding Payables'];
+const LIMITED_PAGES = ['Entry','Ledger'];
+const LIMITED_NAV_LABELS = ['Add Transaction','Ledger'];
 
 function getPasswords(){return ls('omni-passwords')||{...DEFAULT_PASSWORDS};}
 
@@ -2468,7 +2468,8 @@ function openDeclarationModal(user){
   modal.innerHTML='<div class="modal-box" style="max-width:640px;max-height:88vh;display:flex;flex-direction:column">'
     +'<div class="modal-header"><div class="modal-title">📜 OmniFlow Confidentiality & Acceptable Use Declaration</div></div>'
     +'<div style="overflow-y:auto;padding:2px 4px 10px;flex:1;border-bottom:1px solid var(--border);margin-bottom:14px">'+getDeclarationHTML(user)+'</div>'
-    +'<div class="ff" style="margin-bottom:10px"><label>Type your full name to sign *</label><input type="text" id="declFullName" placeholder="e.g. Alemu Tesfaye"></div>'
+    +'<div class="ff" style="margin-bottom:10px"><label>'+(user.realName?'Signing as *':'Type your full name to sign *')+'</label><input type="text" id="declFullName" placeholder="e.g. Alemu Tesfaye" value="'+(user.realName||'').replace(/"/g,'&quot;')+'"'+(user.realName?' readonly style="background:var(--bg);cursor:not-allowed"':'')+'></div>'
+    +(user.realName?'<div style="font-size:11px;color:var(--muted);margin-top:-6px;margin-bottom:10px">This name is set by your admin and can\'t be changed here. Contact them if it\'s incorrect.</div>':'')
     +'<label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;cursor:pointer;margin-bottom:14px">'
       +'<input type="checkbox" id="declAgree" style="margin-top:2px">'
       +'<span>I have read and understood this Declaration, and I agree to comply with its terms as a condition of my access to OmniFlow.</span>'
@@ -2656,15 +2657,6 @@ function applyAccessLevel(){
     allNavItems.forEach(item=>item.style.display='none');
     const prNav=document.getElementById('payreqNav');
     if(prNav){prNav.style.display='flex';}
-    // Finance-titled pr_only accounts (we_finance/me_finance) also get their
-    // own company's Outstanding Income/Payables — other pr_only roles
-    // (prepare/check/approve) stay restricted to Payment Requests only.
-    if(currentUser.role==='finance'){
-      const outNavF=document.getElementById('outstandingNav');
-      const payNavF=document.getElementById('payablesNav');
-      if(outNavF) outNavF.style.display='flex';
-      if(payNavF) payNavF.style.display='flex';
-    }
     const soNav=document.getElementById('signoutNav');
     if(soNav){soNav.style.display='flex';}
     document.getElementById('limitedBanner').style.display='none';
@@ -4351,21 +4343,21 @@ async function addOutstanding(){
   showFlash('✓ Outstanding item added.');renderOutstanding();renderDashboard();
 }
 async function updateOutStatus(id,val){
-  const o=outstandings.find(x=>x.id===id); if(!o) return;
+  const o=outstandings.find(x=>String(x.id)===String(id)); if(!o) return;
   o.status=val; ls('omni-out',outstandings); saveOutstandingToCloud();
   renderOutstanding(); renderDashboard();
 }
 async function deleteOut(id){
   if(!confirm('Delete this item?'))return;
-  outstandings=outstandings.filter(o=>o.id!==id);
+  outstandings=outstandings.filter(o=>String(o.id)!==String(id));
   ls('omni-out',outstandings); saveOutstandingToCloud();
   renderOutstanding(); renderDashboard();
 }
 
-function isFinanceOrAdmin_out(){ return currentUser && (currentUser.username==='admin'||currentUser.username==='finance'||(currentUser.role==='finance'&&currentUser.accessLevel==='pr_only')); }
+function isFinanceOrAdmin_out(){ return currentUser && (currentUser.username==='admin'||currentUser.username==='finance'); }
 
 function openRecordCollectionModal(outId){
-  const o=outstandings.find(x=>x.id===outId); if(!o) return;
+  const o=outstandings.find(x=>String(x.id)===String(outId)); if(!o) return;
   const balance=(o.amt||0)-(o.paid||0);
   const modal=document.createElement('div');
   modal.className='modal-overlay'; modal.style.display='flex'; modal.id='recColModal';
@@ -4377,12 +4369,12 @@ function openRecordCollectionModal(outId){
     +'<div class="ff" style="margin-bottom:10px"><label>Date</label><input type="date" id="recColDate" value="'+new Date().toISOString().slice(0,10)+'"></div>'
     +'<div class="ff" style="margin-bottom:10px"><label>Note (optional)</label><input type="text" id="recColNote" placeholder="e.g. Bank transfer ref #..."></div>'
     +'<div id="recColErr" style="font-size:12px;color:var(--red);margin-bottom:10px;display:none"></div>'
-    +'<div class="btn-row"><button class="btn-primary" onclick="submitRecordCollection('+outId+')">Save Collection</button><button class="btn-secondary" onclick="document.getElementById(\'recColModal\').remove()">Cancel</button></div>'
+    +'<div class="btn-row"><button class="btn-primary" onclick="submitRecordCollection(\''+outId+'\')">Save Collection</button><button class="btn-secondary" onclick="document.getElementById(\'recColModal\').remove()">Cancel</button></div>'
     +'</div>';
   document.body.appendChild(modal);
 }
 async function submitRecordCollection(outId){
-  const o=outstandings.find(x=>x.id===outId); if(!o) return;
+  const o=outstandings.find(x=>String(x.id)===String(outId)); if(!o) return;
   const amtEl=document.getElementById('recColAmt');
   const dateEl=document.getElementById('recColDate');
   const noteEl=document.getElementById('recColNote');
@@ -4392,7 +4384,7 @@ async function submitRecordCollection(outId){
   if(amt<=0){ errEl.textContent='Enter an amount greater than 0.'; errEl.style.display='block'; return; }
 
   if(!o.payments) o.payments=[];
-  o.payments.push({id:Date.now(),amount:amt,date:dateEl.value||new Date().toISOString().slice(0,10),note:noteEl.value.trim()});
+  o.payments.push({id:Date.now(),amount:amt,date:dateEl.value||new Date().toISOString().slice(0,10),note:noteEl.value.trim(),recorded_at:new Date().toISOString(),recorded_by:currentUser?.username||''});
   o.paid = o.payments.reduce((s,x)=>s+(x.amount||0),0);
   if(o.paid>=o.amt) o.status='collected';
   else if(o.paid>0) o.status='partial';
@@ -4405,19 +4397,20 @@ async function submitRecordCollection(outId){
   renderDashboard();
 }
 function openIncomeHistoryModal(outId){
-  const o=outstandings.find(x=>x.id===outId); if(!o) return;
+  const o=outstandings.find(x=>String(x.id)===String(outId)); if(!o) return;
   const canEdit = isFinanceOrAdmin_out();
   const payments=(o.payments||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   let running=0;
   let rows='';
   payments.forEach(function(pm){
     running+=pm.amount||0;
+    const recStamp = pm.recorded_at ? new Date(pm.recorded_at).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
     rows+='<tr style="border-bottom:1px solid var(--border2)">'
-      +'<td style="padding:6px 8px">'+(pm.date||'—')+'</td>'
+      +'<td style="padding:6px 8px">'+(pm.date||'—')+(recStamp?'<div style="font-size:9px;color:var(--muted)">Logged '+recStamp+(pm.recorded_by?' by '+pm.recorded_by:'')+'</div>':'')+'</td>'
       +'<td style="padding:6px 8px;text-align:right;font-weight:700;color:var(--teal-dark)">'+fmt(pm.amount||0)+'</td>'
       +'<td style="padding:6px 8px;text-align:right;color:var(--muted)">'+fmt(o.amt-running)+'</td>'
       +'<td style="padding:6px 8px;color:var(--muted);font-size:11px">'+(pm.note||'—')+'</td>'
-      +(canEdit?'<td style="padding:6px 8px;text-align:right"><button onclick="deleteIncomePaymentEntry('+outId+',\''+pm.id+'\')" style="font-size:10px;padding:2px 6px;border:1px solid var(--border);border-radius:5px;background:none;cursor:pointer;color:var(--red)">✕</button></td>':'')
+      +(canEdit?'<td style="padding:6px 8px;text-align:right"><button onclick="deleteIncomePaymentEntry(\''+outId+'\',\''+pm.id+'\')" style="font-size:10px;padding:2px 6px;border:1px solid var(--border);border-radius:5px;background:none;cursor:pointer;color:var(--red)">✕</button></td>':'')
       +'</tr>';
   });
   const modal=document.createElement('div');
@@ -4437,7 +4430,7 @@ function openIncomeHistoryModal(outId){
   document.body.appendChild(modal);
 }
 async function deleteIncomePaymentEntry(outId,paymentId){
-  const o=outstandings.find(x=>x.id===outId); if(!o) return;
+  const o=outstandings.find(x=>String(x.id)===String(outId)); if(!o) return;
   if(!confirm('Delete this collection entry? The remaining balance will increase accordingly.')) return;
   o.payments=(o.payments||[]).filter(x=>String(x.id)!==String(paymentId));
   o.paid=o.payments.reduce((s,x)=>s+(x.amount||0),0);
@@ -4651,12 +4644,12 @@ function renderOutstanding(){
             +'<div class="oi-amt">'+fmt(o.amt)+'</div>'
             +'<span class="badge '+o.status+'">'+o.status+'</span>'
             +'<div style="display:flex;gap:4px;margin-top:2px">'
-              +'<select onchange="updateOutStatus('+o.id+',this.value)" style="font-size:10px;padding:2px 4px;border:1px solid var(--border);border-radius:5px;background:var(--surface)">'
+              +'<select onchange="updateOutStatus(\''+o.id+'\',this.value)" style="font-size:10px;padding:2px 4px;border:1px solid var(--border);border-radius:5px;background:var(--surface)">'
                 +'<option value="pending" '+(o.status==='pending'?'selected':'')+'>Pending</option>'
                 +'<option value="partial" '+(o.status==='partial'?'selected':'')+'>Partial</option>'
                 +'<option value="collected" '+(o.status==='collected'?'selected':'')+'>Collected</option>'
               +'</select>'
-              +(!isPrOut?'<button class="del-btn" onclick="deleteOut('+o.id+')" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button>':'')
+              +(!isPrOut?'<button class="del-btn" onclick="deleteOut(\''+o.id+'\')" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button>':'')
             +'</div>'
             +(o.status!=='collected'?'<div style="display:flex;gap:4px;margin-top:2px">'
               +'<button onclick="openIncomeHistoryModal('+o.id+')" style="font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer">History</button>'
@@ -5229,7 +5222,7 @@ async function loadPayablesFromCloud(){
   return false;
 }
 
-function isFinanceOrAdmin(){ return currentUser && (currentUser.username==='admin'||currentUser.username==='finance'||(currentUser.role==='finance'&&currentUser.accessLevel==='pr_only')); }
+function isFinanceOrAdmin(){ return currentUser && (currentUser.username==='admin'||currentUser.username==='finance'); }
 
 function toggleAddPayForm(){
   const f=document.getElementById('addPayForm');
@@ -5617,7 +5610,7 @@ async function submitRecordPayment(payableId){
   if(amt<=0){ errEl.textContent='Enter an amount greater than 0.'; errEl.style.display='block'; return; }
 
   if(!p.payments) p.payments=[];
-  p.payments.push({id:Date.now(),amount:amt,date:dateEl.value||new Date().toISOString().slice(0,10),note:noteEl.value.trim()});
+  p.payments.push({id:Date.now(),amount:amt,date:dateEl.value||new Date().toISOString().slice(0,10),note:noteEl.value.trim(),recorded_at:new Date().toISOString(),recorded_by:currentUser?.username||''});
   p.paid = p.payments.reduce((s,x)=>s+(x.amount||0),0);
   if(p.paid>=p.amt) p.status='paid';
   else if(p.paid>0) p.status='partial';
@@ -5732,8 +5725,9 @@ function openPayableHistoryModal(payableId){
   let rows='';
   payments.forEach(function(pm){
     running+=pm.amount||0;
+    const recStamp = pm.recorded_at ? new Date(pm.recorded_at).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
     rows+='<tr style="border-bottom:1px solid var(--border2)">'
-      +'<td style="padding:6px 8px">'+(pm.date||'—')+'</td>'
+      +'<td style="padding:6px 8px">'+(pm.date||'—')+(recStamp?'<div style="font-size:9px;color:var(--muted)">Logged '+recStamp+(pm.recorded_by?' by '+pm.recorded_by:'')+'</div>':'')+'</td>'
       +'<td style="padding:6px 8px;text-align:right;font-weight:700;color:var(--teal-dark)">'+fmt(pm.amount||0)+'</td>'
       +'<td style="padding:6px 8px;text-align:right;color:var(--muted)">'+fmt(p.amt-running)+'</td>'
       +'<td style="padding:6px 8px;color:var(--muted);font-size:11px">'+(pm.note||'—')+'</td>'
@@ -8028,7 +8022,7 @@ async function openDeclarationReport(){
 
   html += '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg);font-size:10px;text-transform:uppercase;color:var(--muted);font-weight:700">'
     +'<th style="padding:7px 8px;text-align:left">Username</th><th style="padding:7px 8px;text-align:left">Role</th><th style="padding:7px 8px;text-align:left">Company</th>'
-    +'<th style="padding:7px 8px;text-align:left">Signed Name</th><th style="padding:7px 8px;text-align:left">Signed At</th><th style="padding:7px 8px;text-align:left">Status</th></tr></thead><tbody>';
+    +'<th style="padding:7px 8px;text-align:left">Signed Name</th><th style="padding:7px 8px;text-align:left">Signed At</th><th style="padding:7px 8px;text-align:left">Status</th><th></th></tr></thead><tbody>';
   rows.forEach(function(r,i){
     const color = r.status==='Not signed'?'#dc2626':r.status.indexOf('outdated')!==-1?'#92400e':'#166534';
     html += '<tr style="border-bottom:1px solid var(--border2)'+(i%2?';background:var(--bg)':'')+'">'
@@ -8038,11 +8032,50 @@ async function openDeclarationReport(){
       +'<td style="padding:6px 8px">'+(r.full_name||'—')+'</td>'
       +'<td style="padding:6px 8px;color:var(--muted);font-size:11px">'+(r.signed_at?new Date(r.signed_at).toLocaleString():'—')+'</td>'
       +'<td style="padding:6px 8px;font-weight:700;color:'+color+'">'+r.status+'</td>'
+      +'<td style="padding:6px 8px;text-align:right">'+(r.full_name?'<button onclick="printSignedDeclaration(\''+r.username+'\')" style="font-size:10px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;white-space:nowrap">🖨 PDF</button>':'')+'</td>'
       +'</tr>';
   });
   html += '</tbody></table>';
 
   document.getElementById('declReportBody').innerHTML = html;
+}
+// Opens a clean, print-ready rendering of the exact declaration text that
+// applied to this user (role-scoped, same as what they actually signed),
+// with their signed name/date at the bottom, and triggers Print (which any
+// browser can Save as PDF from) — no server-side PDF generation needed.
+function printSignedDeclaration(username){
+  const rec = (window._declReportRows||[]).find(function(r){return r.username===username;});
+  const def = USER_DEFS.find(function(u){return u.username===username;});
+  if(!rec || !def || !rec.full_name){ alert('No signed declaration found for this user.'); return; }
+
+  const signedDate = rec.signed_at ? new Date(rec.signed_at).toLocaleString('en-GB',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+  const win = window.open('', '_blank');
+  win.document.write(''
+    +'<html><head><title>OmniFlow Declaration — '+rec.full_name+'</title>'
+    +'<style>'
+      +'body{font-family:Georgia,serif;max-width:720px;margin:40px auto;padding:0 20px;color:#111;line-height:1.6}'
+      +'h1{font-size:22px;margin-bottom:2px}'
+      +'.sub{color:#666;font-size:13px;margin-bottom:24px}'
+      +'p{font-size:13px;margin-bottom:10px}'
+      +'strong{color:#111}'
+      +'.sigbox{margin-top:36px;padding-top:16px;border-top:2px solid #ccc;display:grid;grid-template-columns:1fr 1fr;gap:14px;font-size:13px}'
+      +'.sigbox div{padding:8px 0;border-bottom:1px solid #999}'
+      +'.sigbox b{display:block;font-size:10px;text-transform:uppercase;color:#666;letter-spacing:.5px;margin-bottom:3px}'
+      +'@media print{body{margin:0 auto}}'
+    +'</style></head><body>'
+    +'<h1>OmniFlow — Confidentiality &amp; Acceptable Use Declaration</h1>'
+    +'<div class="sub">Wanofi Engineering Plc &nbsp;·&nbsp; Matisan Engineering Plc &nbsp;·&nbsp; Version '+rec.version+'</div>'
+    +getDeclarationHTML(def)
+    +'<div class="sigbox">'
+      +'<div><b>Signed By</b>'+rec.full_name+'</div>'
+      +'<div><b>Username</b>'+rec.username+'</div>'
+      +'<div><b>Role</b>'+rec.role+'</div>'
+      +'<div><b>Company</b>'+(rec.company&&rec.company!=='—'?rec.company:'—')+'</div>'
+      +'<div style="grid-column:1/-1"><b>Signed At</b>'+signedDate+'</div>'
+    +'</div>'
+    +'</body></html>');
+  win.document.close();
+  setTimeout(function(){ win.print(); }, 400);
 }
 function exportDeclarationReportCSV(){
   const rows = window._declReportRows||[];
