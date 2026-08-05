@@ -755,13 +755,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 <div id="pgOutstanding" class="page">
   <div class="page-header">
     <div><div class="page-title">Outstanding <em>Income</em></div><div class="page-subtitle">Track and update uncollected receivables</div></div>
-    <button class="btn-primary" onclick="toggleAddOutForm()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Item</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn-secondary" onclick="openIncomeIpcLedgerReport()" style="background:#eff6ff;border-color:#93c5fd;color:#1e40af">📊 IPC Collection Ledger</button>
+      <button class="btn-secondary" onclick="exportOutstandingCSV()">⬇ Export CSV</button>
+      <button class="btn-primary" onclick="toggleAddOutForm()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Item</button>
+    </div>
   </div>
   <div class="out-kpi-grid" id="outKpis"></div>
+  <div id="outAging" style="margin-bottom:16px"></div>
   <div class="card add-out-form" id="addOutForm">
     <div class="card-title">New outstanding item</div>
     <div class="fr fr3">
-      <div class="ff"><label>Company</label><select id="oCompany" onchange="updateOutDivs()"></select></div>
+      <div class="ff"><label>Company</label><select id="oCompany" onchange="updateOutDivs();updateOutProjectOptions()"></select></div>
       <div class="ff"><label>Division</label><select id="oDivision"></select></div>
       <div class="ff"><label>Status</label><select id="oStatus"><option value="pending">Pending</option><option value="partial">Partial</option><option value="collected">Collected</option></select></div>
     </div>
@@ -770,8 +775,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       <div class="ff"><label>Project description</label><input type="text" id="oProject" placeholder="e.g. Multi Purpose Hall"></div>
     </div>
     <div class="fr">
+      <div class="ff"><label>Link to Project (optional)</label><select id="oProjectId" onchange="updateOutIpcOptions()"><option value="">— None —</option></select></div>
+      <div class="ff"><label>Link to IPC (optional)</label><select id="oIpc" onchange="onOutIpcChange()"><option value="">— None —</option></select></div>
+    </div>
+    <div class="fr">
       <div class="ff etb-field"><label>Total amount (ETB)</label><input type="number" id="oAmt" placeholder="e.g. 5416141" min="0"></div>
       <div class="ff etb-field"><label>Collected so far (ETB)</label><input type="number" id="oPaid" placeholder="0" min="0" value="0"></div>
+      <div class="ff"><label>Due date (optional)</label><input type="date" id="oDue"></div>
     </div>
     <div class="btn-row"><button class="btn-primary" onclick="addOutstanding()">Save Item</button><button class="btn-secondary" onclick="toggleAddOutForm()">Cancel</button></div>
   </div>
@@ -2791,8 +2801,14 @@ async function initApp(){
       id: o.id, co: o.company_id, div: o.division,
       client: o.client, project: o.project,
       amt: parseFloat(o.amt)||0, paid: parseFloat(o.paid)||0,
-      status: o.status
+      status: o.status, payments: [], project_id: null, ipc_id: null, ipc_label: ''
     })) : ls('omni-out')||JSON.parse(JSON.stringify(DEFAULT_OUT));
+
+    // Prefer the safe JSON-blob storage (has payment history / IPC links).
+    // First run only: nothing there yet, so migrate forward whatever came
+    // from the old table above, then save it in the new format going forward.
+    const hadCloudOut = await loadOutstandingFromCloud();
+    if(!hadCloudOut && outstandings.length){ saveOutstandingToCloud(); }
 
     // Load companies: cloud JSON first (has subdivisions), then Supabase companies table, then localStorage
     const cloudCo = await loadCompaniesFromCloud();
@@ -4214,35 +4230,307 @@ async function saveBalances(){
 // OUTSTANDING
 // ══════════════════════════════════════
 function toggleAddOutForm(){const f=document.getElementById('addOutForm');f.classList.toggle('vis');if(f.classList.contains('vis'))updateOutDivs();}
+async function saveOutstandingToCloud(){
+  try{
+    const res=await fetch(SUPA_URL+'/balances?on_conflict=div_code',{
+      method:'POST',
+      headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify({div_code:'__outstanding__',opening_etb:0,opening_usd:0,note:JSON.stringify(outstandings)})
+    });
+    if(!res.ok){ const t=await res.text().catch(function(){return res.status;}); console.error('[OmniFlow] Outstanding cloud save failed:',t); }
+  }catch(e){ console.error('[OmniFlow] Outstanding cloud save error:',e.message); }
+}
+async function loadOutstandingFromCloud(){
+  try{
+    const r=await fetch(SUPA_URL+'/balances?div_code=eq.__outstanding__&select=note',{
+      headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}
+    });
+    if(!r.ok) return false;
+    const rows=await r.json();
+    if(!rows?.length||!rows[0].note) return false;
+    const cloud=JSON.parse(rows[0].note);
+    if(Array.isArray(cloud)){ outstandings=cloud; ls('omni-out',outstandings); return true; }
+  }catch(e){ console.warn('[OmniFlow] Outstanding cloud load failed:',e.message); }
+  return false;
+}
+
+async function updateOutProjectOptions(){
+  const co=document.getElementById('oCompany').value;
+  const sel=document.getElementById('oProjectId'); if(!sel) return;
+  sel.innerHTML='<option value="">— None —</option>';
+  document.getElementById('oIpc').innerHTML='<option value="">— None —</option>';
+  if(!co) return;
+  try{
+    const rows=await engFetch('/eng_projects?company_id=eq.'+co+'&select=id,project_name,division_code,client');
+    (Array.isArray(rows)?rows:[]).forEach(function(p){
+      const o=document.createElement('option'); o.value=p.id;
+      o.textContent=p.project_name+(p.client?' — '+p.client:'');
+      sel.appendChild(o);
+    });
+  }catch(e){}
+}
+async function updateOutIpcOptions(){
+  const projId=document.getElementById('oProjectId').value;
+  const sel=document.getElementById('oIpc'); if(!sel) return;
+  sel.innerHTML='<option value="">— None —</option>';
+  if(!projId) return;
+  try{
+    const contracts=await engFetch('/eng_contracts?project_id=eq.'+projId+'&select=id,contract_title');
+    const contractIds=(Array.isArray(contracts)?contracts:[]).map(function(c){return c.id;});
+    if(!contractIds.length) return;
+    const ipcs=await engFetch('/eng_ipc?contract_id=in.('+contractIds.join(',')+')&select=id,ipc_number,certified_amount,ipc_date&order=ipc_number');
+    (Array.isArray(ipcs)?ipcs:[]).forEach(function(ipc){
+      const o=document.createElement('option'); o.value=ipc.id;
+      o.dataset.amt=ipc.certified_amount||0;
+      o.textContent='IPC #'+(ipc.ipc_number||'—')+' — '+fmt(ipc.certified_amount||0)+(ipc.ipc_date?' ('+ipc.ipc_date+')':'');
+      sel.appendChild(o);
+    });
+  }catch(e){}
+}
+function onOutIpcChange(){
+  const sel=document.getElementById('oIpc');
+  const opt=sel.selectedOptions[0];
+  const amtEl=document.getElementById('oAmt');
+  if(opt && opt.dataset.amt && amtEl && (!amtEl.value || parseFloat(amtEl.value)===0)){
+    amtEl.value = opt.dataset.amt;
+    amtEl.style.borderColor='var(--teal)';
+    setTimeout(function(){ amtEl.style.borderColor=''; },1200);
+  }
+}
+
 async function addOutstanding(){
   const co=document.getElementById('oCompany').value;
   const div=document.getElementById('oDivision').value;
   const client=document.getElementById('oClient').value.trim();
   const project=document.getElementById('oProject').value.trim();
   const amt=parseFloat(document.getElementById('oAmt').value)||0;
-  const paid=parseFloat(document.getElementById('oPaid').value)||0;
+  const initialPaid=parseFloat(document.getElementById('oPaid').value)||0;
   const status=document.getElementById('oStatus').value;
+  const due=document.getElementById('oDue')?document.getElementById('oDue').value:'';
+  const projectId=document.getElementById('oProjectId')?document.getElementById('oProjectId').value:'';
+  const ipcId=document.getElementById('oIpc')?document.getElementById('oIpc').value:'';
+  const projectName=projectId?document.getElementById('oProjectId').selectedOptions[0].textContent:'';
+  const ipcLabel=ipcId?document.getElementById('oIpc').selectedOptions[0].textContent:'';
   if(!client||!project||!amt){alert('Please fill in client, project, and amount.');return}
-  const payload={company_id:co,division:div,client,project,amt:Math.round(amt),paid:Math.round(paid),status};
-  try{
-    const saved=await apiCall('POST','/outstanding',payload);
-    const mapped={id:saved.id||Date.now(),co,div,client,project,amt:Math.round(amt),paid:Math.round(paid),status};
-    outstandings.push(mapped);
-    ls('omni-out',outstandings);
-    showSync('ok','Saved to cloud ✓');
-  }catch(e){
-    outstandings.push({id:Date.now(),co,div,client,project,amt:Math.round(amt),paid:Math.round(paid),status});
-    ls('omni-out',outstandings);
-    showSync('error','Saved locally — sync pending');
-  }
+
+  const payments = initialPaid>0 ? [{id:Date.now(),amount:Math.round(initialPaid),date:new Date().toISOString().slice(0,10),note:'Initial collection'}] : [];
+  const item={
+    id:Date.now(),co,div,client,project,amt:Math.round(amt),
+    paid:Math.round(initialPaid), payments, status, due,
+    project_id:projectId||null, ipc_id:ipcId||null,
+    linked_project_name:projectName||'', ipc_label:ipcLabel||''
+  };
+  outstandings.push(item);
+  ls('omni-out',outstandings);
+  saveOutstandingToCloud();
+
   ['oClient','oProject','oAmt'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('oPaid').value='0';
+  if(document.getElementById('oDue')) document.getElementById('oDue').value='';
+  if(document.getElementById('oProjectId')) document.getElementById('oProjectId').value='';
   document.getElementById('addOutForm').classList.remove('vis');
   showFlash('✓ Outstanding item added.');renderOutstanding();renderDashboard();
 }
-async function updateOutStatus(id,val){const o=outstandings.find(x=>x.id===id);if(o){o.status=val;ls('omni-out',outstandings);try{await apiCall('PATCH','/outstanding/'+id,{status:val});}catch(e){}renderOutstanding();renderDashboard()}}
-async function updateOutPaid(id,val){const o=outstandings.find(x=>x.id===id);if(o){o.paid=Math.round(parseFloat(val)||0);if(o.paid>=o.amt)o.status='collected';ls('omni-out',outstandings);try{await apiCall('PATCH','/outstanding/'+id,{paid:o.paid,status:o.status});}catch(e){}renderDashboard()}}
-async function deleteOut(id){if(!confirm('Delete this item?'))return;try{await apiCall('DELETE','/outstanding/'+id);}catch(e){}outstandings=outstandings.filter(o=>o.id!==id);ls('omni-out',outstandings);renderOutstanding();renderDashboard()}
+async function updateOutStatus(id,val){
+  const o=outstandings.find(x=>x.id===id); if(!o) return;
+  o.status=val; ls('omni-out',outstandings); saveOutstandingToCloud();
+  renderOutstanding(); renderDashboard();
+}
+async function deleteOut(id){
+  if(!confirm('Delete this item?'))return;
+  outstandings=outstandings.filter(o=>o.id!==id);
+  ls('omni-out',outstandings); saveOutstandingToCloud();
+  renderOutstanding(); renderDashboard();
+}
+
+function isFinanceOrAdmin_out(){ return currentUser && (currentUser.username==='admin'||currentUser.username==='finance'); }
+
+function openRecordCollectionModal(outId){
+  const o=outstandings.find(x=>x.id===outId); if(!o) return;
+  const balance=(o.amt||0)-(o.paid||0);
+  const modal=document.createElement('div');
+  modal.className='modal-overlay'; modal.style.display='flex'; modal.id='recColModal';
+  modal.innerHTML='<div class="modal-box" style="max-width:420px">'
+    +'<div class="modal-header"><div class="modal-title">💰 Record Collection</div>'
+    +'<button class="modal-close" onclick="document.getElementById(\'recColModal\').remove()">&times;</button></div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:14px">'+o.client+' — '+o.project+'<br>Total: '+fmt(o.amt)+' &nbsp;·&nbsp; Collected so far: '+fmt(o.paid||0)+' &nbsp;·&nbsp; Remaining: <strong style="color:var(--red)">'+fmt(balance)+'</strong></div>'
+    +'<div class="ff" style="margin-bottom:10px"><label>Amount Collected *</label><input type="number" id="recColAmt" min="0" max="'+balance+'" placeholder="e.g. 50000" value="'+balance+'"></div>'
+    +'<div class="ff" style="margin-bottom:10px"><label>Date</label><input type="date" id="recColDate" value="'+new Date().toISOString().slice(0,10)+'"></div>'
+    +'<div class="ff" style="margin-bottom:10px"><label>Note (optional)</label><input type="text" id="recColNote" placeholder="e.g. Bank transfer ref #..."></div>'
+    +'<div id="recColErr" style="font-size:12px;color:var(--red);margin-bottom:10px;display:none"></div>'
+    +'<div class="btn-row"><button class="btn-primary" onclick="submitRecordCollection('+outId+')">Save Collection</button><button class="btn-secondary" onclick="document.getElementById(\'recColModal\').remove()">Cancel</button></div>'
+    +'</div>';
+  document.body.appendChild(modal);
+}
+async function submitRecordCollection(outId){
+  const o=outstandings.find(x=>x.id===outId); if(!o) return;
+  const amtEl=document.getElementById('recColAmt');
+  const dateEl=document.getElementById('recColDate');
+  const noteEl=document.getElementById('recColNote');
+  const errEl=document.getElementById('recColErr');
+  errEl.style.display='none';
+  const amt=Math.round(parseFloat(amtEl.value)||0);
+  if(amt<=0){ errEl.textContent='Enter an amount greater than 0.'; errEl.style.display='block'; return; }
+
+  if(!o.payments) o.payments=[];
+  o.payments.push({id:Date.now(),amount:amt,date:dateEl.value||new Date().toISOString().slice(0,10),note:noteEl.value.trim()});
+  o.paid = o.payments.reduce((s,x)=>s+(x.amount||0),0);
+  if(o.paid>=o.amt) o.status='collected';
+  else if(o.paid>0) o.status='partial';
+
+  ls('omni-out',outstandings);
+  saveOutstandingToCloud();
+  document.getElementById('recColModal').remove();
+  showFlash('✓ Collection of '+fmt(amt)+' recorded — remaining: '+fmt(o.amt-o.paid));
+  renderOutstanding();
+  renderDashboard();
+}
+function openIncomeHistoryModal(outId){
+  const o=outstandings.find(x=>x.id===outId); if(!o) return;
+  const canEdit = isFinanceOrAdmin_out();
+  const payments=(o.payments||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  let running=0;
+  let rows='';
+  payments.forEach(function(pm){
+    running+=pm.amount||0;
+    rows+='<tr style="border-bottom:1px solid var(--border2)">'
+      +'<td style="padding:6px 8px">'+(pm.date||'—')+'</td>'
+      +'<td style="padding:6px 8px;text-align:right;font-weight:700;color:var(--teal-dark)">'+fmt(pm.amount||0)+'</td>'
+      +'<td style="padding:6px 8px;text-align:right;color:var(--muted)">'+fmt(o.amt-running)+'</td>'
+      +'<td style="padding:6px 8px;color:var(--muted);font-size:11px">'+(pm.note||'—')+'</td>'
+      +(canEdit?'<td style="padding:6px 8px;text-align:right"><button onclick="deleteIncomePaymentEntry('+outId+',\''+pm.id+'\')" style="font-size:10px;padding:2px 6px;border:1px solid var(--border);border-radius:5px;background:none;cursor:pointer;color:var(--red)">✕</button></td>':'')
+      +'</tr>';
+  });
+  const modal=document.createElement('div');
+  modal.className='modal-overlay'; modal.style.display='flex'; modal.id='incHistModal';
+  modal.innerHTML='<div class="modal-box" style="max-width:560px">'
+    +'<div class="modal-header"><div class="modal-title">📜 Collection History</div>'
+    +'<button class="modal-close" onclick="document.getElementById(\'incHistModal\').remove()">&times;</button></div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:14px">'+o.client+' — '+o.project+(o.linked_project_name?'<br>🔗 '+o.linked_project_name+(o.ipc_label?' — '+o.ipc_label:''):'')+'</div>'
+    +'<div style="display:flex;gap:10px;margin-bottom:14px">'
+      +'<div style="flex:1;padding:8px 12px;background:var(--bg);border-radius:8px;text-align:center"><div style="font-size:16px;font-weight:800">'+fmt(o.amt)+'</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Total</div></div>'
+      +'<div style="flex:1;padding:8px 12px;background:#f0fdf4;border-radius:8px;text-align:center"><div style="font-size:16px;font-weight:800;color:#166534">'+fmt(o.paid||0)+'</div><div style="font-size:10px;color:#166534;text-transform:uppercase">Collected</div></div>'
+      +'<div style="flex:1;padding:8px 12px;background:#fee2e2;border-radius:8px;text-align:center"><div style="font-size:16px;font-weight:800;color:#dc2626">'+fmt(o.amt-(o.paid||0))+'</div><div style="font-size:10px;color:#dc2626;text-transform:uppercase">Remaining</div></div>'
+    +'</div>'
+    +(payments.length?'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg);font-size:10px;text-transform:uppercase;color:var(--muted)"><th style="padding:6px 8px;text-align:left">Date</th><th style="padding:6px 8px;text-align:right">Amount</th><th style="padding:6px 8px;text-align:right">Balance After</th><th style="padding:6px 8px;text-align:left">Note</th>'+(canEdit?'<th></th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table>':'<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">No collections recorded yet.</div>')
+    +'<div class="btn-row" style="margin-top:14px">'+(canEdit?'<button class="btn-primary" onclick="document.getElementById(\'incHistModal\').remove();openRecordCollectionModal('+outId+')">+ Record Collection</button>':'')+'<button class="btn-secondary" onclick="document.getElementById(\'incHistModal\').remove()">Close</button></div>'
+    +'</div>';
+  document.body.appendChild(modal);
+}
+async function deleteIncomePaymentEntry(outId,paymentId){
+  const o=outstandings.find(x=>x.id===outId); if(!o) return;
+  if(!confirm('Delete this collection entry? The remaining balance will increase accordingly.')) return;
+  o.payments=(o.payments||[]).filter(x=>String(x.id)!==String(paymentId));
+  o.paid=o.payments.reduce((s,x)=>s+(x.amount||0),0);
+  o.status = o.paid>=o.amt?'collected':o.paid>0?'partial':'pending';
+  ls('omni-out',outstandings);
+  saveOutstandingToCloud();
+  document.getElementById('incHistModal').remove();
+  openIncomeHistoryModal(outId);
+  renderOutstanding();
+  renderDashboard();
+}
+function exportOutstandingCSV(){
+  let csv = 'Company,Division,Client,Project,Total Amount,Collected,Remaining,Status,Due Date,Linked Project,IPC\n';
+  outstandings.forEach(function(o){
+    const rem=(o.amt||0)-(o.paid||0);
+    csv += ['"'+(o.co||'')+'"','"'+(o.div||'')+'"','"'+(o.client||'')+'"','"'+(o.project||'')+'"',o.amt||0,o.paid||0,rem,'"'+(o.status||'')+'"','"'+(o.due||'')+'"','"'+(o.linked_project_name||'')+'"','"'+(o.ipc_label||'')+'"'].join(',')+'\n';
+  });
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'omniflow_outstanding_income_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── IPC COLLECTION LEDGER (Outstanding Income) ──────────────
+function openIncomeIpcLedgerReport(){
+  const modal=document.createElement('div');
+  modal.className='modal-overlay'; modal.style.display='flex'; modal.id='incIpcLedgerModal';
+  modal.innerHTML='<div class="modal-box" style="max-width:960px;max-height:88vh;display:flex;flex-direction:column">'
+    +'<div class="modal-header"><div class="modal-title">📊 IPC Collection Ledger</div>'
+    +'<button class="modal-close" onclick="document.getElementById(\'incIpcLedgerModal\').remove()">&times;</button></div>'
+    +'<div id="incIpcLedgerBody" style="overflow-y:auto;flex:1"></div>'
+    +'<div class="btn-row" style="margin-top:12px"><button class="btn-primary" onclick="exportIncomeIpcLedgerCSV()">⬇ Export CSV</button><button class="btn-secondary" onclick="document.getElementById(\'incIpcLedgerModal\').remove()">Close</button></div>'
+    +'</div>';
+  document.body.appendChild(modal);
+  renderIncomeIpcLedgerReport();
+}
+function renderIncomeIpcLedgerReport(){
+  const linked = outstandings.filter(function(o){ return o.ipc_id; });
+  const grandCertified = linked.reduce((s,o)=>s+(o.amt||0),0);
+  const grandReceived  = linked.reduce((s,o)=>s+(o.paid||0),0);
+  const grandRemaining = grandCertified-grandReceived;
+  const collectionRate = grandCertified>0 ? Math.round((grandReceived/grandCertified)*1000)/10 : 0;
+
+  window._incIpcLedgerRows = linked;
+
+  let html = '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">'
+    +'<div style="flex:1;min-width:130px;padding:10px 14px;background:var(--bg);border-radius:9px;text-align:center"><div style="font-size:18px;font-weight:800">'+fmt(grandCertified)+'</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;font-weight:700">Total Certified</div></div>'
+    +'<div style="flex:1;min-width:130px;padding:10px 14px;background:#f0fdf4;border-radius:9px;text-align:center"><div style="font-size:18px;font-weight:800;color:#166534">'+fmt(grandReceived)+'</div><div style="font-size:9px;color:#166534;text-transform:uppercase;font-weight:700">Total Collected</div></div>'
+    +'<div style="flex:1;min-width:130px;padding:10px 14px;background:#fee2e2;border-radius:9px;text-align:center"><div style="font-size:18px;font-weight:800;color:#dc2626">'+fmt(grandRemaining)+'</div><div style="font-size:9px;color:#dc2626;text-transform:uppercase;font-weight:700">Remaining</div></div>'
+    +'<div style="flex:1;min-width:130px;padding:10px 14px;background:#eff6ff;border-radius:9px;text-align:center"><div style="font-size:18px;font-weight:800;color:#1e40af">'+collectionRate+'%</div><div style="font-size:9px;color:#1e40af;text-transform:uppercase;font-weight:700">Collection Rate</div></div>'
+    +'</div>';
+
+  if(!linked.length){
+    html += '<div style="text-align:center;color:var(--muted);padding:30px;font-size:13px">No outstanding income items are linked to an IPC yet. When adding an item, select a Project then an IPC to link it — the amount will auto-fill.</div>';
+    document.getElementById('incIpcLedgerBody').innerHTML = html;
+    return;
+  }
+
+  const byProject = {};
+  linked.forEach(function(o){
+    const key = o.linked_project_name||'(No project name)';
+    if(!byProject[key]) byProject[key]=[];
+    byProject[key].push(o);
+  });
+
+  Object.keys(byProject).sort().forEach(function(projName){
+    const rows = byProject[projName];
+    const subCert = rows.reduce((s,o)=>s+(o.amt||0),0);
+    const subPaid = rows.reduce((s,o)=>s+(o.paid||0),0);
+    html += '<div style="margin-bottom:18px">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">'
+        +'<span>🏗 '+projName+'</span>'
+        +'<span style="font-size:11px;font-weight:600;color:var(--muted)">Certified '+fmt(subCert)+' · Collected '+fmt(subPaid)+' · Remaining '+fmt(subCert-subPaid)+'</span>'
+      +'</div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg);font-size:10px;text-transform:uppercase;color:var(--muted);font-weight:700">'
+        +'<th style="padding:6px 8px;text-align:left">IPC</th><th style="padding:6px 8px;text-align:left">Client</th>'
+        +'<th style="padding:6px 8px;text-align:right">Certified</th><th style="padding:6px 8px;text-align:right">Collected</th>'
+        +'<th style="padding:6px 8px;text-align:right">Remaining</th><th style="padding:6px 8px;text-align:left">Status</th><th></th></tr></thead><tbody>';
+    rows.forEach(function(o){
+      const rem = (o.amt||0)-(o.paid||0);
+      const statusColor = o.status==='collected'?'#166534':o.status==='partial'?'#92400e':'#dc2626';
+      html += '<tr style="border-bottom:1px solid var(--border2)">'
+        +'<td style="padding:6px 8px;font-weight:600">'+(o.ipc_label||'—')+'</td>'
+        +'<td style="padding:6px 8px">'+(o.client||'—')+'</td>'
+        +'<td style="padding:6px 8px;text-align:right">'+fmt(o.amt||0)+'</td>'
+        +'<td style="padding:6px 8px;text-align:right;color:#166534;font-weight:600">'+fmt(o.paid||0)+'</td>'
+        +'<td style="padding:6px 8px;text-align:right;color:'+(rem>0?'#dc2626':'var(--muted)')+';font-weight:600">'+fmt(rem)+'</td>'
+        +'<td style="padding:6px 8px;text-transform:capitalize;color:'+statusColor+';font-weight:700">'+(o.status||'pending')+'</td>'
+        +'<td style="padding:6px 8px;text-align:right"><button onclick="document.getElementById(\'incIpcLedgerModal\').remove();openIncomeHistoryModal('+o.id+')" style="font-size:10px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer">History</button></td>'
+        +'</tr>';
+    });
+    html += '</tbody></table></div>';
+  });
+
+  document.getElementById('incIpcLedgerBody').innerHTML = html;
+}
+function exportIncomeIpcLedgerCSV(){
+  const rows = window._incIpcLedgerRows||[];
+  let csv = 'Project,IPC,Client,Certified Amount,Collected,Remaining,Status\n';
+  rows.forEach(function(o){
+    const rem=(o.amt||0)-(o.paid||0);
+    csv += ['"'+(o.linked_project_name||'')+'"','"'+(o.ipc_label||'')+'"','"'+(o.client||'')+'"',o.amt||0,o.paid||0,rem,'"'+(o.status||'')+'"'].join(',')+'\n';
+  });
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'omniflow_income_ipc_ledger_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function renderOutstanding(){
   const isPrOut=currentUser&&currentUser.accessLevel==='pr_out';
@@ -4274,6 +4562,37 @@ function renderOutstanding(){
       return '<div class="pi"><div class="pi-rank '+rnks[Math.min(i,3)]+'">'+(i+1)+'</div><div class="pi-info"><div class="pi-name">'+o.client+' — '+o.project+'</div><div class="pi-sub">'+o.div+' · '+o.co+'</div></div><span class="badge '+o.status+'" style="margin-right:8px">'+o.status+'</span><div class="pi-amt">'+fmt(o.amt-o.paid)+'</div></div>';
     }).join('');
 
+  // ── Aging summary — how overdue is what's still owed to us ──
+  const agingEl = document.getElementById('outAging');
+  if(agingEl){
+    const today = new Date().toISOString().slice(0,10);
+    const buckets = {current:0, d30:0, d60:0, d90:0, d90plus:0};
+    visOut.forEach(function(o){
+      const bal = o.amt-(o.paid||0);
+      if(bal<=0) return;
+      if(!o.due || o.due>=today){ buckets.current+=bal; return; }
+      const days = Math.floor((new Date(today)-new Date(o.due))/86400000);
+      if(days<=30) buckets.d30+=bal;
+      else if(days<=60) buckets.d60+=bal;
+      else if(days<=90) buckets.d90+=bal;
+      else buckets.d90plus+=bal;
+    });
+    const totalOwed = Object.values(buckets).reduce((a,b)=>a+b,0);
+    if(totalOwed>0){
+      agingEl.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px">'
+        +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Aging — Amount Owed to Us by Days Overdue</div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+        +'<div style="flex:1;min-width:90px;padding:8px;background:#f0fdf4;border-radius:8px;text-align:center"><div style="font-size:14px;font-weight:800;color:#166534">'+fmt(buckets.current)+'</div><div style="font-size:9px;color:#166534;text-transform:uppercase">Current</div></div>'
+        +'<div style="flex:1;min-width:90px;padding:8px;background:#fef9c3;border-radius:8px;text-align:center"><div style="font-size:14px;font-weight:800;color:#92400e">'+fmt(buckets.d30)+'</div><div style="font-size:9px;color:#92400e;text-transform:uppercase">1–30 days</div></div>'
+        +'<div style="flex:1;min-width:90px;padding:8px;background:#fed7aa;border-radius:8px;text-align:center"><div style="font-size:14px;font-weight:800;color:#9a3412">'+fmt(buckets.d60)+'</div><div style="font-size:9px;color:#9a3412;text-transform:uppercase">31–60 days</div></div>'
+        +'<div style="flex:1;min-width:90px;padding:8px;background:#fecaca;border-radius:8px;text-align:center"><div style="font-size:14px;font-weight:800;color:#991b1b">'+fmt(buckets.d90)+'</div><div style="font-size:9px;color:#991b1b;text-transform:uppercase">61–90 days</div></div>'
+        +'<div style="flex:1;min-width:90px;padding:8px;background:#fca5a5;border-radius:8px;text-align:center"><div style="font-size:14px;font-weight:800;color:#7f1d1d">'+fmt(buckets.d90plus)+'</div><div style="font-size:9px;color:#7f1d1d;text-transform:uppercase">90+ days</div></div>'
+        +'</div></div>';
+    } else {
+      agingEl.innerHTML='';
+    }
+  }
+
   // Group by company — pr_out only shows Matisan
   const grid=document.getElementById('outGrid');grid.innerHTML='';
   const addBtn=document.querySelector('#pgOutstanding .btn-primary');
@@ -4294,7 +4613,11 @@ function renderOutstanding(){
     else{
       cardHtml+=items.map(function(o){
         return '<div class="out-item">'
-          +'<div><div class="oi-name">'+o.client+'</div><div class="oi-proj">'+o.project+' · '+o.div+'</div>'+(o.paid>0?'<div class="oi-paid">Collected: '+fmt(o.paid)+'</div>':'')+'</div>'
+          +'<div><div class="oi-name">'+o.client+'</div><div class="oi-proj">'+o.project+' · '+o.div+'</div>'
+            +(o.paid>0?'<div class="oi-paid">Collected: '+fmt(o.paid)+'</div>':'')
+            +((o.linked_project_name||o.ipc_label)?'<div style="font-size:10px;color:#1e40af;margin-top:2px">🔗 '+(o.linked_project_name||'')+(o.ipc_label?' — '+o.ipc_label:'')+'</div>':'')
+            +(o.due?'<div style="font-size:10px;color:var(--muted);margin-top:2px">Due: '+o.due+'</div>':'')
+          +'</div>'
           +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">'
             +'<div class="oi-amt">'+fmt(o.amt)+'</div>'
             +'<span class="badge '+o.status+'">'+o.status+'</span>'
@@ -4306,7 +4629,10 @@ function renderOutstanding(){
               +'</select>'
               +(!isPrOut?'<button class="del-btn" onclick="deleteOut('+o.id+')" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button>':'')
             +'</div>'
-            +(o.status==='partial'?'<input type="number" placeholder="Paid so far" value="'+o.paid+'" onchange="updateOutPaid('+o.id+',this.value)" style="width:110px;font-size:10px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;margin-top:2px">':'')
+            +(o.status!=='collected'?'<div style="display:flex;gap:4px;margin-top:2px">'
+              +'<button onclick="openIncomeHistoryModal('+o.id+')" style="font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer">History</button>'
+              +'<button onclick="openRecordCollectionModal('+o.id+')" style="font-size:10px;padding:3px 8px;border:1px solid var(--teal);border-radius:6px;background:var(--teal-light);color:var(--teal-dark);cursor:pointer;font-weight:600">+ Record</button>'
+            +'</div>':'<button onclick="openIncomeHistoryModal('+o.id+')" style="font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;margin-top:2px">History</button>')
           +'</div>'
         +'</div>';
       }).join('');}
