@@ -4425,7 +4425,7 @@ function openIncomeHistoryModal(outId){
       +'<div style="flex:1;padding:8px 12px;background:#fee2e2;border-radius:8px;text-align:center"><div style="font-size:16px;font-weight:800;color:#dc2626">'+fmt(o.amt-(o.paid||0))+'</div><div style="font-size:10px;color:#dc2626;text-transform:uppercase">Remaining</div></div>'
     +'</div>'
     +(payments.length?'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg);font-size:10px;text-transform:uppercase;color:var(--muted)"><th style="padding:6px 8px;text-align:left">Date</th><th style="padding:6px 8px;text-align:right">Amount</th><th style="padding:6px 8px;text-align:right">Balance After</th><th style="padding:6px 8px;text-align:left">Note</th>'+(canEdit?'<th></th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table>':'<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">No collections recorded yet.</div>')
-    +'<div class="btn-row" style="margin-top:14px">'+(canEdit?'<button class="btn-primary" onclick="document.getElementById(\'incHistModal\').remove();openRecordCollectionModal('+outId+')">+ Record Collection</button>':'')+'<button class="btn-secondary" onclick="document.getElementById(\'incHistModal\').remove()">Close</button></div>'
+    +'<div class="btn-row" style="margin-top:14px">'+(canEdit?'<button class="btn-primary" onclick="document.getElementById(\'incHistModal\').remove();openRecordCollectionModal(\''+outId+'\')">+ Record Collection</button>':'')+'<button class="btn-secondary" onclick="document.getElementById(\'incHistModal\').remove()">Close</button></div>'
     +'</div>';
   document.body.appendChild(modal);
 }
@@ -4524,7 +4524,7 @@ function renderIncomeIpcLedgerReport(){
         +'<td style="padding:6px 8px;text-align:right;color:#166534;font-weight:600">'+fmt(o.paid||0)+'</td>'
         +'<td style="padding:6px 8px;text-align:right;color:'+(rem>0?'#dc2626':'var(--muted)')+';font-weight:600">'+fmt(rem)+'</td>'
         +'<td style="padding:6px 8px;text-transform:capitalize;color:'+statusColor+';font-weight:700">'+(o.status||'pending')+'</td>'
-        +'<td style="padding:6px 8px;text-align:right"><button onclick="document.getElementById(\'incIpcLedgerModal\').remove();openIncomeHistoryModal('+o.id+')" style="font-size:10px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer">History</button></td>'
+        +'<td style="padding:6px 8px;text-align:right"><button onclick="document.getElementById(\'incIpcLedgerModal\').remove();openIncomeHistoryModal(\''+o.id+'\')" style="font-size:10px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer">History</button></td>'
         +'</tr>';
     });
     html += '</tbody></table></div>';
@@ -4578,7 +4578,7 @@ function renderOutstanding(){
     ?'<div style="color:var(--muted2);font-size:13px;padding:8px 0">All items collected!</div>'
     :sorted.map(function(o,i){
       return '<div class="pi"><div class="pi-rank '+rnks[Math.min(i,3)]+'">'+(i+1)+'</div><div class="pi-info"><div class="pi-name">'+o.client+' — '+o.project+'</div><div class="pi-sub">'+o.div+' · '+o.co+'</div></div><span class="badge '+o.status+'" style="margin-right:8px">'+o.status+'</span><div class="pi-amt">'+fmt(o.amt-o.paid)+'</div>'
-        +'<div style="display:flex;gap:4px;margin-left:10px"><button onclick="openIncomeHistoryModal('+o.id+')" style="font-size:10px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;white-space:nowrap">History</button><button onclick="openRecordCollectionModal('+o.id+')" style="font-size:10px;padding:4px 8px;border:1px solid var(--teal);border-radius:6px;background:var(--teal-light);color:var(--teal-dark);cursor:pointer;font-weight:600;white-space:nowrap">+ Record</button></div>'
+        +'<div style="display:flex;gap:4px;margin-left:10px"><button onclick="openIncomeHistoryModal(\''+o.id+'\')" style="font-size:10px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;white-space:nowrap">History</button><button onclick="openRecordCollectionModal(\''+o.id+'\')" style="font-size:10px;padding:4px 8px;border:1px solid var(--teal);border-radius:6px;background:var(--teal-light);color:var(--teal-dark);cursor:pointer;font-weight:600;white-space:nowrap">+ Record</button></div>'
       +'</div>';
     }).join('');
 
@@ -4652,9 +4652,9 @@ function renderOutstanding(){
               +(!isPrOut?'<button class="del-btn" onclick="deleteOut(\''+o.id+'\')" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button>':'')
             +'</div>'
             +(o.status!=='collected'?'<div style="display:flex;gap:4px;margin-top:2px">'
-              +'<button onclick="openIncomeHistoryModal('+o.id+')" style="font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer">History</button>'
-              +'<button onclick="openRecordCollectionModal('+o.id+')" style="font-size:10px;padding:3px 8px;border:1px solid var(--teal);border-radius:6px;background:var(--teal-light);color:var(--teal-dark);cursor:pointer;font-weight:600">+ Record</button>'
-            +'</div>':'<button onclick="openIncomeHistoryModal('+o.id+')" style="font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;margin-top:2px">History</button>')
+              +'<button onclick="openIncomeHistoryModal(\''+o.id+'\')" style="font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer">History</button>'
+              +'<button onclick="openRecordCollectionModal(\''+o.id+'\')" style="font-size:10px;padding:3px 8px;border:1px solid var(--teal);border-radius:6px;background:var(--teal-light);color:var(--teal-dark);cursor:pointer;font-weight:600">+ Record</button>'
+            +'</div>':'<button onclick="openIncomeHistoryModal(\''+o.id+'\')" style="font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;margin-top:2px">History</button>')
           +'</div>'
         +'</div>';
       }).join('');}
