@@ -1854,8 +1854,8 @@ const USER_DEFS = [
 ];
 
 // Limited users: only Entry + Ledger, only today and yesterday
-const LIMITED_PAGES = ['Entry','Ledger'];
-const LIMITED_NAV_LABELS = ['Add Transaction','Ledger'];
+const LIMITED_PAGES = ['Entry','Ledger','Outstanding','Payables'];
+const LIMITED_NAV_LABELS = ['Add Transaction','Ledger','Outstanding Income','Outstanding Payables'];
 
 function getPasswords(){return ls('omni-passwords')||{...DEFAULT_PASSWORDS};}
 
@@ -1899,6 +1899,16 @@ function getUsers(){
   return USER_DEFS.map(u=>({...u,password:pw[u.username]||DEFAULT_PASSWORDS[u.username]}));
 }
 function isLimitedUser(){return currentUser&&currentUser.accessLevel==='limited';}
+// Returns 'WE' or 'ME' if this user should only see their own company's
+// Outstanding Income/Payables, or null if they should see everything
+// (admin, finance officer, engineering roles, etc).
+function getUserCompanyScope(){
+  if(!currentUser) return null;
+  if(currentUser.username==='admin'||currentUser.username==='finance') return null;
+  if(isLimitedUser()) return currentUser.company||null; // wanofi / matisan managers
+  if(currentUser.role==='finance' && currentUser.accessLevel==='pr_only') return currentUser.company||null; // we_finance / me_finance
+  return null;
+}
 function isAdmin(){return currentUser&&currentUser.username==='admin';}
 function isEngAdmin(){return currentUser&&currentUser.accessLevel==='eng_admin';}
 function isEngManager(){return currentUser&&currentUser.accessLevel==='eng_manager';}
@@ -2646,6 +2656,15 @@ function applyAccessLevel(){
     allNavItems.forEach(item=>item.style.display='none');
     const prNav=document.getElementById('payreqNav');
     if(prNav){prNav.style.display='flex';}
+    // Finance-titled pr_only accounts (we_finance/me_finance) also get their
+    // own company's Outstanding Income/Payables — other pr_only roles
+    // (prepare/check/approve) stay restricted to Payment Requests only.
+    if(currentUser.role==='finance'){
+      const outNavF=document.getElementById('outstandingNav');
+      const payNavF=document.getElementById('payablesNav');
+      if(outNavF) outNavF.style.display='flex';
+      if(payNavF) payNavF.style.display='flex';
+    }
     const soNav=document.getElementById('signoutNav');
     if(soNav){soNav.style.display='flex';}
     document.getElementById('limitedBanner').style.display='none';
@@ -4343,7 +4362,7 @@ async function deleteOut(id){
   renderOutstanding(); renderDashboard();
 }
 
-function isFinanceOrAdmin_out(){ return currentUser && (currentUser.username==='admin'||currentUser.username==='finance'); }
+function isFinanceOrAdmin_out(){ return currentUser && (currentUser.username==='admin'||currentUser.username==='finance'||(currentUser.role==='finance'&&currentUser.accessLevel==='pr_only')); }
 
 function openRecordCollectionModal(outId){
   const o=outstandings.find(x=>x.id===outId); if(!o) return;
@@ -4432,7 +4451,9 @@ async function deleteIncomePaymentEntry(outId,paymentId){
 }
 function exportOutstandingCSV(){
   let csv = 'Company,Division,Client,Project,Total Amount,Collected,Remaining,Status,Due Date,Linked Project,IPC\n';
-  outstandings.forEach(function(o){
+  const coScopeCsv = getUserCompanyScope();
+  const csvOut = coScopeCsv ? outstandings.filter(function(o){return normCoId(o.co)===coScopeCsv;}) : outstandings;
+  csvOut.forEach(function(o){
     const rem=(o.amt||0)-(o.paid||0);
     csv += ['"'+(o.co||'')+'"','"'+(o.div||'')+'"','"'+(o.client||'')+'"','"'+(o.project||'')+'"',o.amt||0,o.paid||0,rem,'"'+(o.status||'')+'"','"'+(o.due||'')+'"','"'+(o.linked_project_name||'')+'"','"'+(o.ipc_label||'')+'"'].join(',')+'\n';
   });
@@ -4458,7 +4479,8 @@ function openIncomeIpcLedgerReport(){
   renderIncomeIpcLedgerReport();
 }
 function renderIncomeIpcLedgerReport(){
-  const linked = outstandings.filter(function(o){ return o.ipc_id; });
+  const coScopeLedger = getUserCompanyScope();
+  const linked = outstandings.filter(function(o){ return o.ipc_id && (!coScopeLedger||normCoId(o.co)===coScopeLedger); });
   const grandCertified = linked.reduce((s,o)=>s+(o.amt||0),0);
   const grandReceived  = linked.reduce((s,o)=>s+(o.paid||0),0);
   const grandRemaining = grandCertified-grandReceived;
@@ -4534,13 +4556,16 @@ function exportIncomeIpcLedgerCSV(){
 
 function renderOutstanding(){
   const isPrOut=currentUser&&currentUser.accessLevel==='pr_out';
+  const coScope=getUserCompanyScope();
 
   // For pr_out (me_check/me_approve): show ONLY ME1 Construction items
   function isME1(o){
     const d=(o.div||'').toString().trim();
     return d==='ME1'||d.toLowerCase().startsWith('me1.');
   }
-  const visOut=isPrOut?outstandings.filter(isME1):outstandings;
+  const visOut=isPrOut?outstandings.filter(isME1)
+    :coScope?outstandings.filter(function(o){return normCoId(o.co)===coScope;})
+    :outstandings;
 
   // KPIs from visOut only
   const tot=visOut.reduce(function(s,o){return s+o.amt;},0);
@@ -4559,7 +4584,9 @@ function renderOutstanding(){
   document.getElementById('priorityBar').innerHTML=sorted.length===0
     ?'<div style="color:var(--muted2);font-size:13px;padding:8px 0">All items collected!</div>'
     :sorted.map(function(o,i){
-      return '<div class="pi"><div class="pi-rank '+rnks[Math.min(i,3)]+'">'+(i+1)+'</div><div class="pi-info"><div class="pi-name">'+o.client+' — '+o.project+'</div><div class="pi-sub">'+o.div+' · '+o.co+'</div></div><span class="badge '+o.status+'" style="margin-right:8px">'+o.status+'</span><div class="pi-amt">'+fmt(o.amt-o.paid)+'</div></div>';
+      return '<div class="pi"><div class="pi-rank '+rnks[Math.min(i,3)]+'">'+(i+1)+'</div><div class="pi-info"><div class="pi-name">'+o.client+' — '+o.project+'</div><div class="pi-sub">'+o.div+' · '+o.co+'</div></div><span class="badge '+o.status+'" style="margin-right:8px">'+o.status+'</span><div class="pi-amt">'+fmt(o.amt-o.paid)+'</div>'
+        +'<div style="display:flex;gap:4px;margin-left:10px"><button onclick="openIncomeHistoryModal('+o.id+')" style="font-size:10px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;white-space:nowrap">History</button><button onclick="openRecordCollectionModal('+o.id+')" style="font-size:10px;padding:4px 8px;border:1px solid var(--teal);border-radius:6px;background:var(--teal-light);color:var(--teal-dark);cursor:pointer;font-weight:600;white-space:nowrap">+ Record</button></div>'
+      +'</div>';
     }).join('');
 
   // ── Aging summary — how overdue is what's still owed to us ──
@@ -4600,6 +4627,8 @@ function renderOutstanding(){
 
   const cosToShow=isPrOut
     ?companies.filter(function(co){return co.name.toLowerCase().includes('matisan')||co.code==='ME'||co.id==='Matisan';})
+    :coScope
+    ?companies.filter(function(co){return normCoId(co.id)===coScope||normCoId(co.code)===coScope;})
     :companies;
 
   cosToShow.forEach(function(co){
@@ -5200,7 +5229,7 @@ async function loadPayablesFromCloud(){
   return false;
 }
 
-function isFinanceOrAdmin(){ return currentUser && (currentUser.username==='admin'||currentUser.username==='finance'); }
+function isFinanceOrAdmin(){ return currentUser && (currentUser.username==='admin'||currentUser.username==='finance'||(currentUser.role==='finance'&&currentUser.accessLevel==='pr_only')); }
 
 function toggleAddPayForm(){
   const f=document.getElementById('addPayForm');
@@ -5326,15 +5355,17 @@ function renderPayables(){
 
   // ── Build combined payables: manual + PR pending ──
   const prPending = getPRPendingPayables();
-  const allPay = [
-    ...payables.map(p=>({...p, co: normCoId(p.co||p.company_id||'')})),
-    ...prPending
+  const coScopePay = getUserCompanyScope();
+  const scopedPayables = coScopePay ? payables.filter(function(p){return normCoId(p.co||p.company_id||'')===coScopePay;}) : payables;
+  let allPay = [
+    ...scopedPayables.map(p=>({...p, co: normCoId(p.co||p.company_id||'')})),
+    ...(coScopePay ? prPending.filter(function(p){return normCoId(p.co)===coScopePay;}) : prPending)
   ];
 
   const grandTotal   = allPay.reduce((s,p)=>s+(p.amt||0),0);
-  const grandPaid    = payables.reduce((s,p)=>s+(p.paid||0),0);
-  const prTotal      = prPending.reduce((s,p)=>s+(p.amt||0),0);
-  const overdue      = payables.filter(p=>p.due&&p.due<new Date().toISOString().slice(0,10)&&p.status!=='paid').length;
+  const grandPaid    = scopedPayables.reduce((s,p)=>s+(p.paid||0),0);
+  const prTotal      = (coScopePay ? prPending.filter(function(p){return normCoId(p.co)===coScopePay;}) : prPending).reduce((s,p)=>s+(p.amt||0),0);
+  const overdue      = scopedPayables.filter(p=>p.due&&p.due<new Date().toISOString().slice(0,10)&&p.status!=='paid').length;
 
   // ── KPI Cards ──
   document.getElementById('payKpis').innerHTML=`
@@ -5364,7 +5395,7 @@ function renderPayables(){
   if(agingEl){
     const today = new Date().toISOString().slice(0,10);
     const buckets = {current:0, d30:0, d60:0, d90:0, d90plus:0};
-    payables.forEach(function(p){
+    scopedPayables.forEach(function(p){
       const bal = p.amt-(p.paid||0);
       if(bal<=0) return;
       if(!p.due || p.due>=today){ buckets.current+=bal; return; }
@@ -5522,7 +5553,9 @@ function renderPayables(){
 function exportPayablesCSV(){
   let csv = 'Company,Division,Supplier,Description,Linked Project,Linked IPC,Total Amount,Received,Remaining,Status,Due Date,Payment Date,Payment Amount,Payment Note\n';
   const esc = v => '"'+String(v==null?'':v).replace(/"/g,'""')+'"';
-  payables.forEach(function(p){
+  const coScopeCsv = getUserCompanyScope();
+  const csvPayables = coScopeCsv ? payables.filter(function(p){return normCoId(p.co||p.company_id||'')===coScopeCsv;}) : payables;
+  csvPayables.forEach(function(p){
     const balance = p.amt-(p.paid||0);
     const payments = p.payments&&p.payments.length ? p.payments : [null];
     payments.forEach(function(pm){
@@ -5615,7 +5648,8 @@ function openIpcLedgerReport(){
   renderIpcLedgerReport();
 }
 function renderIpcLedgerReport(){
-  const linked = payables.filter(function(p){ return p.ipc_id; });
+  const coScopeLedger = getUserCompanyScope();
+  const linked = payables.filter(function(p){ return p.ipc_id && (!coScopeLedger||normCoId(p.co||p.company_id||'')===coScopeLedger); });
   const grandCertified = linked.reduce((s,p)=>s+(p.amt||0),0);
   const grandReceived  = linked.reduce((s,p)=>s+(p.paid||0),0);
   const grandRemaining = grandCertified-grandReceived;
