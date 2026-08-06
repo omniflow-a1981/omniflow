@@ -2695,8 +2695,8 @@ function applyAccessLevel(){
       });
     }
 
-    // Engineering Admin — also gets Admin Settings and all company views
-    if(isEngAdmin()){
+    // Engineering Manager — gets Admin Settings (scoped to RE password management)
+    if(isEngManager()){
       document.getElementById('adminNav').style.display='flex';
     }
 
@@ -5010,7 +5010,7 @@ function renderCompanies(){
 
 
 async function renderAdminSettings(){
-  if(!isAdmin()&&!isEngAdmin()){document.getElementById('pgAdminSettings').innerHTML='<div style="padding:40px;text-align:center;color:var(--muted2)">Admin access only.</div>';return;}
+  if(!isAdmin()&&!isEngManager()){document.getElementById('pgAdminSettings').innerHTML='<div style="padding:40px;text-align:center;color:var(--muted2)">Admin access only.</div>';return;}
   const grid=document.getElementById('pwGrid');
   grid.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);grid-column:1/-1">Loading current passwords from cloud...</div>';
   await loadUserPasswordsFromCloud(); // always show the real current cloud state, not a stale local guess
@@ -5046,14 +5046,14 @@ async function renderAdminSettings(){
     </button>
   </div>`;
 
-  // eng_admin gets a scoped notice explaining their limited view
-  if(!isAdmin()&&isEngAdmin()){
+  // eng_manager gets a scoped notice explaining their limited view
+  if(!isAdmin()&&isEngManager()){
     grid.innerHTML+=`<div style="grid-column:1/-1;padding:12px 16px;background:#eff6ff;border:1px solid #93c5fd;border-radius:9px;font-size:12px;color:#1e40af;margin-bottom:4px">
-      🔧 As Engineering Admin, you can view and reset passwords for <strong>Resident Engineer</strong> accounts only. Other accounts (admin, finance, PR roles, etc.) are managed by the system administrator.
+      🔧 As Engineering Manager, you can view and reset passwords for <strong>Resident Engineer</strong> accounts only. Other accounts (admin, finance, PR roles, etc.) are managed by the system administrator.
     </div>`;
   }
 
-  // ── Other users — admin sees everyone; eng_admin sees RE accounts only ──
+  // ── Other users — admin sees everyone; eng_manager sees RE accounts only ──
   // No "old password" gate here: as admin you have full visibility/control,
   // per your own instruction, so this isn't a self-service change flow.
   const visibleUsers = isAdmin()
