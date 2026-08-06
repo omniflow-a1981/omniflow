@@ -5049,16 +5049,18 @@ async function renderAdminSettings(){
   // eng_manager gets a scoped notice explaining their limited view
   if(!isAdmin()&&isEngManager()){
     grid.innerHTML+=`<div style="grid-column:1/-1;padding:12px 16px;background:#eff6ff;border:1px solid #93c5fd;border-radius:9px;font-size:12px;color:#1e40af;margin-bottom:4px">
-      🔧 As Engineering Manager, you can view and reset passwords for <strong>Resident Engineer</strong> accounts only. Other accounts (admin, finance, PR roles, etc.) are managed by the system administrator.
+      🔧 As Engineering Manager, you can view and reset passwords for the <strong>WE2 — Dimeka and Jigjiga</strong> Resident Engineer accounts only. Other RE accounts and all other users are managed by the system administrator.
     </div>`;
   }
 
-  // ── Other users — admin sees everyone; eng_manager sees RE accounts only ──
+  // ── Other users — admin sees everyone; eng_manager sees only the two
+  // WE2 site RE accounts (Dimeka and Jigjiga), not every RE account ──
   // No "old password" gate here: as admin you have full visibility/control,
   // per your own instruction, so this isn't a self-service change flow.
+  const ENG_MANAGER_RE_SCOPE = ['re_we2_dimeka','re_we2_jigjiga'];
   const visibleUsers = isAdmin()
     ? USER_DEFS.filter(u=>u.username!=='admin')
-    : USER_DEFS.filter(u=>u.accessLevel==='re');
+    : USER_DEFS.filter(u=>ENG_MANAGER_RE_SCOPE.includes(u.username));
   visibleUsers.forEach(u=>{
     const isLtd=u.accessLevel==='limited';
     const isPrOnly=u.accessLevel==='pr_only';
