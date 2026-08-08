@@ -1485,13 +1485,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
     </div>
     <input type="hidden" id="prType" value="Material">
     <input type="hidden" id="prCategory" value="Purchase">
-    <div id="prManpowerRow" style="display:none;margin-bottom:10px">
-      <div class="ff"><label>Labour Category</label>
-        <select id="prManpowerCat">
-          <option>Skilled</option><option>Non-Skilled</option><option>Subcontract (International)</option>
-        </select>
-      </div>
-    </div>
     <div class="fr" style="margin-bottom:10px">
       <div class="ff"><label>Project / Description</label><input type="text" id="prProject" placeholder="Project name"></div>
       <div class="ff"><label>Location</label><input type="text" id="prLocation" placeholder="Site location"></div>
@@ -5929,7 +5922,7 @@ function prVisible(pr){
 function setPRType(type,btn){
   currentPRType=type; document.getElementById('prType').value=type;
   document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active');
-  document.getElementById('prManpowerRow').style.display=type==='Manpower'?'block':'none';
+  const _pmRow1=document.getElementById('prManpowerRow'); if(_pmRow1) _pmRow1.style.display=type==='Manpower'?'block':'none';
   const _ps1=document.getElementById('prPayrollSection'); if(_ps1) _ps1.style.display=type==='Manpower'?'block':'none';
   buildPRHead(type);
   document.getElementById('prItemsBody').innerHTML=''; addPRItem();
@@ -5941,7 +5934,7 @@ function buildPRHead(type){
   if(type==='Material'){
     h.innerHTML=`<tr style="background:var(--bg)">${th('#','28px')}${th('Item/Material')}${th('Description')}${th('Unit','48px')}${th('Qty','58px',1)}${th('Unit Rate','85px',1)}${th('Amount','90px',1)}${th('To Be Paid','90px',1)}${th('Transfer To')}${th('','22px')}</tr>`;
   }else if(type==='Manpower'){
-    h.innerHTML=`<tr style="background:var(--bg)">${th('#','28px')}${th('Work Item')}${th('Description')}${th('Unit','58px')}${th('Quantity','70px',1)}${th('Unit Rate','85px',1)}${th('Amount','90px',1)}${th('To Be Paid','90px',1)}${th('Bank/Account')}${th('','22px')}</tr>`;
+    h.innerHTML=`<tr style="background:var(--bg)">${th('#','28px')}${th('Work Item')}${th('Description')}${th('Category','110px')}${th('Unit','58px')}${th('Quantity','70px',1)}${th('Unit Rate','85px',1)}${th('Amount','90px',1)}${th('To Be Paid','90px',1)}${th('Bank/Account')}${th('','22px')}</tr>`;
   }else if(type==='Other'){
     h.innerHTML=`<tr style="background:var(--bg)">${th('#','28px')}${th('Expense Item')}${th('Description')}${th('Unit','48px')}${th('Qty','58px',1)}${th('Unit Rate','85px',1)}${th('Amount','90px',1)}${th('To Be Paid','90px',1)}${th('Payable To')}${th('','22px')}</tr>`;
   }else{
@@ -6290,7 +6283,12 @@ function addPRItem(it){
   const txt=(cls,v,p)=>`<input class="${cls}" type="text" value="${v||''}" placeholder="${p}" style="width:100%;font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;outline:none">`;
     const del='<button onclick="removePRRow(this)" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:15px">×</button>';
   if(type==='Manpower'){
-    row.innerHTML=`<td style="${s};text-align:center;color:var(--muted)">${n}</td><td style="${s}">${txt('pr-ii',it.item_name,'Work item')}</td><td style="${s}">${txt('pr-id',it.description,'Description')}</td><td style="${s}"><input class="pr-un" type="text" value="${it.unit||''}" placeholder="Unit" style="width:55px;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;outline:none"></td><td style="${s}">${inp('pr-qty',it.qty,'0','55px')}</td><td style="${s}">${inp('pr-rate',it.unit_rate,'0','80px')}</td><td style="${s}"><input class="pr-amt" type="number" value="${it.amount||''}" readonly style="width:85px;font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;background:var(--bg);text-align:right"></td><td style="${s}">${inp('pr-item-paid',it.to_be_paid,'0','85px')}</td><td style="${s}">${txt('pr-tr',it.transfer_to,'Bank')}</td><td style="${s}">${del}</td>`;
+    const catSel=`<select class="pr-cat" style="width:100%;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;outline:none">
+      <option value="Skilled"${(!it.category||it.category==='Skilled')?' selected':''}>Skilled</option>
+      <option value="Non-Skilled"${it.category==='Non-Skilled'?' selected':''}>Non-Skilled</option>
+      <option value="Subcontract (International)"${it.category==='Subcontract (International)'?' selected':''}>Subcontract (Intl)</option>
+    </select>`;
+    row.innerHTML=`<td style="${s};text-align:center;color:var(--muted)">${n}</td><td style="${s}">${txt('pr-ii',it.item_name,'Work item')}</td><td style="${s}">${txt('pr-id',it.description,'Description')}</td><td style="${s}">${catSel}</td><td style="${s}"><input class="pr-un" type="text" value="${it.unit||''}" placeholder="Unit" style="width:55px;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;outline:none"></td><td style="${s}">${inp('pr-qty',it.qty,'0','55px')}</td><td style="${s}">${inp('pr-rate',it.unit_rate,'0','80px')}</td><td style="${s}"><input class="pr-amt" type="number" value="${it.amount||''}" readonly style="width:85px;font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;background:var(--bg);text-align:right"></td><td style="${s}">${inp('pr-item-paid',it.to_be_paid,'0','85px')}</td><td style="${s}">${txt('pr-tr',it.transfer_to,'Bank')}</td><td style="${s}">${del}</td>`;
   }else{
     row.innerHTML=`<td style="${s};text-align:center;color:var(--muted)">${n}</td><td style="${s}">${txt('pr-ii',it.item_name,type==='Machinery'?'Equipment':'Item')}</td><td style="${s}">${txt('pr-id',it.description,'Description')}</td><td style="${s}"><input class="pr-un" type="text" value="${it.unit||''}" placeholder="Unit" style="width:45px;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;outline:none"></td>${type==='Machinery'?`<td style="${s}">${inp('pr-days',it.days,'0','55px')}</td>`:''}<td style="${s}">${inp('pr-qty',it.qty,'0','55px')}</td><td style="${s}">${inp('pr-rate',it.unit_rate,'0','80px')}</td><td style="${s}"><input class="pr-amt" type="number" value="${it.amount||''}" readonly style="width:85px;font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;background:var(--bg);text-align:right"></td><td style="${s}">${inp('pr-item-paid',it.to_be_paid,'0','85px')}</td><td style="${s}">${txt('pr-tr',it.transfer_to,type==='Machinery'?'Supplier':'Bank')}</td><td style="${s}">${del}</td>`;
   }
@@ -6402,7 +6400,7 @@ function openNewPR(){
   resetPRAttachments();
   document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active'));
   const mb=document.getElementById('prTypeBtn-Material'); if(mb) mb.classList.add('active');
-  document.getElementById('prManpowerRow').style.display='none';
+  const _pmRow2=document.getElementById('prManpowerRow'); if(_pmRow2) _pmRow2.style.display='none';
   const _ps2=document.getElementById('prPayrollSection'); if(_ps2) _ps2.style.display='none';
   window._prPayrollB64=null; window._prProgressB64=null;
     const payrollSec2=document.getElementById('prPayrollSection'); if(payrollSec2) payrollSec2.style.display='none';
@@ -6427,7 +6425,7 @@ function getPRItems(){
   const items=[];
   rows.forEach((row,i)=>{
     const v=s=>row.querySelector(s)?.value||'';
-    const it={no:i+1,item_name:v('.pr-ii'),description:v('.pr-id'),unit:v('.pr-un'),qty:parseFloat(v('.pr-qty'))||0,unit_rate:parseFloat(v('.pr-rate'))||0,amount:parseFloat(v('.pr-amt'))||0,to_be_paid:parseFloat(v('.pr-item-paid'))||0,transfer_to:v('.pr-tr')};
+    const it={no:i+1,item_name:v('.pr-ii'),description:v('.pr-id'),unit:v('.pr-un'),qty:parseFloat(v('.pr-qty'))||0,unit_rate:parseFloat(v('.pr-rate'))||0,amount:parseFloat(v('.pr-amt'))||0,to_be_paid:parseFloat(v('.pr-item-paid'))||0,transfer_to:v('.pr-tr'),category:v('.pr-cat')};
     if(it.item_name||it.description||it.amount) items.push(it);
   });
   return items;
@@ -6444,8 +6442,10 @@ async function savePR(){
   const clientAlt=document.getElementById('prClientAlt')?.value.trim()||'';
   const client=clientMain||clientAlt;
   const vatMode=document.querySelector('input[name="vatMode"]:checked')?.value||'exclusive'; // exclusive or no_vat
-  const mpCat=document.getElementById('prManpowerCat')?.value||'';
   const items=getPRItems();
+  const mpCat = prType==='Manpower'
+    ? [...new Set(items.map(it=>it.category).filter(Boolean))].join(' + ')
+    : '';
   if(!project||!date||!items.length){alert('Please fill in date, project and at least one item.');return;}
   // Pre-payment invoice required ONLY when pre-payment type is selected
   // Post-payment invoice is optional (collected after payment)
@@ -6821,8 +6821,8 @@ async function viewPR(id){
   // Table headers/body by type
   let thead='',tbody='';
   if(prType==='Manpower'){
-    thead='<tr><th>#</th><th>Name</th><th>Position</th><th style="text-align:right">Days</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th><th style="text-align:right">To Be Paid</th><th>Bank</th></tr>';
-    tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}"><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td></tr>`).join('');
+    thead='<tr><th>#</th><th>Name</th><th>Position</th><th>Category</th><th style="text-align:right">Days</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th><th style="text-align:right">To Be Paid</th><th>Bank</th></tr>';
+    tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}"><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td>${it.category?`<span style="font-size:10px;padding:2px 7px;border-radius:9px;background:#ede9fe;color:#5b21b6;font-weight:600">${it.category}</span>`:''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td></tr>`).join('');
   } else {
     thead=`<tr><th>#</th><th>${prType==='Machinery'?'Equipment':'Item'}</th><th>Description</th><th>Unit</th><th style="text-align:right">Qty</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th><th style="text-align:right">To Be Paid</th><th>${prType==='Machinery'?'Supplier':'Transfer To'}</th></tr>`;
     tbody=items.map((it,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--bg)'}"><td>${i+1}</td><td>${it.item_name||''}</td><td>${it.description||''}</td><td>${it.unit||''}</td><td style="text-align:right">${it.qty||''}</td><td style="text-align:right">${(it.unit_rate||0).toLocaleString()}</td><td style="text-align:right">${(it.amount||0).toLocaleString()}</td><td style="text-align:right;font-weight:700">${(it.to_be_paid||0).toLocaleString()}</td><td>${it.transfer_to||''}</td></tr>`).join('');
@@ -7036,7 +7036,7 @@ function requestPaymentPR(id){
   document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active'));
   const tb=document.getElementById('prTypeBtn-'+currentPRType);
   if(tb) tb.classList.add('active');
-  document.getElementById('prManpowerRow').style.display=currentPRType==='Manpower'?'block':'none';
+  const _pmRow3=document.getElementById('prManpowerRow'); if(_pmRow3) _pmRow3.style.display=currentPRType==='Manpower'?'block':'none';
   const _ps3=document.getElementById('prPayrollSection'); if(_ps3) _ps3.style.display=currentPRType==='Manpower'?'block':'none';
 
   // ── Populate Company + Division using guaranteed helpers ──
@@ -7095,7 +7095,8 @@ function requestPaymentPR(id){
         unit_rate:it.unit_rate,
         amount:it.amount,
         to_be_paid:Math.round((parseFloat(it.to_be_paid)||0)*ratio),
-        transfer_to:it.transfer_to
+        transfer_to:it.transfer_to,
+        category:it.category
       });
     });
   } else {
@@ -7241,7 +7242,7 @@ function editPR(id){
   currentPRType=prType; document.getElementById('prType').value=prType;
   document.querySelectorAll('.pr-type-btn').forEach(b=>b.classList.remove('active'));
   const tb=document.getElementById('prTypeBtn-'+prType); if(tb) tb.classList.add('active');
-  document.getElementById('prManpowerRow').style.display=prType==='Manpower'?'block':'none';
+  const _pmRow4=document.getElementById('prManpowerRow'); if(_pmRow4) _pmRow4.style.display=prType==='Manpower'?'block':'none';
   const _ps4=document.getElementById('prPayrollSection'); if(_ps4) _ps4.style.display=prType==='Manpower'?'block':'none';
   // Restore Purchase/Service category
   const prCat=prGetCategory(pr);
