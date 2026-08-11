@@ -1179,7 +1179,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
           </datalist>
         </div>
         <div class="ff"><label>Description (optional)</label><input type="text" id="newBlockDesc" placeholder="Brief description"></div>
+        <div class="ff" style="max-width:130px"><label>Repeat <span style="font-size:10px;color:var(--muted);font-weight:400">(identical copies)</span></label><input type="number" id="newBlockRepeat" min="1" value="1" style="text-align:center"></div>
       </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:-4px;margin-bottom:8px">💡 For repeated structures like "2× Soak Away Pit," set Repeat to 2 — this creates separate blocks (e.g. "Soak Away Pit (1 of 2)", "Soak Away Pit (2 of 2)") each with the same items, so quantities executed can be tracked independently per unit.</div>
       <div class="ff" style="margin-bottom:10px"><label>Specification Notes (optional)</label><textarea id="newBlockSpec" style="min-height:38px" placeholder="Material/work specification notes..."></textarea></div>
       <div class="ff" style="margin-bottom:10px">
         <label>Upload Signed BOQ (PDF or Excel) <span style="font-size:10px;color:var(--muted)">— AI will extract contract items automatically</span></label>
@@ -9143,12 +9145,39 @@ async function loadContractBoqForProgress(){
     return;
   }
   const blockIds = blockArr.map(function(b){ return b.id; });
-  const items = await engFetch('/eng_boq_block_items?block_id=in.('+blockIds.join(',')+')&order=display_order&select=id,block_id,item_no,description,unit,quantity,unit_rate,total_amount,quantity_executed,display_order');
-  if(items && items.ok===false){
-    if(wrap) wrap.innerHTML = '<div style="padding:14px;color:#dc2626;background:#fee2e2;border-radius:8px;font-size:12px">⚠ Found '+blockArr.length+' BOQ block(s) but failed to load their line items: '+String(items.error).slice(0,200)+'</div>';
+  // Use a direct fetch (not engFetch) so we can read Content-Range and know the
+  // TRUE total row count on the server, not just how many came back — this is
+  // the only reliable way to detect silent truncation (e.g. a PostgREST
+  // db-max-rows limit) instead of guessing when totals don't match.
+  let itemArr = [], serverTotalCount = null;
+  try{
+    const itemsRes = await fetch(PR_SB+'/eng_boq_block_items?block_id=in.('+blockIds.join(',')+')&order=display_order&select=id,block_id,item_no,description,unit,quantity,unit_rate,total_amount,quantity_executed,display_order',{
+      headers:{'apikey':PR_ANON,'Authorization':'Bearer '+PR_ANON,'Prefer':'count=exact'}
+    });
+    if(!itemsRes.ok){
+      const errText=await itemsRes.text();
+      if(wrap) wrap.innerHTML = '<div style="padding:14px;color:#dc2626;background:#fee2e2;border-radius:8px;font-size:12px">⚠ Found '+blockArr.length+' BOQ block(s) but failed to load their line items: '+String(errText).slice(0,200)+'</div>';
+      return;
+    }
+    const contentRange = itemsRes.headers.get('content-range'); // format "0-249/318" or "0-249/*"
+    if(contentRange){
+      const totalPart = contentRange.split('/')[1];
+      if(totalPart && totalPart!=='*') serverTotalCount = parseInt(totalPart,10);
+    }
+    itemArr = await itemsRes.json();
+  }catch(e){
+    if(wrap) wrap.innerHTML = '<div style="padding:14px;color:#dc2626;background:#fee2e2;border-radius:8px;font-size:12px">⚠ Failed to load BOQ line items: '+e.message+'</div>';
     return;
   }
-  const itemArr = Array.isArray(items) ? items : [];
+  if(serverTotalCount!==null && serverTotalCount>itemArr.length){
+    if(wrap) wrap.innerHTML = '<div style="padding:14px;color:#dc2626;background:#fee2e2;border-radius:8px;font-size:13px">'
+      +'<strong>⚠ Only '+itemArr.length+' of '+serverTotalCount+' BOQ line items loaded.</strong><br><br>'
+      +'Your Supabase project is silently capping how many rows a single request can return (a "db-max-rows" limit) — this is a server-side setting, not a bug in what was uploaded. The full BOQ is safely stored; only this specific request got truncated.<br><br>'
+      +'<strong>To fix:</strong> in Supabase → Project Settings → API, raise or remove the "Max Rows" limit, or run this in the SQL Editor:<br>'
+      +'<code style="display:block;background:#fff;padding:8px;border-radius:6px;margin-top:6px;font-size:11px">alter role authenticator set pgrst.db_max_rows = 5000;<br>notify pgrst, \'reload config\';</code>'
+      +'</div>';
+    return;
+  }
   // Also load all previous progress reports for this project to calculate to-date executed qty
   const prevReports = await engFetch('/eng_progress_reports?project_id=eq.'+projId+'&order=report_date.asc&select=id,breakdown,tracking_mode,report_date');
   // Sum all previous "today" executed qty per item
@@ -9540,8 +9569,8 @@ function renderProgBoqBlocks(){
     groupOrder.forEach(function(gk){
       var g=groups[gk];
       var gKey=bi+'-'+gk;
-      // Groups default OPEN (false=open in our toggle map)
-      var grpCollapsed = (progBoqGroupCollapsed[gKey]===true) ? true : false;
+      // Groups default COLLAPSED (shrunk) — only open when the user explicitly expands one
+      var grpCollapsed = (progBoqGroupCollapsed[gKey]===false) ? false : true;
       var isOpen = !grpCollapsed;
 
       // Group totals
@@ -9562,7 +9591,7 @@ function renderProgBoqBlocks(){
                     + (showRate?1:0) + (showExAmt?1:0) + (showExPct?1:0);
 
       // Group header row
-      rowsHtml += '<tr style="background:#eef2f7;cursor:pointer" onclick="(function(){var k=\''+gKey+'\';progBoqGroupCollapsed[k]=!progBoqGroupCollapsed[k];renderProgBoqBlocks();})()">'
+      rowsHtml += '<tr style="background:#eef2f7;cursor:pointer" onclick="(function(){var k=\''+gKey+'\';progBoqGroupCollapsed[k]=(progBoqGroupCollapsed[k]===false)?true:false;renderProgBoqBlocks();})()">'
         + '<td colspan="2" style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--ink2)">'
           + '<span style="margin-right:6px;color:var(--muted);font-size:12px">'+(isOpen?'▼':'▶')+'</span>'
           + '<span style="background:'+gClr+';color:#fff;padding:1px 7px;border-radius:5px;font-size:10px;font-weight:800;margin-right:6px">'+gPct+'%</span>'
@@ -9883,30 +9912,40 @@ async function addBoqBlock(){
   if(!name){ alert('Block name is required.'); return; }
   const desc = document.getElementById('newBlockDesc').value.trim();
   const spec = document.getElementById('newBlockSpec').value.trim();
+  const repeat = Math.max(1, parseInt(document.getElementById('newBlockRepeat')?.value)||1);
   const c = engContracts.find(function(x){ return x.id===currentBoqBlockContractId; });
-  const payload = {
-    contract_id: currentBoqBlockContractId,
-    project_id: c?c.project_id:null,
-    block_name: name, block_description: desc, specification: spec,
-    display_order: engBoqBlocks.filter(function(b){return b.contract_id===currentBoqBlockContractId;}).length,
-    created_by: currentUser?.username||'user'
-  };
-  const res = await engFetch('/eng_boq_blocks','POST',payload);
-  const newBlock = Array.isArray(res) ? res[0] : null;
-  // Save extracted items if any
-  if(newBlock && pendingNewBlockItems.length){
-    const ops = pendingNewBlockItems.map(function(it,i){
-      return engFetch('/eng_boq_block_items','POST',{
-        block_id:newBlock.id, item_no:it.item_no||'', description:it.description||'',
-        unit:it.unit||'', quantity:parseFloat(it.quantity)||0, unit_rate:parseFloat(it.unit_rate)||0,
-        total_amount:parseFloat(it.total_amount)||0, quantity_executed:0, display_order:i
+  const baseOrder = engBoqBlocks.filter(function(b){return b.contract_id===currentBoqBlockContractId;}).length;
+
+  for(let copy=1; copy<=repeat; copy++){
+    const blockName = repeat>1 ? name+' ('+copy+' of '+repeat+')' : name;
+    const payload = {
+      contract_id: currentBoqBlockContractId,
+      project_id: c?c.project_id:null,
+      block_name: blockName, block_description: desc, specification: spec,
+      display_order: baseOrder+copy-1,
+      created_by: currentUser?.username||'user'
+    };
+    const res = await engFetch('/eng_boq_blocks','POST',payload);
+    const newBlock = Array.isArray(res) ? res[0] : null;
+    // Save extracted items if any — same items copied into each block, so
+    // quantities executed can be tracked independently per copy (e.g. Soak
+    // Away Pit #1 can be 100% done while #2 is still at 0%).
+    if(newBlock && pendingNewBlockItems.length){
+      const ops = pendingNewBlockItems.map(function(it,i){
+        return engFetch('/eng_boq_block_items','POST',{
+          block_id:newBlock.id, item_no:it.item_no||'', description:it.description||'',
+          unit:it.unit||'', quantity:parseFloat(it.quantity)||0, unit_rate:parseFloat(it.unit_rate)||0,
+          total_amount:parseFloat(it.total_amount)||0, quantity_executed:0, display_order:i
+        });
       });
-    });
-    await Promise.all(ops);
+      await Promise.all(ops);
+    }
   }
+
   document.getElementById('newBlockName').value='';
   document.getElementById('newBlockDesc').value='';
   document.getElementById('newBlockSpec').value='';
+  if(document.getElementById('newBlockRepeat')) document.getElementById('newBlockRepeat').value='1';
   document.getElementById('newBlockFileStatus').textContent='';
   document.getElementById('newBlockExtractedItems').style.display='none';
   pendingNewBlockItems=[];
