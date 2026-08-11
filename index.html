@@ -2317,8 +2317,12 @@ async function _doLoginInner(){
 
   if(myAttempt!==_loginAttemptId) return; // superseded by a newer attempt
 
-  // Accept: default password OR admin-set cloud password
-  const validPws=[defaultPw,cloudPw].filter(Boolean);
+  // SECURITY: once admin has set a real password (cloudPw exists), the
+  // original hardcoded default must stop working entirely — otherwise
+  // changing a password gives a false sense of security, since the old
+  // default would remain a permanent backdoor. Only fall back to the
+  // default for accounts that have never had a password set.
+  const validPws = cloudPw ? [cloudPw] : [defaultPw];
   if(validPws.includes(pw)){
     authToken=btoa(JSON.stringify({username:def.username,role:def.role,exp:Date.now()+86400000*30}));
     localStorage.setItem('omni-token',authToken);
@@ -2329,8 +2333,9 @@ async function _doLoginInner(){
     return;
   }
 
-  // Show helpful error with default
-  errEl.textContent='Incorrect password. Default is: '+defaultPw;
+  // Show helpful error — only reveal the default hint if this account is
+  // still on the default password (never been changed by admin)
+  errEl.textContent = cloudPw ? 'Incorrect password.' : 'Incorrect password. Default is: '+defaultPw;
   errEl.style.display='block';
   btn.textContent='Sign In →'; btn.disabled=false;
 }
