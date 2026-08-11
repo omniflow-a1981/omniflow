@@ -9502,12 +9502,24 @@ function renderProgBoqBlocks(){
     var blkClr = blkPct>=100?'#dc2626':blkPct>60?'#d97706':'#166534';
     var blkCollapsed = (progBoqBlockCollapsed[bi]===undefined) ? true : progBoqBlockCollapsed[bi];
 
-    // ── Group items by leading integer of item_no ──
+    // ── Group items by their nearest preceding numbered item ──
+    // Sub-items (e.g. "a) Masonry", "b) Footing pad") carry a BLANK item_no in
+    // the data — only parent rows (1.01, 1.17, 2.02...) have a real number.
+    // Grouping by item_no's leading digit alone dumps every blank-item_no
+    // sub-item, from every different parent, into one shared bucket — losing
+    // which real parent (1.17 vs 2.02 vs anything else) each one belongs to.
+    // Instead: walk items in their original order and carry the most recent
+    // numbered item forward as the group for any un-numbered row that follows
+    // it, so each sub-item stays attached to its real parent, exactly as
+    // Contract Management shows it. Only rows before the very first numbered
+    // item (genuine preamble clauses) fall into "preamble".
     var groups={}, groupOrder=[];
+    var currentGk='preamble';
     (blk.items||[]).forEach(function(it,ii){
       var s=(it.item_no||'').trim();
       var m=s.match(/^(\d+)/);
-      var gk = m ? m[1] : (s?'~'+s[0]:'preamble');
+      var gk = m ? m[1] : currentGk;
+      if(m) currentGk = m[1];
       if(!groups[gk]){ groups[gk]={key:gk,label:'',items:[]}; groupOrder.push(gk); }
       groups[gk].items.push({it:it,ii:ii});
     });
