@@ -7823,11 +7823,6 @@ function renderEngProjects(){
     return;
   }
   wrap.innerHTML = list.map(p=>{
-    // EVM: compute from contract BOQ execution totals
-    const projContracts = engContracts.filter(function(c){return c.project_id===p.id;});
-    const projBlockIds = engBoqBlocks.filter(function(b){return projContracts.some(function(c){return c.id===b.contract_id;});}).map(function(b){return b.id;});
-    // Use stored percent_complete as fallback (updated on each progress report save)
-    const pct = parseFloat(p.percent_complete||0);
     const coName = p.company_id==='WE' ? 'Wanofi Engineering' : 'Matisan Engineering';
     return '<div class="pr-card" style="cursor:pointer" onclick="openProjectDetail(' + "'" + p.id + "'" + ')">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
@@ -7839,9 +7834,9 @@ function renderEngProjects(){
         +'<button data-id="'+p.id+'" onclick="event.stopPropagation();deleteEngProject(this.dataset.id)" style="background:none;border:1px solid #fca5a5;border-radius:7px;cursor:pointer;color:#dc2626;font-size:11px;padding:2px 8px">✕ Delete</button>'
         +'</div>'
       +'</div>'
-      +'<div style="margin-top:10px">'
-        +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px"><span>Progress</span><span style="font-weight:700;color:var(--teal-dark)">'+pct+'%</span></div>'
-        +'<div style="height:6px;background:var(--bg);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--teal),var(--teal-dark));border-radius:4px"></div></div>'
+      +'<div style="margin-top:10px" id="projEvmRow_'+p.id+'">'
+        +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px"><span>Progress</span><span style="font-weight:700;color:var(--teal-dark)" id="projEvmPct_'+p.id+'">…</span></div>'
+        +'<div style="height:6px;background:var(--bg);border-radius:4px;overflow:hidden"><div style="height:100%;width:0%;background:linear-gradient(90deg,var(--teal),var(--teal-dark));border-radius:4px" id="projEvmBar_'+p.id+'"></div></div>'
       +'</div>'
       +'<div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap">'
         +(p.budget_etb>0?'<div style="font-size:11px;color:var(--muted)">Budget: <strong style="color:var(--ink)">'+fmtETB2(p.budget_etb)+'</strong></div>':'')
@@ -7860,6 +7855,16 @@ function renderEngProjects(){
       +'</div>'
     +'</div>';
   }).join('');
+
+  // Fill in live-computed EVM per project card (async, from actual BOQ data)
+  list.forEach(function(p){
+    computeLiveEVM(p.id).then(function(pct){
+      const pctEl=document.getElementById("projEvmPct_"+p.id);
+      const barEl=document.getElementById("projEvmBar_"+p.id);
+      if(pctEl) pctEl.textContent=pct+"%";
+      if(barEl) barEl.style.width=Math.min(100,pct)+"%";
+    });
+  });
 }
 
 function fmtETB2(n){ return 'ETB '+(parseFloat(n||0)).toLocaleString('en-ET',{maximumFractionDigits:0}); }
