@@ -6959,7 +6959,7 @@ async function viewPR(id){
         <div class="pr-sign-title">${s.label}</div>
         ${pr[s.key+'_by']
           ?`<div style="font-size:12px;font-weight:700;color:var(--ink2)">${prDispName(pr[s.key+'_by'])}</div>
-             <div style="font-size:11px;color:var(--muted)">${pr[s.key+'_at']?new Date(pr[s.key+'_at']).toLocaleDateString('en-GB'):''}</div>
+             <div style="font-size:11px;color:var(--muted)">${pr[s.key+'_at']?new Date(pr[s.key+'_at']).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):''}</div>
              ${pr[s.key+'_comment']?`<div style="font-size:10px;color:var(--muted2);margin-top:3px;font-style:italic">"${pr[s.key+'_comment']}"</div>`:''}
              <div style="font-size:11px;color:var(--teal-dark);margin-top:2px">✓ Signed</div>
              ${s.canReverse?`<button onclick="reversePRStep('${pr.id}','${s.key}')" style="margin-top:4px;font-size:10px;padding:2px 8px;border:1px solid var(--amber);border-radius:5px;background:var(--amber-light);color:#92400e;cursor:pointer">↩ Reverse</button>`:''}
@@ -7593,7 +7593,7 @@ function openNotifPanel(){
              onclick="${n.prId?`viewPR('${n.prId}');markNotifRead(${n.id});document.getElementById('notifPanel').classList.remove('open')`:`markNotifRead(${n.id})`}">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
             <div style="font-size:12px;font-weight:700;color:var(--ink2)">${n.title}</div>
-            <div style="font-size:10px;color:var(--muted)">${new Date(n.at).toLocaleDateString('en-GB')}</div>
+            <div style="font-size:10px;color:var(--muted)">${new Date(n.at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
           </div>
           <div style="font-size:12px;color:var(--muted)">${n.message}</div>
           ${!n.read?'<div style="font-size:10px;color:var(--teal-dark);margin-top:4px">● New</div>':''}
@@ -8324,6 +8324,39 @@ async function saveProject(){
   showFlash('✓ Project saved.','engProjFlash','engProjFlashMsg');
 }
 
+// ── LIVE EVM — always computed fresh from actual BOQ item data, never from
+// the cached percent_complete snapshot on the project row. That field only
+// updates when a progress report is saved, so if a trial/test report was
+// entered once and never followed up, it stays stuck at that number forever.
+// Computing live from quantity_executed (updated by every real progress
+// report save) means the displayed % can never go stale.
+window._liveEvmCache = {};
+async function computeLiveEVM(projectId, forceRefresh){
+  if(!forceRefresh && window._liveEvmCache[projectId]!==undefined) return window._liveEvmCache[projectId];
+  const contracts = engContracts.filter(function(c){return c.project_id===projectId;});
+  if(!contracts.length){ window._liveEvmCache[projectId]=0; return 0; }
+  const contractIds = contracts.map(function(c){return c.id;});
+  try{
+    const blocks = await engFetch('/eng_boq_blocks?contract_id=in.('+contractIds.join(',')+')&select=id');
+    const blockArr = Array.isArray(blocks)?blocks:[];
+    if(!blockArr.length){ window._liveEvmCache[projectId]=0; return 0; }
+    const blockIds = blockArr.map(function(b){return b.id;});
+    const items = await engFetch('/eng_boq_block_items?block_id=in.('+blockIds.join(',')+')&select=total_amount,unit_rate,quantity_executed');
+    const itemArr = Array.isArray(items)?items:[];
+    let contractTotal=0, toDateTotal=0;
+    itemArr.forEach(function(it){
+      contractTotal += parseFloat(it.total_amount)||0;
+      toDateTotal += (parseFloat(it.quantity_executed)||0)*(parseFloat(it.unit_rate)||0);
+    });
+    const pct = contractTotal>0 ? Math.round((toDateTotal/contractTotal)*1000)/10 : 0;
+    window._liveEvmCache[projectId]=pct;
+    return pct;
+  }catch(e){
+    window._liveEvmCache[projectId]=parseFloat((engProjects.find(function(p){return p.id===projectId;})||{}).percent_complete||0);
+    return window._liveEvmCache[projectId];
+  }
+}
+
 function openProjectDetail(id){
   const p = engProjects.find(x=>x.id===id); if(!p) return;
   if(!canAccessProject(p)){ alert('You do not have access to this project.'); return; }
@@ -8332,7 +8365,10 @@ function openProjectDetail(id){
   const coName = (p.company_id==='WE'||p.company_id==='Wanofi')?'Wanofi Engineering Plc':'Matisan Engineering Plc';
   document.getElementById('hubProjectName').textContent = p.project_name;
   document.getElementById('hubProjectMeta').textContent = (p.client||'—')+' · '+(p.location||'—')+' · '+p.division_code+' · '+coName;
-  document.getElementById('hubEVMPct').textContent = (p.percent_complete||0)+'%';
+  document.getElementById('hubEVMPct').textContent = '…';
+  computeLiveEVM(id, true).then(function(pct){
+    const el=document.getElementById('hubEVMPct'); if(el) el.textContent = pct+'%';
+  });
   // Reset tabs
   document.querySelectorAll('.hub-tab').forEach(function(t){t.classList.remove('active');});
   document.querySelector('.hub-tab').classList.add('active');
@@ -8365,7 +8401,6 @@ async function renderHubTab(tab){
 }
 
 function renderHubOverview(p, wrap){
-  const pct = parseFloat(p.percent_complete||0);
   const relatedContracts = engContracts.filter(c=>c.project_id===p.id);
   const relatedReports = engProgressReports.filter(r=>r.project_id===p.id).sort((a,b)=>(b.report_date||'').localeCompare(a.report_date||''));
   const totalContractValue = relatedContracts.reduce((s,c)=>s+(parseFloat(c.contract_value_etb)||0),0);
@@ -8384,7 +8419,7 @@ function renderHubOverview(p, wrap){
 
   wrap.innerHTML =
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px">'
-    +'<div style="background:var(--bg);border-radius:10px;padding:14px"><div style="font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.4px">EVM Progress</div><div style="font-size:26px;font-weight:800;color:var(--teal-dark)">'+pct+'%</div></div>'
+    +'<div style="background:var(--bg);border-radius:10px;padding:14px"><div style="font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.4px">EVM Progress</div><div style="font-size:26px;font-weight:800;color:var(--teal-dark)" id="hubOverviewEVM">…</div></div>'
     +'<div style="background:var(--bg);border-radius:10px;padding:14px"><div style="font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.4px">Contract Value</div><div style="font-size:18px;font-weight:800;color:var(--ink2)">'+fmtETB2(totalContractValue)+'</div></div>'
     +'<div style="background:var(--bg);border-radius:10px;padding:14px"><div style="font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.4px">Contracts</div><div style="font-size:26px;font-weight:800;color:var(--ink2)">'+relatedContracts.length+'</div></div>'
     +'<div style="background:var(--bg);border-radius:10px;padding:14px"><div style="font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.4px">Progress Reports</div><div style="font-size:26px;font-weight:800;color:var(--ink2)">'+relatedReports.length+'</div></div>'
@@ -8396,6 +8431,11 @@ function renderHubOverview(p, wrap){
     +'<button class="btn-primary" onclick="closeProjectDetail();openProjectModal(\"'+p.id+'\")" >✏ Edit Project</button>'
     +'<button class="btn-secondary" onclick="closeProjectDetail()">Close</button>'
     +'</div>';
+
+  computeLiveEVM(p.id, true).then(function(pct){
+    const el=document.getElementById('hubOverviewEVM'); if(el) el.textContent=pct+'%';
+    const badgeEl=document.getElementById('hubEVMPct'); if(badgeEl) badgeEl.textContent=pct+'%';
+  });
 }
 
 function renderHubContracts(p, wrap){
@@ -8684,9 +8724,6 @@ function renderEngContracts(){
   wrap.innerHTML = list.map(function(c){
     const proj = engProjects.find(function(p){return p.id===c.project_id;});
     const blockCount = engBoqBlocks.filter(function(b){return b.contract_id===c.id;}).length;
-    // EVM: contract execution % from project percent_complete
-    const linkedProj = engProjects.find(function(p){return p.id===c.project_id;});
-    const contractEVM = linkedProj ? parseFloat(linkedProj.percent_complete||0) : 0;
     return '<div class="pr-card">'
       +'<div style="cursor:pointer" onclick="openContractModal(' + "'" + c.id + "'" + ')">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
@@ -8696,7 +8733,7 @@ function renderEngContracts(){
         +'</div>'
         +engContractStatusBadge(c.status)
       +'</div>'
-      +'<div style="margin-top:10px;margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px"><span>EVM Progress</span><span style="font-weight:700;color:var(--teal-dark)">'+contractEVM+'%</span></div><div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+Math.min(100,contractEVM)+'%;background:linear-gradient(90deg,var(--teal),var(--teal-dark))"></div></div></div>'
+      +'<div style="margin-top:10px;margin-bottom:6px" id="evmRow_'+c.id+'"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px"><span>EVM Progress</span><span style="font-weight:700;color:var(--teal-dark)" id="evmPct_'+c.id+'">…</span></div><div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:0%;background:linear-gradient(90deg,var(--teal),var(--teal-dark))" id="evmBar_'+c.id+'"></div></div></div>'
       +'<div style="display:flex;gap:18px;margin-top:6px;flex-wrap:wrap">'
         +'<div style="font-size:11px;color:var(--muted)">Value: <strong style="color:var(--teal-dark)">'+fmtETB2(c.contract_value_etb)+'</strong></div>'
         +(c.signed_date?'<div style="font-size:11px;color:var(--muted)">Signed: <strong style="color:var(--ink)">'+c.signed_date+'</strong></div>':'')
@@ -8711,6 +8748,17 @@ function renderEngContracts(){
       +'</div>'
     +'</div>';
   }).join('');
+
+  // Fill in live-computed EVM per card (async, computed from actual BOQ data)
+  list.forEach(function(c){
+    if(!c.project_id) return;
+    computeLiveEVM(c.project_id).then(function(pct){
+      const pctEl=document.getElementById("evmPct_"+c.id);
+      const barEl=document.getElementById("evmBar_"+c.id);
+      if(pctEl) pctEl.textContent=pct+"%";
+      if(barEl) barEl.style.width=Math.min(100,pct)+"%";
+    });
+  });
 }
 
 function onContrCompanyChange(){
@@ -9248,7 +9296,7 @@ async function saveProgress(){
   if(projId) await engFetch('/eng_projects?id=eq.'+projId,'PATCH',{percent_complete: overall});
   _invalidate('engProg'); _invalidate('engProj');
   // Invalidate BOQ cache for this project so next report picks up updated to-date quantities
-  if(projId) { delete _boqCache[projId]; }
+  if(projId) { delete _boqCache[projId]; delete window._liveEvmCache[projId]; }
   await Promise.all([loadEngProgress(true), loadEngProjects(true)]);
   closeProgressModal();
   showFlash('✓ Progress report saved.','engProgFlash','engProgFlashMsg');
@@ -9852,12 +9900,16 @@ async function addBoqBlock(){
   pendingNewBlockItems=[];
   await loadEngBoqBlocks();
   renderBoqBlocksList();
+  for(const k in _boqCache) delete _boqCache[k]; // BOQ changed — Progress Report must reload fresh, not from stale cache
+  window._liveEvmCache = {}; // EVM must also recompute fresh
 }
 
 function deleteBoqBlockBtn(btn){
   if(!confirm('Delete this BOQ block and all its items?')) return;
   engFetch('/eng_boq_blocks?id=eq.'+btn.dataset.bid,'DELETE').then(async function(){
     await loadEngBoqBlocks(); renderBoqBlocksList();
+    for(const k in _boqCache) delete _boqCache[k];
+    window._liveEvmCache = {};
   });
 }
 
@@ -9987,6 +10039,8 @@ async function saveBoqBlockItems(){
     });
   });
   await Promise.all(ops);
+  for(const k in _boqCache) delete _boqCache[k]; // BOQ changed — Progress Report must reload fresh, not from stale cache
+  window._liveEvmCache = {}; // EVM must also recompute fresh
   showFlash('✓ Contract BOQ saved.','engContrFlash','engContrFlashMsg');
   closeBoqBlockItems();
 }
