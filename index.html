@@ -1833,7 +1833,7 @@ const USER_DEFS = [
   // Resident Engineers — restricted to their division only (subdivision:null = whole division)
   {username:'re_we1',     role:'re',         displayRole:'RE — WE1 Design',      initials:'R1', accessLevel:'re',         company:'WE', division:'WE1',subdivision:null, prRole:null},
   {username:'re_we2',     role:'re',         displayRole:'RE — WE2 Supervision', initials:'R2', accessLevel:'re',         company:'WE', division:'WE2',subdivision:null, prRole:null},
-  {username:'re_we3',     role:'re',         displayRole:'RE — WE3',             initials:'R3', accessLevel:'re',         company:'WE', division:'WE3',subdivision:null, prRole:null},
+  {username:'re_we3',     role:'re',         displayRole:'RE — WE3 & WE2',       initials:'R3', accessLevel:'re',         company:'WE', division:'WE3',subdivision:null, divisions:['WE3','WE2'], prRole:null},
   {username:'re_me1',     role:'re',         displayRole:'RE — ME1 Construction',initials:'R4', accessLevel:'re',         company:'ME', division:'ME1',subdivision:null, prRole:null},
   {username:'re_me2',     role:'re',         displayRole:'RE — ME2',             initials:'R5', accessLevel:'re',         company:'ME', division:'ME2',subdivision:null, prRole:null},
   {username:'re_me3',     role:'re',         displayRole:'RE — ME3',             initials:'R6', accessLevel:'re',         company:'ME', division:'ME3',subdivision:null, prRole:null},
@@ -1910,6 +1910,13 @@ function isEngManager(){return currentUser&&currentUser.accessLevel==='eng_manag
 function isRE(){return currentUser&&currentUser.accessLevel==='re';}
 function isEngUser(){return currentUser&&['eng_admin','eng_manager','re'].includes(currentUser.accessLevel);}
 function engUserDivision(){return currentUser?currentUser.division:null;}
+// Array form — most accounts have exactly one division, but some (like
+// re_we3) are explicitly granted more than one via a `divisions` array.
+function engUserDivisions(){
+  if(!currentUser) return [];
+  if(Array.isArray(currentUser.divisions) && currentUser.divisions.length) return currentUser.divisions;
+  return currentUser.division ? [currentUser.division] : [];
+}
 function engUserSubdivision(){return currentUser?currentUser.subdivision:null;}
 function engUserCompany(){return currentUser?currentUser.company:null;}
 // Safe subdivision scope for filtering: if the RE's assigned subdivision code
@@ -1956,8 +1963,9 @@ function canAccessProject(proj){
   const cu = currentUser;
   if(cu.accessLevel==='eng_admin'||cu.accessLevel==='eng_manager') return true;
   if(cu.accessLevel==='re'){
-    // RE can only see their division...
-    if(proj.division_code !== cu.division) return false;
+    // RE can only see their division(s)...
+    const divs = engUserDivisions();
+    if(!divs.includes(proj.division_code)) return false;
     // ...and if this RE is scoped to a specific subdivision (site), only that site
     if(cu.subdivision){ const _safe=safeReSubdivision(cu.division); if(_safe) return proj.subdivision_code === _safe; }
     return true;
@@ -2728,7 +2736,7 @@ function applyAccessLevel(){
         const sidebarUser = document.querySelector('.sb-user');
         if(sidebarUser) sidebarUser.parentNode.insertBefore(badge, sidebarUser.nextSibling);
       }
-      badge.textContent = '📍 '+currentUser.division+(currentUser.subdivision?' — '+currentUser.subdivision:'')+' — '+currentUser.displayRole;
+      badge.textContent = '📍 '+engUserDivisions().join(' + ')+(currentUser.subdivision?' — '+currentUser.subdivision:'')+' — '+currentUser.displayRole;
     }
 
   } else {
@@ -7807,10 +7815,11 @@ function renderEngProjects(){
   const div = document.getElementById('epfDivision')?.value||'';
   const st = document.getElementById('epfStatus')?.value||'';
   const q = (document.getElementById('epfSearch')?.value||'').toLowerCase();
-  const _reDivF = isRE()?engUserDivision():null;
+  const _reDivsF = isRE()?engUserDivisions():null;
+  const _reDivF = isRE()?engUserDivision():null; // kept for subdivision-scope check (single-division REs only)
   const _reSubF = isRE()?safeReSubdivision(_reDivF):null;
   let list = engProjects.filter(p=>{
-    if(_reDivF && p.division_code!==_reDivF) return false;
+    if(_reDivsF && !_reDivsF.includes(p.division_code)) return false;
     if(_reSubF && p.subdivision_code!==_reSubF) return false;
     if(co && p.company_id!==co) return false;
     if(div && p.division_code!==div) return false;
@@ -7990,10 +7999,10 @@ async function syncSubdivisionsFromProjects(coId, divCode){
 // RE users see only their division (and their specific site, if scoped).
 function reScopedEngProjects(){
   if(!isRE()) return engProjects;
-  const div = engUserDivision();
-  const sub = safeReSubdivision(div);
+  const divs = engUserDivisions();
+  const sub = divs.length===1 ? safeReSubdivision(divs[0]) : null; // subdivision scoping only applies to single-division REs
   return engProjects.filter(function(p){
-    if(p.division_code!==div) return false;
+    if(!divs.includes(p.division_code)) return false;
     if(sub && p.subdivision_code!==sub) return false;
     return true;
   });
@@ -8711,10 +8720,11 @@ function renderEngContracts(){
   const co = document.getElementById('ecfCompany')?.value||'';
   const st = document.getElementById('ecfStatus')?.value||'';
   const q = (document.getElementById('ecfSearch')?.value||'').toLowerCase();
+  const _reDivsF2 = isRE()?engUserDivisions():null;
   const _reDivF2 = isRE()?engUserDivision():null;
   const _reSubF2 = isRE()?safeReSubdivision(_reDivF2):null;
   let list = engContracts.filter(function(c){
-    if(_reDivF2 && c.division_code!==_reDivF2) return false;
+    if(_reDivsF2 && !_reDivsF2.includes(c.division_code)) return false;
     if(_reSubF2){
       const _cp=engProjects.find(function(p){return p.id===c.project_id;});
       if(!_cp||_cp.subdivision_code!==_reSubF2) return false;
@@ -8958,12 +8968,13 @@ function renderEngProgress(){
   const wrap = document.getElementById('engProgressGrid'); if(!wrap) return;
   const projFilter = document.getElementById('eprfProject')?.value||'';
   const q = (document.getElementById('eprfSearch')?.value||'').toLowerCase();
+  const _reDivsF3 = isRE()?engUserDivisions():null;
   const _reDivF3 = isRE()?engUserDivision():null;
   const _reSubF3 = isRE()?safeReSubdivision(_reDivF3):null;
   let list = engProgressReports.filter(function(r){
-    if(_reDivF3){
+    if(_reDivsF3){
       const _rp=engProjects.find(function(p){return p.id===r.project_id;});
-      if(!_rp||_rp.division_code!==_reDivF3) return false;
+      if(!_rp||!_reDivsF3.includes(_rp.division_code)) return false;
       if(_reSubF3 && _rp.subdivision_code!==_reSubF3) return false;
     }
     if(projFilter && r.project_id!==projFilter) return false;
@@ -10446,9 +10457,10 @@ function populateProgressProjectDropdown(){
   // Use same grouped format as Contract Management
   const sel = document.getElementById('progProjectId'); if(!sel) return;
   const curVal = sel.value;
+  const _reDivs4 = isRE()?engUserDivisions():null;
   const _reDiv4 = isRE()?engUserDivision():null;
   const _reSub4 = isRE()?safeReSubdivision(_reDiv4):null;
-  const scoped = engProjects.filter(function(p){return (!_reDiv4||p.division_code===_reDiv4)&&(!_reSub4||p.subdivision_code===_reSub4);});
+  const scoped = engProjects.filter(function(p){return (!_reDivs4||_reDivs4.includes(p.division_code))&&(!_reSub4||p.subdivision_code===_reSub4);});
 
   if(isRE()){
     // RE users: no placeholder, no "All Projects", no division grouping — just their
@@ -11740,9 +11752,10 @@ const _origPopFilter = populateProgressProjectFilter;
 function populateProgressProjectFilter(){
   const sel = document.getElementById('eprfProject'); if(!sel) return;
   const cur = sel.value;
+  const _reDivs4 = isRE()?engUserDivisions():null;
   const _reDiv4 = isRE()?engUserDivision():null;
   const _reSub4 = isRE()?safeReSubdivision(_reDiv4):null;
-  const scoped = engProjects.filter(function(p){return (!_reDiv4||p.division_code===_reDiv4)&&(!_reSub4||p.subdivision_code===_reSub4);});
+  const scoped = engProjects.filter(function(p){return (!_reDivs4||_reDivs4.includes(p.division_code))&&(!_reSub4||p.subdivision_code===_reSub4);});
 
   if(isRE()){
     sel.innerHTML = '';
